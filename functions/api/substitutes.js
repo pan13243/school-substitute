@@ -15,7 +15,7 @@ function jsonResponse(data, status = 200) {
 
 export async function onRequestGet(context) {
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/schedule?select=*&order=id`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/substitutes?select=*&order=created_at.desc`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
     });
     const data = await res.json();
@@ -30,13 +30,8 @@ export async function onRequestPost(context) {
     const body = await context.request.json();
     const { records } = body;
     if (!Array.isArray(records)) return jsonResponse({ error: 'records must be an array' }, 400);
-    await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
-      method: 'DELETE',
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: { neq: 0 } }),
-    });
     if (records.length > 0) {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/substitutes`, {
         method: 'POST',
         headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
         body: JSON.stringify(records),
@@ -51,7 +46,7 @@ export async function onRequestPost(context) {
 
 export async function onRequestDelete(context) {
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/substitutes`, {
       method: 'DELETE',
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: { neq: 0 } }),
