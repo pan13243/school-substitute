@@ -138,8 +138,8 @@ const Store = {
 let scheduleData = { classes: {}, teachers: [] };
 let leaveRecords = [];
 let substituteRecords = [];
-let currentMode = 'teacher'; // 'teacher' or 'admin'
-let currentPage = 'schedule'; // 'schedule', 'leave', 'substitute'
+let currentMode = 'teacher';
+let currentPage = 'schedule';
 
 // ==================== 工具函数 ====================
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五'];
@@ -152,7 +152,7 @@ function showToast(msg, type = 'info') {
   const toast = document.createElement('div');
   toast.id = 'toast';
   const colors = { success: '#10B981', error: '#EF4444', info: '#4F46E5', warning: '#F59E0B' };
-  toast.style.cssText = `position:fixed;top:20px;right:20px;padding:12px 24px;background:${colors[type] || colors.info};color:#fff;border-radius:6px;font-size:14px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.15);animation:slideIn 0.3s ease;`;
+  toast.style.cssText = `position:fixed;top:20px;right:20px;padding:12px 24px;background:${colors[type] || colors.info};color:#fff;border-radius:6px;font-size:14px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.15);`;
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
@@ -183,38 +183,57 @@ function getWeekdayName(dateStr) {
   return days[new Date(dateStr).getDay()];
 }
 
+// ==================== 角色管理 ====================
+const Role = {
+  _isAdmin: false,
+  _password: 'admin888',
+  isAdmin() { return this._isAdmin; },
+  switchToAdmin() {
+    const pwd = prompt('请输入管理员密码：');
+    if (pwd === this._password) {
+      this._isAdmin = true;
+      document.getElementById('role-label').textContent = '管理员模式';
+      document.getElementById('role-label').className = 'role-label admin';
+      document.getElementById('role-toggle-btn').textContent = '切换为教师';
+      showToast('已切换为管理员模式', 'success');
+      switchPage(currentPage);
+    } else {
+      showToast('密码错误', 'error');
+    }
+  },
+  switchToTeacher() {
+    this._isAdmin = false;
+    document.getElementById('role-label').textContent = '教师模式';
+    document.getElementById('role-label').className = 'role-label teacher';
+    document.getElementById('role-toggle-btn').textContent = '切换为管理员';
+    showToast('已切换为教师模式', 'info');
+    switchPage(currentPage);
+  },
+};
+
 // ==================== 课表解析 ====================
 function parseScheduleData(jsonData) {
   if (!jsonData || jsonData.length < 3) return null;
-  
-  // 查找星期行
   let weekdayRow = -1;
   let weekdayMap = {};
-  
   for (let r = 0; r < Math.min(jsonData.length, 10); r++) {
     const row = jsonData[r];
     if (!row) continue;
     for (let c = 0; c < row.length; c++) {
       const val = String(row[c] || '').trim();
-      if (['周一', '星期二', '周三', '星期四', '周五'].includes(val) || /^周[一二三四五]$/.test(val)) {
+      if (/^周[一二三四五]$/.test(val) || ['周一','星期二','周三','星期四','周五'].includes(val)) {
         if (weekdayRow === -1) weekdayRow = r;
         const dayName = val.replace('星期', '周');
         weekdayMap[dayName] = c;
       }
     }
   }
-  
   if (weekdayRow === -1) return null;
-  
-  // 查找班级行（星期行的下一行）
   const classRow = weekdayRow + 1;
   if (classRow >= jsonData.length) return null;
-  
   const classes = {};
   const teachers = new Set();
   const classRowData = jsonData[classRow] || [];
-  
-  // 找到班级列
   const classColumns = {};
   for (let c = 0; c < classRowData.length; c++) {
     const val = String(classRowData[c] || '').trim();
@@ -227,8 +246,6 @@ function parseScheduleData(jsonData) {
       }
     }
   }
-  
-  // 如果没找到班级列，尝试从第一列获取
   if (Object.keys(classColumns).length === 0) {
     for (let r = classRow + 1; r < jsonData.length; r++) {
       const row = jsonData[r];
@@ -237,7 +254,6 @@ function parseScheduleData(jsonData) {
       if (className && /\d+年级|班/.test(className)) {
         for (const [dayName, dayCol] of Object.entries(weekdayMap)) {
           if (!classes[className]) classes[className] = {};
-          // 查找该班级的课程
           for (let periodRow = r; periodRow < Math.min(r + 10, jsonData.length); periodRow++) {
             const periodData = jsonData[periodRow];
             if (!periodData) continue;
@@ -257,11 +273,9 @@ function parseScheduleData(jsonData) {
       }
     }
   } else {
-    // 按列解析
     for (const [dayName, info] of Object.entries(classColumns)) {
       const { col, className } = info;
       if (!classes[className]) classes[className] = {};
-      
       for (let r = classRow + 1; r < jsonData.length; r++) {
         const row = jsonData[r];
         if (!row) continue;
@@ -278,7 +292,6 @@ function parseScheduleData(jsonData) {
       }
     }
   }
-  
   if (Object.keys(classes).length === 0) return null;
   return { classes, teachers: Array.from(teachers) };
 }
@@ -293,9 +306,7 @@ function parseExcelFile(file) {
         var sheetName = workbook.SheetNames.find(function(s) { return s.indexOf('总表') >= 0; }) || workbook.SheetNames[0];
         console.log('[课表解析] 使用Sheet: ' + sheetName + ', 所有Sheet: ' + workbook.SheetNames.join(', '));
         var sheet = workbook.Sheets[sheetName];
-
         var merges = sheet['!merges'] || [];
-        console.log('[课表解析] 合并单元格数量: ' + merges.length);
         for (var i = 0; i < merges.length; i++) {
           var merge = merges[i];
           if (merge.s.r > 3) continue;
@@ -306,35 +317,26 @@ function parseExcelFile(file) {
             for (var c = merge.s.c; c <= merge.e.c; c++) {
               if (r === merge.s.r && c === merge.s.c) continue;
               var addr = XLSX.utils.encode_cell({ r: r, c: c });
-              if (!sheet[addr]) {
-                sheet[addr] = { t: 's', v: originVal };
-              }
+              if (!sheet[addr]) { sheet[addr] = { t: 's', v: originVal }; }
             }
           }
         }
-
         var jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-        console.log('[课表解析] 展开合并单元格后, 行数: ' + jsonData.length + ', 列数: ' + (jsonData[0] ? jsonData[0].length : 0));
-
-        if (jsonData.length < 2) {
-          reject(new Error('Excel文件数据不足，请检查格式'));
-          return;
-        }
-
+        if (jsonData.length < 2) { reject(new Error('Excel文件数据不足，请检查格式')); return; }
         var result = parseScheduleData(jsonData);
         resolve(result);
-      } catch (err) {
-        reject(new Error('解析Excel文件失败: ' + err.message));
-      }
+      } catch (err) { reject(new Error('解析Excel文件失败: ' + err.message)); }
     };
     reader.onerror = function() { reject(new Error('文件读取失败')); };
     reader.readAsArrayBuffer(file);
   });
 }
 
+
 // ==================== 课表管理页面 ====================
 function renderSchedulePage() {
-  const container = document.getElementById('app-content');
+  const container = document.getElementById('schedule-content');
+  const statsContainer = document.getElementById('schedule-stats');
   const teacherCount = scheduleData.teachers ? scheduleData.teachers.length : 0;
   const classCount = scheduleData.classes ? Object.keys(scheduleData.classes).length : 0;
   
@@ -347,80 +349,87 @@ function renderSchedulePage() {
     }
   }
 
-  container.innerHTML = `
-    <div class="page-header">
-      <h1>课表管理</h1>
-      <p class="page-desc">导入学校总课表，支持 Excel 格式（.xlsx / .xls）</p>
-    </div>
-    
-    ${classCount > 0 ? `
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-value">${teacherCount}</div>
-        <div class="stat-label">教师人数</div>
+  if (statsContainer) {
+    statsContainer.innerHTML = classCount > 0 ? `
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${teacherCount}</div>
+          <div class="stat-label">教师人数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${classCount}</div>
+          <div class="stat-label">班级数量</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${periodCount}</div>
+          <div class="stat-label">课程节数</div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">${classCount}</div>
-        <div class="stat-label">班级数量</div>
+    ` : '';
+  }
+
+  if (container) {
+    container.innerHTML = classCount > 0 ? `
+      <div class="action-bar">
+        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+          <span>📁</span> 重新导入课表
+        </button>
+        <button class="btn btn-danger" onclick="clearScheduleData()">
+          <span>🗑️</span> 清空课表
+        </button>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">${periodCount}</div>
-        <div class="stat-label">课程节数</div>
-      </div>
-    </div>
-    
-    <div class="action-bar">
-      <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
-        <span>📁</span> 重新导入课表
-      </button>
-      <button class="btn btn-danger" onclick="clearScheduleData()">
-        <span>🗑️</span> 清空课表
-      </button>
-    </div>
-    
-    <div class="schedule-preview">
-      <h3>课表预览</h3>
-      <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>班级</th>
-              <th>周一</th>
-              <th>周二</th>
-              <th>周三</th>
-              <th>周四</th>
-              <th>周五</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${Object.entries(scheduleData.classes).slice(0, 10).map(([className, weekData]) => `
+      
+      <div class="schedule-preview">
+        <h3>课表预览</h3>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
               <tr>
-                <td class="class-name">${escapeHtml(className)}</td>
-                ${WEEKDAYS.map(day => {
-                  const periods = weekData[day] || {};
-                  const entries = Object.entries(periods).sort((a, b) => a[0] - b[0]);
-                  return `<td>${entries.map(([p, e]) => `<div class="period-entry"><span class="period-num">${p}</span> ${escapeHtml(e.teacherName)}${e.subject ? ' - ' + escapeHtml(e.subject) : ''}</div>`).join('')}</td>`;
-                }).join('')}
+                <th>班级</th>
+                <th>周一</th>
+                <th>周二</th>
+                <th>周三</th>
+                <th>周四</th>
+                <th>周五</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              ${Object.entries(scheduleData.classes).map(([className, weekData]) => `
+                <tr>
+                  <td class="class-name">${escapeHtml(className)}</td>
+                  ${WEEKDAYS.map(day => {
+                    const periods = weekData[day] || {};
+                    const entries = Object.entries(periods).sort((a, b) => a[0] - b[0]);
+                    return `<td>${entries.map(([p, e]) => `<div class="period-entry"><span class="period-num">${p}</span> ${escapeHtml(e.teacherName)}${e.subject ? ' - ' + escapeHtml(e.subject) : ''}</div>`).join('')}</td>`;
+                  }).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
       </div>
-      ${Object.keys(scheduleData.classes).length > 10 ? `<p class="text-muted" style="margin-top:12px;">仅显示前 10 个班级，共 ${Object.keys(scheduleData.classes).length} 个班级</p>` : ''}
-    </div>
     ` : `
-    <div class="empty-state">
-      <div class="empty-icon">📋</div>
-      <h3>暂无课表数据</h3>
-      <p>请上传 Excel 格式的课表文件</p>
-      <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
-        <span>📁</span> 导入课表
-      </button>
-    </div>
-    `}
-    
-    <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(event)">
-  `;
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <h3>暂无课表数据</h3>
+        <p>请上传 Excel 格式的课表文件</p>
+        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+          <span>📁</span> 导入课表
+        </button>
+      </div>
+    `;
+  }
+  
+  // 添加文件输入框（如果不存在）
+  if (!document.getElementById('file-input')) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.id = 'file-input';
+    fileInput.accept = '.xlsx,.xls';
+    fileInput.style.display = 'none';
+    fileInput.onchange = handleFileUpload;
+    document.body.appendChild(fileInput);
+  }
 }
 
 async function handleFileUpload(event) {
@@ -437,15 +446,12 @@ async function handleFileUpload(event) {
     const result = await parseExcelFile(file);
     if (result && result.classes) {
       scheduleData = result;
-      
-      // 保存到 Supabase
       const saved = await Store.saveSchedule(scheduleData);
       if (saved) {
         showToast(`课表导入成功！共 ${Object.keys(scheduleData.classes).length} 个班级`, 'success');
       } else {
         showToast('课表解析成功，但保存失败', 'warning');
       }
-      
       renderSchedulePage();
     } else {
       showToast('未能解析到有效课表数据', 'error');
@@ -461,7 +467,6 @@ async function handleFileUpload(event) {
 
 async function clearScheduleData() {
   if (!confirm('确定要清空所有课表数据吗？此操作不可恢复。')) return;
-  
   const success = await Store.clearSchedule();
   if (success) {
     scheduleData = { classes: {}, teachers: [] };
@@ -474,14 +479,10 @@ async function clearScheduleData() {
 
 // ==================== 请假登记页面 ====================
 function renderLeavePage() {
-  const container = document.getElementById('app-content');
+  const container = document.getElementById('leave-content');
+  if (!container) return;
   
   container.innerHTML = `
-    <div class="page-header">
-      <h1>请假登记</h1>
-      <p class="page-desc">登记教师请假信息，系统将自动安排代课</p>
-    </div>
-    
     <div class="leave-form-card">
       <h3>新增请假</h3>
       <form id="leave-form" onsubmit="handleLeaveSubmit(event)">
@@ -586,7 +587,6 @@ async function handleLeaveSubmit(event) {
 
 async function deleteLeave(id) {
   if (!confirm('确定删除这条请假记录吗？')) return;
-  // 注意：当前 API 不支持单条删除，这里只从本地移除
   leaveRecords = leaveRecords.filter(l => l.id !== id);
   showToast('已删除（注意：云端数据需手动清空）', 'warning');
   renderLeavePage();
@@ -606,14 +606,10 @@ async function clearAllLeaves() {
 
 // ==================== 代课安排页面 ====================
 function renderSubstitutePage() {
-  const container = document.getElementById('app-content');
+  const container = document.getElementById('substitute-content');
+  if (!container) return;
   
   container.innerHTML = `
-    <div class="page-header">
-      <h1>代课安排</h1>
-      <p class="page-desc">根据请假记录自动安排代课教师</p>
-    </div>
-    
     <div class="action-bar">
       <button class="btn btn-primary" onclick="generateSubstitutions()">
         <span>⚡</span> 自动生成代课安排
@@ -675,16 +671,14 @@ function generateSubstitutions() {
     showToast('没有请假记录，无法生成代课安排', 'warning');
     return;
   }
-  
   if (!scheduleData.classes || Object.keys(scheduleData.classes).length === 0) {
     showToast('请先导入课表', 'warning');
     return;
   }
   
   const newSubstitutes = [];
-  const teacherSchedule = {}; // 记录每位教师的已有安排
+  const teacherSchedule = {};
   
-  // 构建教师时间表
   for (const [className, weekData] of Object.entries(scheduleData.classes)) {
     for (const [weekday, periodData] of Object.entries(weekData)) {
       for (const [period, entry] of Object.entries(periodData)) {
@@ -698,13 +692,11 @@ function generateSubstitutions() {
     }
   }
   
-  // 为每个请假记录找代课教师
   for (const leave of leaveRecords) {
     const weekday = leave.dayOfWeek;
     const period = leave.period;
     const leaveDate = leave.leaveDate;
     
-    // 找到请假教师在该时段教的班级
     const affectedClasses = [];
     for (const [className, weekData] of Object.entries(scheduleData.classes)) {
       const periodData = weekData[weekday] || {};
@@ -716,7 +708,6 @@ function generateSubstitutions() {
     
     if (affectedClasses.length === 0) continue;
     
-    // 为每个班级找代课教师
     for (const { className, subject } of affectedClasses) {
       const substitute = findSubstitute(leave.teacherName, weekday, period, teacherSchedule);
       if (substitute) {
@@ -732,8 +723,6 @@ function generateSubstitutions() {
           subject,
           createdAt: new Date().toISOString(),
         });
-        
-        // 更新教师时间表
         const key = `${substitute}-${weekday}-${period}`;
         if (!teacherSchedule[key]) teacherSchedule[key] = [];
         teacherSchedule[key].push({ className, teacherName: substitute });
@@ -754,14 +743,11 @@ function generateSubstitutions() {
 function findSubstitute(excludeTeacher, weekday, period, teacherSchedule) {
   const allTeachers = scheduleData.teachers || [];
   const candidates = allTeachers.filter(t => t !== excludeTeacher);
-  
-  // 按空闲优先级排序
   candidates.sort((a, b) => {
     const aBusy = (teacherSchedule[`${a}-${weekday}-${period}`] || []).length;
     const bBusy = (teacherSchedule[`${b}-${weekday}-${period}`] || []).length;
     return aBusy - bBusy;
   });
-  
   return candidates[0] || null;
 }
 
@@ -770,7 +756,6 @@ function exportSubstitutes() {
     showToast('没有代课记录可导出', 'warning');
     return;
   }
-  
   const data = substituteRecords.map(sub => ({
     '请假教师': sub.leaveTeacherName,
     '代课教师': sub.substituteTeacher,
@@ -780,7 +765,6 @@ function exportSubstitutes() {
     '节次': `第${sub.period}节`,
     '科目': sub.subject || '',
   }));
-  
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '代课安排');
@@ -803,22 +787,24 @@ async function clearAllSubstitutes() {
 // ==================== 导航与初始化 ====================
 function switchPage(page) {
   currentPage = page;
-  
-  // 更新导航高亮
   document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.remove('active');
   });
   const activeNav = document.querySelector(`[data-page="${page}"]`);
   if (activeNav) activeNav.classList.add('active');
   
-  // 渲染页面
+  document.querySelectorAll('.page-section').forEach(section => {
+    section.classList.remove('active');
+  });
+  const activeSection = document.getElementById(`page-${page}`);
+  if (activeSection) activeSection.classList.add('active');
+  
   if (page === 'schedule') renderSchedulePage();
   else if (page === 'leave') renderLeavePage();
   else if (page === 'substitute') renderSubstitutePage();
 }
 
 async function initApp() {
-  // 加载数据
   const [schedule, leaves, substitutes] = await Promise.all([
     Store.getSchedule(),
     Store.getLeaves(),
@@ -829,7 +815,6 @@ async function initApp() {
   if (leaves) leaveRecords = leaves;
   if (substitutes) substituteRecords = substitutes;
   
-  // 绑定导航事件
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
@@ -838,7 +823,6 @@ async function initApp() {
     });
   });
   
-  // 绑定日期变化事件
   document.addEventListener('change', (e) => {
     if (e.target.name === 'leaveDate') {
       const dayOfWeekInput = e.target.form.querySelector('[name="dayOfWeek"]');
@@ -848,9 +832,7 @@ async function initApp() {
     }
   });
   
-  // 渲染首页
   switchPage('schedule');
 }
 
-// 启动应用
 document.addEventListener('DOMContentLoaded', initApp);
