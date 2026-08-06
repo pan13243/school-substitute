@@ -45,11 +45,15 @@ export async function onRequestPost(context) {
     if (!Array.isArray(records)) {
       return jsonResponse({ error: 'records must be an array' }, 400);
     }
+    // 先删除旧数据
     const deleteRes = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
       method: 'DELETE',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=minimal' },
     });
-    if (!deleteRes.ok) throw new Error(`Delete error: ${deleteRes.status}`);
+    if (!deleteRes.ok) {
+      console.error('Delete failed:', deleteRes.status);
+    }
+    // 转换字段名
     const dbRecords = records.map(r => ({
       class_name: r.className,
       teacher_name: r.teacherName,
@@ -60,6 +64,7 @@ export async function onRequestPost(context) {
       even_week_teacher: r.evenWeekTeacher || null,
       is_after_school: r.isAfterSchool || false,
     }));
+    // 批量插入
     if (dbRecords.length > 0) {
       const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
         method: 'POST',
