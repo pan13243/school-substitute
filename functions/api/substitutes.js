@@ -15,7 +15,7 @@ function jsonResponse(data, status = 200) {
 
 export async function onRequestGet(context) {
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/substitutes?select=*&order=created_at.desc`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/leaves?select=*&order=created_at.desc`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
     });
     const data = await res.json();
@@ -28,17 +28,16 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   try {
     const body = await context.request.json();
-    const { records } = body;
-    if (!Array.isArray(records)) return jsonResponse({ error: 'records must be an array' }, 400);
-    if (records.length > 0) {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/substitutes`, {
-        method: 'POST',
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-        body: JSON.stringify(records),
-      });
-      if (!res.ok) throw new Error('Insert failed');
-    }
-    return jsonResponse({ success: true, count: records.length });
+    const { teacher, reason, startDate, endDate, periods, type } = body;
+    if (!teacher || !startDate) return jsonResponse({ error: 'teacher and startDate are required' }, 400);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/leaves`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ teacher, reason: reason || '', start_date: startDate, end_date: endDate || startDate, periods: periods || '', type: type || 'personal' }),
+    });
+    if (!res.ok) throw new Error('Insert failed');
+    const data = await res.json();
+    return jsonResponse({ success: true, data: data[0] });
   } catch (error) {
     return jsonResponse({ error: error.message }, 500);
   }
@@ -46,7 +45,7 @@ export async function onRequestPost(context) {
 
 export async function onRequestDelete(context) {
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/substitutes`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/leaves`, {
       method: 'DELETE',
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: { neq: 0 } }),
