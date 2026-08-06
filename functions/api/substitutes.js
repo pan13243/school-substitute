@@ -1,4 +1,3 @@
-// Cloudflare Pages Function for /api/substitutes
 const SUPABASE_URL = 'https://mucdpljnchabygrrdvda.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE';
 
@@ -23,6 +22,7 @@ export async function onRequestGet(context) {
     const records = await res.json();
     return jsonResponse({ success: true, data: records || [] });
   } catch (error) {
+    console.error('Substitutes GET Error:', error);
     return jsonResponse({ error: error.message }, 500);
   }
 }
@@ -34,18 +34,27 @@ export async function onRequestPost(context) {
     if (!Array.isArray(records)) {
       return jsonResponse({ error: 'records must be an array' }, 400);
     }
-    const newRecords = records.map((r) => ({ ...r, id: Date.now() + Math.random(), created_at: new Date().toISOString() }));
+    const dbRecords = records.map(r => ({
+      leave_id: r.leaveId || r.leave_id,
+      substitute_teacher: r.substituteTeacher || r.substitute_teacher,
+      class_name: r.className || r.class_name,
+      day_of_week: r.dayOfWeek || r.day_of_week,
+      period: r.period,
+      subject: r.subject || '',
+      created_at: new Date().toISOString(),
+    }));
     const res = await fetch(`${SUPABASE_URL}/rest/v1/substitute_records`, {
       method: 'POST',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify(newRecords),
+      body: JSON.stringify(dbRecords),
     });
     if (!res.ok) {
       const errText = await res.text();
       throw new Error(`Insert error: ${res.status} - ${errText}`);
     }
-    return jsonResponse({ success: true, count: newRecords.length }, 201);
+    return jsonResponse({ success: true, count: dbRecords.length }, 201);
   } catch (error) {
+    console.error('Substitutes POST Error:', error);
     return jsonResponse({ error: error.message }, 500);
   }
 }
@@ -59,6 +68,7 @@ export async function onRequestDelete(context) {
     if (!res.ok) throw new Error(`Delete error: ${res.status}`);
     return jsonResponse({ success: true });
   } catch (error) {
+    console.error('Substitutes DELETE Error:', error);
     return jsonResponse({ error: error.message }, 500);
   }
 }
