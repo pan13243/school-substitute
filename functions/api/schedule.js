@@ -1,4 +1,3 @@
-// Cloudflare Pages Function for /api/schedule
 const SUPABASE_URL = 'https://mucdpljnchabygrrdvda.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE';
 
@@ -29,6 +28,7 @@ export async function onRequestGet(context) {
       period: r.period,
       oddWeekTeacher: r.odd_week_teacher,
       evenWeekTeacher: r.even_week_teacher,
+      isAfterSchool: r.is_after_school,
     }));
     return jsonResponse({ success: true, data });
   } catch (error) {
@@ -41,19 +41,14 @@ export async function onRequestPost(context) {
   try {
     const body = await context.request.json();
     const { records } = body;
-
     if (!Array.isArray(records)) {
       return jsonResponse({ error: 'records must be an array' }, 400);
     }
-
-    // 删除旧数据
     const deleteRes = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
       method: 'DELETE',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=minimal' },
     });
     if (!deleteRes.ok) throw new Error(`Delete error: ${deleteRes.status}`);
-
-    // 转换前端字段为数据库字段（使用 teacher_name）
     const dbRecords = records.map(r => ({
       class_name: r.className,
       teacher_name: r.teacherName,
@@ -62,9 +57,8 @@ export async function onRequestPost(context) {
       period: parseInt(r.period) || 0,
       odd_week_teacher: r.oddWeekTeacher || null,
       even_week_teacher: r.evenWeekTeacher || null,
+      is_after_school: r.isAfterSchool || false,
     }));
-
-    // 插入新数据
     if (dbRecords.length > 0) {
       const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
         method: 'POST',
@@ -76,7 +70,6 @@ export async function onRequestPost(context) {
         throw new Error(`Insert error: ${insertRes.status} - ${errText}`);
       }
     }
-
     return jsonResponse({ success: true, count: dbRecords.length });
   } catch (error) {
     console.error('Schedule POST Error:', error);
