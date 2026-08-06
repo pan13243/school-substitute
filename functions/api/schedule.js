@@ -21,8 +21,19 @@ export async function onRequestGet(context) {
     });
     if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
     const records = await res.json();
-    return jsonResponse({ success: true, data: records || [] });
+    // 转换数据库字段为前端字段
+    const data = (records || []).map(r => ({
+      className: r.class_name,
+      teacherName: r.teacher,
+      subject: r.subject,
+      weekday: r.day_of_week,
+      period: r.period,
+      oddWeekTeacher: r.odd_week_teacher,
+      evenWeekTeacher: r.even_week_teacher,
+    }));
+    return jsonResponse({ success: true, data });
   } catch (error) {
+    console.error('Schedule GET Error:', error);
     return jsonResponse({ error: error.message }, 500);
   }
 }
@@ -31,27 +42,45 @@ export async function onRequestPost(context) {
   try {
     const body = await context.request.json();
     const { records } = body;
+
     if (!Array.isArray(records)) {
       return jsonResponse({ error: 'records must be an array' }, 400);
     }
+
+    // 删除旧数据
     const deleteRes = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
       method: 'DELETE',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=minimal' },
     });
     if (!deleteRes.ok) throw new Error(`Delete error: ${deleteRes.status}`);
-    if (records.length > 0) {
+
+    // 转换前端字段为数据库字段
+    const dbRecords = records.map(r => ({
+      class_name: r.className,
+      teacher: r.teacherName,
+      subject: r.subject || '',
+      day_of_week: r.weekday,
+      period: parseInt(r.period) || 0,
+      odd_week_teacher: r.oddWeekTeacher || null,
+      even_week_teacher: r.evenWeekTeacher || null,
+    }));
+
+    // 插入新数据
+    if (dbRecords.length > 0) {
       const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
         method: 'POST',
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(records),
+        body: JSON.stringify(dbRecords),
       });
       if (!insertRes.ok) {
         const errText = await insertRes.text();
         throw new Error(`Insert error: ${insertRes.status} - ${errText}`);
       }
     }
-    return jsonResponse({ success: true, count: records.length });
+
+    return jsonResponse({ success: true, count: dbRecords.length });
   } catch (error) {
+    console.error('Schedule POST Error:', error);
     return jsonResponse({ error: error.message }, 500);
   }
 }
@@ -65,6 +94,7 @@ export async function onRequestDelete(context) {
     if (!res.ok) throw new Error(`Delete error: ${res.status}`);
     return jsonResponse({ success: true });
   } catch (error) {
+    console.error('Schedule DELETE Error:', error);
     return jsonResponse({ error: error.message }, 500);
   }
 }
