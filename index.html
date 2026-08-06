@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<!-- saved from url=(0069)https://d2b7c2f2-214e-4178-a9c3-16b017faef09.dev.coze.site/index.html -->
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><script src="./学校代课安排系统_files/index.js.下载"></script><script src="./学校代课安排系统_files/index(1).js.下载"></script><script src="./学校代课安排系统_files/index.min.js.下载"></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="学校代课安排系统 - 智能课表管理与代课安排">
+    <title>学校代课安排系统</title>
+    <link rel="stylesheet" href="./学校代课安排系统_files/main.css">
+    <script src="./学校代课安排系统_files/xlsx.full.min.js.下载"></script>
+    <script src="./学校代课安排系统_files/supabase-js@2"></script>
+    <script>
+      // 环境变量注入（由部署环境提供）
+      window.ENV = {
+        SUPABASE_URL: '${SUPABASE_URL}' !== '${' + 'SUPABASE_URL}' ? '${SUPABASE_URL}' : '',
+        SUPABASE_ANON_KEY: '${SUPABASE_ANON_KEY}' !== '${' + 'SUPABASE_ANON_KEY}' ? '${SUPABASE_ANON_KEY}' : ''
+      };
+    </script>
+  <link rel="stylesheet" href="./学校代课安排系统_files/css"></head>
+  <body>
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+      <button class="hamburger-btn" id="hamburger-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <h1>代课安排系统</h1>
+    </div>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="app-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <h1>代课安排系统</h1>
+          <p>教务管理工具</p>
+        </div>
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-page="schedule">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            课表管理
+          </button>
+          <button class="nav-item" data-page="leave">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><line x1="9" y1="14" x2="15" y2="14"></line>
+            </svg>
+            请假登记
+          </button>
+          <button class="nav-item" data-page="substitute">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="M9 14l2 2 4-4"></path>
+            </svg>
+            代课安排
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="role-info">
+            <span id="role-label" class="role-label admin">管理员模式</span>
+            <button id="role-toggle-btn" class="btn btn-sm btn-outline" onclick="Role.isAdmin() ? Role.switchToTeacher() : Role.switchToAdmin()">切换为教师</button>
+          </div>
+          <p class="storage-hint">数据存储于浏览器本地</p>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- 课表管理页 -->
+        <section class="page-section active" id="page-schedule">
+          <h2 class="page-title">课表管理</h2>
+          <p class="page-desc">导入学校总课表，支持 Excel 格式（.xlsx / .xls）</p>
+          <div id="schedule-stats">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
+        <div class="stat-info"><div class="stat-value">63</div><div class="stat-label">教师人数</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></div>
+        <div class="stat-info"><div class="stat-value">22</div><div class="stat-label">班级数量</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>
+        <div class="stat-info"><div class="stat-value">1026</div><div class="stat-label">周课时总数</div></div>
+      </div>
+    </div>
+  
+      <div class="card" style="margin-top: 16px;">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          企业微信通知设置
+        </div>
+        <div style="margin-bottom: 12px;">
+          <label class="form-label">Webhook 地址</label>
+          <input type="text" class="form-input" id="webhook-url" value="" placeholder="请输入企业微信群机器人 Webhook 地址">
+          <div class="form-hint" style="margin-top: 8px;">
+             在企业微信群中添加机器人，复制 Webhook 地址粘贴到此处。教师提交请假后会自动通知管理员。
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-primary btn-sm" onclick="saveWebhookUrl()">保存设置</button>
+          <button class="btn btn-secondary btn-sm" onclick="testWebhook()">发送测试消息</button>
+          <span style="color: #64748B; font-size: 13px; line-height: 32px;">未配置</span>
+        </div>
+      </div>
+    </div>
+          <div id="schedule-content">
+    <div class="card">
+      <div class="card-title" style="justify-content: space-between;">
+        <span style="display:flex;align-items:center;gap:8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          课表预览
+        </span>
+        <div class="btn-group">
+          <button class="btn btn-secondary btn-sm" onclick="exportScheduleData()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            导出课表数据
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="reUploadSchedule()">重新导入</button>
+          <button class="btn btn-primary btn-sm" onclick="appendUploadSchedule()">追加导入</button>
+          <button class="btn btn-danger btn-sm" onclick="clearAllData()">清空数据</button>
+        </div>
+      </div>
+  
+    <div style="margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+      
+        <button class="btn btn-sm btn-primary" onclick="showClassSchedule(&#39;一（1）&#39;, this)">一（1）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;一（2）&#39;, this)">一（2）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;一（3）&#39;, this)">一（3）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;二（1）&#39;, this)">二（1）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;二（2）&#39;, this)">二（2）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;二（3）&#39;, this)">二（3）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;三（1）&#39;, this)">三（1）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;三（2）&#39;, this)">三（2）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;三（3）&#39;, this)">三（3）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;四（1）&#39;, this)">四（1）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;��（1）&#39;, this)">��（1）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;四（2）&#39;, this)">四（2）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;四（3）&#39;, this)">四（3）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;四（4）&#39;, this)">四（4）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;五（1）&#39;, this)">五（1）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;五（2）&#39;, this)">五（2）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;五（3）&#39;, this)">五（3）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;五（4）&#39;, this)">五（4）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;六（1）&#39;, this)">六（1）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;六（2）&#39;, this)">六（2）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;六（3）&#39;, this)">六（3）</button>
+      
+        <button class="btn btn-sm btn-secondary" onclick="showClassSchedule(&#39;六（4）&#39;, this)">六（4）</button>
+      
+    </div>
+  <div class="table-wrapper schedule-grid"><table class="table"><thead><tr><th>节次</th><th>周一</th><th>周二</th><th>周三</th><th>周四</th><th>周五</th></tr></thead><tbody><tr><td style="font-weight:600;white-space:nowrap;">第1节</td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">语文</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">数学</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">语文</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">数学</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">语文</div></div></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第2节</td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">语文</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">语文</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">道德与法治</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">语文</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">语文</div></div></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第3节</td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">数学</div></div></td><td><div class="cell-info"><div class="cell-teacher">刘光军</div><div class="cell-subject">音乐</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">数学</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">语文</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">综合</div></div></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第4节</td><td><span style="color:#CBD5E1;">-</span></td><td><span style="color:#CBD5E1;">-</span></td><td><span style="color:#CBD5E1;">-</span></td><td><span style="color:#CBD5E1;">-</span></td><td><div class="cell-info"><div class="cell-teacher">雷安元</div><div class="cell-subject">美术</div></div></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第5节</td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">地方</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">科学</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">校本课程</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">道德与法治</div></div></td><td><div class="cell-info"><div class="cell-teacher">刘光军</div><div class="cell-subject">音乐</div></div></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第6节</td><td><div class="cell-info"><div class="cell-teacher">龙杰</div><div class="cell-subject">体育</div></div></td><td><div class="cell-info"><div class="cell-teacher">雷安元</div><div class="cell-subject">美术</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">健康</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙杰</div><div class="cell-subject">体育</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">劳动</div></div></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第7节</td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">午休</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">午休</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">午休</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">午休</div></div></td><td><span style="color:#CBD5E1;">-</span></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第8节</td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">课后服务</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">课后服务</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">课后服务</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">课后服务</div></div></td><td><span style="color:#CBD5E1;">-</span></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第9节</td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">课后服务</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">课后服务</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">课后服务</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">课后服务</div></div></td><td><span style="color:#CBD5E1;">-</span></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第10节</td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">课后服务</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">课后服务</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">课后服务</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">课后服务</div></div></td><td><span style="color:#CBD5E1;">-</span></td></tr><tr><td style="font-weight:600;white-space:nowrap;">第11节</td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">晚自习</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">晚自习</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙燕</div><div class="cell-subject">晚自习</div></div></td><td><div class="cell-info"><div class="cell-teacher">龙光辉</div><div class="cell-subject">晚自习</div></div></td><td><span style="color:#CBD5E1;">-</span></td></tr></tbody></table></div></div></div>
+        </section>
+
+        <!-- 请假登记页 -->
+        <section class="page-section" id="page-leave">
+          <h2 class="page-title">请假登记</h2>
+          <p class="page-desc">登记教师请假信息，系统将自动标记该时间段不可用</p>
+          <div id="leave-content"></div>
+        </section>
+
+        <!-- 代课安排页 -->
+        <section class="page-section" id="page-substitute">
+          <h2 class="page-title">代课安排</h2>
+          <p class="page-desc">根据请假记录和课表自动安排代课教师</p>
+          <div id="substitute-content"></div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="help-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Excel 导入格式说明</h3>
+          <button class="modal-close" onclick="closeHelpModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <h4 style="font-size:14px;font-weight:600;margin-bottom:8px;">格式一：总表格式（推荐）</h4>
+          <p style="font-size:13px;color:#64748B;margin-bottom:8px;">学校总课表，包含"星期一""星期二"等标记，每节课占两行（科目行+教师行）</p>
+          <div class="table-wrapper" style="margin-bottom:16px;">
+            <table class="table" style="font-size:12px;">
+              <thead><tr><th></th><th></th><th>一（1）</th><th>一（2）</th><th>...</th><th>二（1）</th><th>...</th></tr></thead>
+              <tbody>
+                <tr><td></td><td>星期一</td><td colspan="2" style="text-align:center">← 星期标记行 →</td><td></td><td></td><td></td></tr>
+                <tr><td></td><td>上午</td><td></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td></td><td>第一节</td><td>语文</td><td>数学</td><td>...</td><td>英语</td><td>...</td></tr>
+                <tr><td></td><td></td><td>张三</td><td>李四</td><td>...</td><td>王五</td><td>...</td></tr>
+                <tr><td></td><td>第二节</td><td>数学</td><td>语文</td><td>...</td><td>科学</td><td>...</td></tr>
+                <tr><td></td><td></td><td>李四</td><td>张三</td><td>...</td><td>赵六</td><td>...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4 style="font-size:14px;font-weight:600;margin-bottom:8px;">格式二：班级维度</h4>
+          <p style="font-size:13px;color:#64748B;margin-bottom:8px;">每行一个班级的一节课，单元格填写"教师/科目"</p>
+          <div class="table-wrapper" style="margin-bottom:16px;">
+            <table class="table" style="font-size:12px;">
+              <thead><tr><th>班级</th><th>节次</th><th>周一</th><th>周二</th><th>...</th></tr></thead>
+              <tbody>
+                <tr><td>一年级1班</td><td>第1节</td><td>张三/语文</td><td>李四/数学</td><td>...</td></tr>
+                <tr><td>一年级1班</td><td>第2节</td><td>王五/英语</td><td>张三/语文</td><td>...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4 style="font-size:14px;font-weight:600;margin-bottom:8px;">格式三：教师维度</h4>
+          <p style="font-size:13px;color:#64748B;margin-bottom:8px;">每行一位教师，时间段列标记有课（填"1"或"✓"）</p>
+          <div class="table-wrapper">
+            <table class="table" style="font-size:12px;">
+              <thead><tr><th>教师</th><th>科目</th><th>班级</th><th>周一1</th><th>周一2</th><th>...</th></tr></thead>
+              <tbody>
+                <tr><td>张三</td><td>语文</td><td>一年级1班</td><td>1</td><td></td><td>...</td></tr>
+                <tr><td>李四</td><td>数学</td><td>一年级1班,一年级2班</td><td></td><td>1</td><td>...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeHelpModal()">我知道了</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./学校代课安排系统_files/app.js.下载"></script>
+  
+
+<div id="html-editor-renderer-root" style="position: fixed; top: 0px; left: 0px;"></div></body></html>
