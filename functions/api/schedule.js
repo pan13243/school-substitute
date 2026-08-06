@@ -21,7 +21,6 @@ export async function onRequestGet(context) {
     });
     if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
     const records = await res.json();
-    // 转换数据库字段为前端字段
     const data = (records || []).map(r => ({
       className: r.class_name,
       teacherName: r.teacher,
