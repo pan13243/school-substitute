@@ -1,4 +1,3 @@
-// Cloudflare Pages Function for /api/leaves
 const SUPABASE_URL = 'https://mucdpljnchabygrrdvda.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE';
 
@@ -23,6 +22,7 @@ export async function onRequestGet(context) {
     const records = await res.json();
     return jsonResponse({ success: true, data: records || [] });
   } catch (error) {
+    console.error('Leaves GET Error:', error);
     return jsonResponse({ error: error.message }, 500);
   }
 }
@@ -34,7 +34,15 @@ export async function onRequestPost(context) {
     if (!leave) {
       return jsonResponse({ error: 'leave data is required' }, 400);
     }
-    const newLeave = { ...leave, id: Date.now(), created_at: new Date().toISOString() };
+    const newLeave = {
+      teacher_name: leave.teacherName || leave.teacher_name,
+      teacher_id: leave.teacherId || leave.teacher_id,
+      leave_date: leave.leaveDate || leave.leave_date,
+      day_of_week: leave.dayOfWeek || leave.day_of_week,
+      period: leave.period,
+      reason: leave.reason || '',
+      created_at: new Date().toISOString(),
+    };
     const res = await fetch(`${SUPABASE_URL}/rest/v1/leave_records`, {
       method: 'POST',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
@@ -44,8 +52,9 @@ export async function onRequestPost(context) {
       const errText = await res.text();
       throw new Error(`Insert error: ${res.status} - ${errText}`);
     }
-    return jsonResponse({ success: true, id: newLeave.id }, 201);
+    return jsonResponse({ success: true }, 201);
   } catch (error) {
+    console.error('Leaves POST Error:', error);
     return jsonResponse({ error: error.message }, 500);
   }
 }
@@ -59,6 +68,7 @@ export async function onRequestDelete(context) {
     if (!res.ok) throw new Error(`Delete error: ${res.status}`);
     return jsonResponse({ success: true });
   } catch (error) {
+    console.error('Leaves DELETE Error:', error);
     return jsonResponse({ error: error.message }, 500);
   }
 }
