@@ -29,7 +29,6 @@ export async function onRequestGet(context) {
       period: r.period,
       oddWeekTeacher: r.odd_week_teacher,
       evenWeekTeacher: r.even_week_teacher,
-      isAfterSchool: r.is_after_school,
     }));
     return jsonResponse({ success: true, data });
   } catch (error) {
@@ -54,7 +53,7 @@ export async function onRequestPost(context) {
     });
     if (!deleteRes.ok) throw new Error(`Delete error: ${deleteRes.status}`);
 
-    // 转换前端字段为数据库字段
+    // 转换前端字段为数据库字段（使用 teacher_name）
     const dbRecords = records.map(r => ({
       class_name: r.className,
       teacher_name: r.teacherName,
@@ -63,7 +62,6 @@ export async function onRequestPost(context) {
       period: parseInt(r.period) || 0,
       odd_week_teacher: r.oddWeekTeacher || null,
       even_week_teacher: r.evenWeekTeacher || null,
-      is_after_school: r.isAfterSchool || false,
     }));
 
     // 插入新数据
