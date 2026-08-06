@@ -233,6 +233,7 @@ const Store = {
   },
 
   // 批量添加课表记录（追加模式）
+   // 批量添加课表记录（追加模式）
   async addScheduleRecords(records) {
     try {
       // 先获取现有记录
@@ -250,10 +251,27 @@ const Store = {
       if (!res.ok) throw new Error('添加课表记录失败');
       return await res.json();
     } catch (e) {
-      console.warn('API 添加课表记录失败:', e.message);
+      console.warn('API 添加课表记录失败，使用 localStorage:', e.message);
+      // 保存到 localStorage 作为后备
+      try {
+        const existing = JSON.parse(localStorage.getItem(STORAGE_KEYS.schedule)) || { classes: {}, teachers: [] };
+        // 将 records 转换为 classes 格式
+        for (const r of records) {
+          if (!existing.classes[r.className]) existing.classes[r.className] = {};
+          if (!existing.classes[r.className][r.weekday]) existing.classes[r.className][r.weekday] = {};
+          existing.classes[r.className][r.weekday][r.period] = {
+            teacher: r.teacherName,
+            subject: r.subject || ''
+          };
+        }
+        localStorage.setItem(STORAGE_KEYS.schedule, JSON.stringify(existing));
+      } catch (err) {
+        console.error('localStorage 保存失败:', err);
+      }
       return { records };
     }
   },
+
 
   // 获取请假记录
   async getLeaves() {
