@@ -23,12 +23,13 @@ export async function onRequestGet(context) {
     const records = await res.json();
     const data = (records || []).map(r => ({
       className: r.class_name,
-      teacherName: r.teacher,
+      teacherName: r.teacher_name,
       subject: r.subject,
-      weekday: r.day_of_week,
+      weekday: r.weekday,
       period: r.period,
       oddWeekTeacher: r.odd_week_teacher,
       evenWeekTeacher: r.even_week_teacher,
+      isAfterSchool: r.is_after_school,
     }));
     return jsonResponse({ success: true, data });
   } catch (error) {
@@ -56,12 +57,13 @@ export async function onRequestPost(context) {
     // 转换前端字段为数据库字段
     const dbRecords = records.map(r => ({
       class_name: r.className,
-      teacher: r.teacherName,
+      teacher_name: r.teacherName,
       subject: r.subject || '',
-      day_of_week: r.weekday,
+      weekday: r.weekday,
       period: parseInt(r.period) || 0,
       odd_week_teacher: r.oddWeekTeacher || null,
       even_week_teacher: r.evenWeekTeacher || null,
+      is_after_school: r.isAfterSchool || false,
     }));
 
     // 插入新数据
