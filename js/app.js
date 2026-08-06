@@ -96,6 +96,53 @@ function updateRoleUI() {
 const API_BASE = window.location.origin;
 
 const Store = {
+  // 获取课表数据
+  async getSchedule() {
+    try {
+      const res = await fetch(`${API_BASE}/api/schedule`);
+      if (!res.ok) throw new Error('获取课表失败');
+      const json = await res.json();
+      const records = json?.data || json?.records || [];
+      
+      // 如果 API 有数据，转换为 classes 格式并缓存到 localStorage
+      if (records.length > 0) {
+        const classes = {};
+        const teachers = new Set();
+        for (const r of records) {
+          const cn = r.className;
+          if (!classes[cn]) classes[cn] = {};
+          if (!classes[cn][r.weekday]) classes[cn][r.weekday] = {};
+          classes[cn][r.weekday][r.period] = {
+            teacher: r.teacherName,
+            subject: r.subject || ''
+          };
+          if (r.teacherName) teachers.add(r.teacherName);
+        }
+        const result = { classes, teachers: [...teachers] };
+        // 缓存到 localStorage
+        localStorage.setItem(STORAGE_KEYS.schedule, JSON.stringify(result));
+        return result;
+      }
+      
+      // API 返回空数据，尝试从 localStorage 读取
+      throw new Error('API 返回空数据');
+    } catch (e) {
+      console.warn('API 获取课表失败，使用 localStorage:', e.message);
+      const cached = localStorage.getItem(STORAGE_KEYS.schedule);
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          if (data && data.classes && Object.keys(data.classes).length > 0) {
+            return data;
+          }
+        } catch (err) {
+          console.error('localStorage 解析失败:', err);
+        }
+      }
+      return null;
+    }
+  },
+  
   // 获取所有教师（从课表中提取）
   async getTeachers() {
     try {
