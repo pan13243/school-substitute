@@ -5,10 +5,11 @@ const { supabase, mem, authAdmin } = require('./supabase-client');
 // GET /api/leaves
 router.get('/', async (req, res) => {
   if (supabase) {
-    const { data, error } = await supabase
-      .from('leaves').select('*').order('created_at', { ascending: false });
-    if (error) return res.json({ success: false, error: error.message });
-    return res.json({ success: true, data });
+    try {
+      const { data, error } = await supabase
+        .from('leaves').select('*').order('created_at', { ascending: false });
+      if (!error && data) return res.json({ success: true, data });
+    } catch(e) { /* fall through to mem */ }
   }
   return res.json({ success: true, data: mem.leaves });
 });
@@ -31,12 +32,13 @@ router.post('/', async (req, res) => {
     createdAt:   new Date().toISOString(),
   };
   if (supabase) {
-    const { error } = await supabase.from('leaves').insert(record);
-    if (error) return res.json({ success: false, error: error.message });
-  } else {
-    mem.leaves.push(record);
+    try {
+      const { error } = await supabase.from('leaves').insert(record);
+      if (!error) return res.json({ success: true, data: record });
+    } catch(e) { /* fall through to mem */ }
   }
-  return res.json({ success: true, data: record });
+  mem.leaves.push(record);
+  return res.json({ success: true, data: record, _mem: true });
 });
 
 // PUT /api/leaves/:id  (admin: approve/reject)

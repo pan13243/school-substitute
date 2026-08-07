@@ -24,9 +24,13 @@ router.post('/generate', async (req, res) => {
     return res.json({ success: false, error: '请先导入课表' });
   }
 
-  const leaves = supabase
-    ? (await supabase.from('leaves').select('*').eq('status', 'pending')).data || []
-    : mem.leaves;
+  let leaves = [];
+  if (supabase) {
+    try { const r = await supabase.from('leaves').select('*').eq('status','pending'); if (!r.error && r.data) leaves = r.data; }
+    catch(e) { leaves = mem.leaves; }
+  } else {
+    leaves = mem.leaves;
+  }
 
   if (leaves.length === 0) {
     return res.json({ success: false, error: '暂无请假记录' });

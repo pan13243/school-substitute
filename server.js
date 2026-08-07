@@ -5,6 +5,28 @@
  */
 const express = require('express');
 const path    = require('path');
+const fs      = require('fs');
+
+// ── 启动时自动加载 parsed_data.json ─────────────────────
+const { mem } = require('./api/supabase-client');
+try {
+  const pd = JSON.parse(fs.readFileSync(path.join(__dirname, 'parsed_data.json'), 'utf8'));
+  if (pd && pd.timetable) {
+    mem.config = {
+      timetable:           pd.timetable,
+      teacherAssignment:   pd.teacherAssignment || {},
+      afterSchoolService:  pd.afterSchoolService || {},
+      classes:             pd.classes || [],
+      allTeachers:         pd.allTeachers || [],
+      importedAt:          pd.importedAt || new Date().toISOString()
+    };
+    const total = Object.values(pd.timetable).reduce((s, cm) =>
+      s + Object.values(cm).reduce((a, sl) => a + sl.length, 0), 0);
+    console.log(`[DATA] 已自动加载课表：${pd.classes?.length||0} 班，${pd.allTeachers?.length||0} 名教师，${total} 课时`);
+  }
+} catch(e) {
+  console.log('[DATA] 未找到 parsed_data.json，将在导入后加载');
+}
 
 const app   = express();
 const PORT  = process.env.PORT || 3000;

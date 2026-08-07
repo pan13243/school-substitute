@@ -1,10 +1,11 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl  = process.env.SUPABASE_URL  || 'https://mucdpljnchabygrrdvda.supabase.co';
-const supabaseKey  = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE';
+const FORCE_MEM = process.env.FORCE_LOCAL === '1';
+const supabaseUrl  = FORCE_MEM ? null : (process.env.SUPABASE_URL  || 'https://mucdpljnchabygrrdvda.supabase.co');
+const supabaseKey  = FORCE_MEM ? null : (process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE');
 
 let supabase = null;
-if (supabaseUrl && supabaseKey) {
+if (supabaseUrl && supabaseKey && !FORCE_MEM) {
   try {
     supabase = createClient(supabaseUrl, supabaseKey);
     console.log('[DB] Supabase connected ✓');
@@ -12,7 +13,7 @@ if (supabaseUrl && supabaseKey) {
     console.error('[DB] Supabase init failed:', e.message);
   }
 } else {
-  console.warn('[DB] No env vars — using in-memory store');
+  console.warn('[DB] FORCE_LOCAL=1 or no env — using in-memory store (data resets on restart)');
 }
 
 // ── Memory store (dev fallback / offline mode) ──────────────────────────────
