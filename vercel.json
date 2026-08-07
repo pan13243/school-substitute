@@ -1,17 +1,18 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/*.js", "use": "@vercel/node" },
-    { "src": "*.html", "use": "@vercel/static" },
-    { "src": "js/*.js", "use": "@vercel/static" },
-    { "src": "styles/*.css", "use": "@vercel/static" },
-    { "src": "assets/*", "use": "@vercel/static" }
+    { "src": "api/*.js",            "use": "@vercel/node" },
+    { "src": "index.html",          "use": "@vercel/static" },
+    { "src": "app.js",              "use": "@vercel/static" },
+    { "src": "styles/*.css",        "use": "@vercel/static" },
+    { "src": "parsed_data.json",    "use": "@vercel/static" },
+    { "src": "assets/*",            "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/js/(.*)", "dest": "/js/$1" },
-    { "src": "/styles/(.*)", "dest": "/styles/$1" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/api/(.*)",       "dest": "/api/$1" },
+    { "src": "/styles/(.*)",   "dest": "/styles/$1" },
+    { "src": "/parsed_data.json", "dest": "/parsed_data.json" },
+    { "src": "/app.js",        "dest": "/app.js" },
+    { "src": "/(.*)",          "dest": "/index.html" }
   ]
 }

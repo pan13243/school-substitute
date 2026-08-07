@@ -1,123 +1,69 @@
-// Cloudflare Pages Function for /api/schedule
-const SUPABASE_URL = 'https://mucdpljnchabygrrdvda.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE';
+/**
+ * GET  /api/schedule           → 返回课表数据
+ * POST /api/schedule/import    → 导入课表（管理员）
+ * POST /api/schedule/legacy    → 旧格式导入
+ * DELETE /api/schedule         → 清空数据
+ */
+import { mem, json, err, checkAdmin } from './supabase-client.js';
+import { buildTeacherAssignment } from './algorithm.js';
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
+export async function handleScheduleGet(env) {
+  return json({
+    success: true,
+    data:            mem.config?.timetable            || null,
+    teacherAssignment: mem.config?.teacherAssignment   || null,
+    afterSchoolService: mem.config?.afterSchoolService || null,
+    classes:         mem.config?.classes               || [],
+    allTeachers:     mem.config?.allTeachers            || []
   });
 }
 
-export async function onRequestGet(context) {
+export async function handleScheduleImport(request, env) {
+  if (!checkAdmin(request.headers)) return err('管理员密码错误', 401);
+
+  let body;
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/schedule?select=*`, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
-    });
-    if (!res.ok) {
-      console.error('GET failed:', res.status, await res.text());
-      return jsonResponse({ success: true, data: [] });
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      body = await request.json();
+    } else {
+      // multipart / form
+      const formData = await request.formData();
+      const jsonStr  = formData.get('data');
+      body = jsonStr ? JSON.parse(jsonStr) : {};
     }
-    const records = await res.json();
-    const data = (records || []).map(r => ({
-      className: r.class_name,
-      teacherName: r.teacher_name,
-      subject: r.subject,
-      weekday: r.weekday,
-      period: r.period,
-      oddWeekTeacher: r.odd_week_teacher,
-      evenWeekTeacher: r.even_week_teacher,
-      isAfterSchool: r.is_after_school,
-    }));
-    return jsonResponse({ success: true, data });
-  } catch (error) {
-    console.error('Schedule GET Error:', error);
-    return jsonResponse({ success: true, data: [] });
+  } catch(e) {
+    return err('请求格式错误');
   }
-}
 
-export async function onRequestPost(context) {
-  try {
-    const body = await context.request.json();
-    const { records } = body;
-    if (!Array.isArray(records)) {
-      return jsonResponse({ error: 'records must be an array' }, 400);
-    }
-    
-    // 转换字段名
-    const dbRecords = records.map(r => ({
-      class_name: r.className,
-      teacher_name: r.teacherName,
-      subject: r.subject || '',
-      weekday: r.weekday,
-      period: parseInt(r.period) || 0,
-      odd_week_teacher: r.oddWeekTeacher || null,
-      even_week_teacher: r.evenWeekTeacher || null,
-      is_after_school: r.isAfterSchool || false,
-    }));
+  const { timetable, afterSchoolService } = body;
+  if (!timetable) return err('缺少 timetable 字段');
 
-    // 尝试删除旧数据（失败也不影响后续插入）
-    try {
-      const deleteRes = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
-        method: 'DELETE',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=minimal' },
-      });
-      if (!deleteRes.ok) {
-        console.warn('Delete old data failed (non-fatal):', deleteRes.status);
-      }
-    } catch (delErr) {
-      console.warn('Delete old data error (non-fatal):', delErr.message);
-    }
+  // 重建 teacherAssignment
+  const teacherAssignment = buildTeacherAssignment(timetable);
 
-    // 批量插入新数据
-    if (dbRecords.length > 0) {
-      const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(dbRecords),
-      });
-      if (!insertRes.ok) {
-        const errText = await insertRes.text();
-        console.error('Insert failed:', insertRes.status, errText);
-        return jsonResponse({ error: `Insert failed: ${insertRes.status} - ${errText}` }, 500);
-      }
+  // 收集班级和教师
+  const classSet = new Set();
+  const teacherSet = new Set();
+  for (const [, classMap] of Object.entries(timetable)) {
+    for (const cls of Object.keys(classMap)) classSet.add(cls);
+    for (const periods of Object.values(classMap)) {
+      for (const s of periods) if (s.teacher) teacherSet.add(s.teacher);
     }
-    return jsonResponse({ success: true, count: dbRecords.length });
-  } catch (error) {
-    console.error('Schedule POST Error:', error);
-    return jsonResponse({ error: error.message }, 500);
   }
-}
 
-export async function onRequestDelete(context) {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/schedule`, {
-      method: 'DELETE',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=minimal' },
-    });
-    if (!res.ok) {
-      console.error('DELETE failed:', res.status, await res.text());
-      // 即使失败也返回成功，避免前端报错
-    }
-    return jsonResponse({ success: true });
-  } catch (error) {
-    console.error('Schedule DELETE Error:', error);
-    return jsonResponse({ success: true });
+  const classes = [...classSet].sort();
+  const allTeachers = [...teacherSet].sort();
+
+  mem.config = { timetable, teacherAssignment, afterSchoolService: afterSchoolService || [], classes, allTeachers };
+
+  // 持久化到 Cloudflare KV
+  if (env?.SCHEDULE_KV) {
+    await env.SCHEDULE_KV.put('timetable', JSON.stringify(mem.config));
   }
-}
 
-export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+  return json({ success: true, message: '课表导入成功', stats: {
+    classes: classes.length, teachers: allTeachers.length,
+    slots: Object.values(timetable).reduce((a,b)=>a+Object.values(b).reduce((a2,b2)=>a2+b2.length,0),0)
+  }});
 }

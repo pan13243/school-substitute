@@ -1,69 +1,85 @@
-const express = require('express');
-const router  = express.Router();
-const { supabase, mem, authAdmin } = require('./supabase-client');
+/**
+ * 请假管理 API — Cloudflare Workers 版本
+ * GET    /api/leaves          → 列表
+ * POST   /api/leaves          → 新增
+ * PUT    /api/leaves/:id      → 审批（需管理员）
+ * DELETE /api/leaves          → 清空（需管理员）
+ */
+import { mem, json, err, checkAdmin } from './supabase-client.js';
 
-// GET /api/leaves
-router.get('/', async (req, res) => {
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from('leaves').select('*').order('created_at', { ascending: false });
-      if (!error && data) return res.json({ success: true, data });
-    } catch(e) { /* fall through to mem */ }
-  }
-  return res.json({ success: true, data: mem.leaves });
-});
+export async function handleLeavesGet(env) {
+  const { leaves } = await loadLeaves(env);
+  return json({ success: true, data: leaves });
+}
 
-// POST /api/leaves
-router.post('/', async (req, res) => {
-  const { leave } = req.body;
-  if (!leave || !leave.teacherName || !leave.leaveDate) {
-    return res.json({ success: false, error: '缺少必填字段' });
+export async function handleLeavesPost(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch(e) {
+    return err('请求格式错误');
   }
-  const record = {
-    id: leave.id || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
-    teacherName: leave.teacherName,
-    teacherId:   leave.teacherId   || leave.teacherName,
-    leaveDate:   leave.leaveDate,
-    dayOfWeek:   leave.dayOfWeek   || '',
-    period:      parseInt(leave.period) || 0,
-    reason:      leave.reason      || '',
+
+  const { teacherName, leaveDate, reason } = body;
+  if (!teacherName || !leaveDate)
+    return err('teacherName 和 leaveDate 为必填');
+
+  const newLeave = {
+    id:          Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    teacherName: teacherName.trim(),
+    leaveDate:   leaveDate,
+    reason:      (reason || '').trim(),
     status:      'pending',
-    createdAt:   new Date().toISOString(),
+    createdAt:   new Date().toISOString()
   };
-  if (supabase) {
-    try {
-      const { error } = await supabase.from('leaves').insert(record);
-      if (!error) return res.json({ success: true, data: record });
-    } catch(e) { /* fall through to mem */ }
-  }
-  mem.leaves.push(record);
-  return res.json({ success: true, data: record, _mem: true });
-});
 
-// PUT /api/leaves/:id  (admin: approve/reject)
-router.put('/:id', async (req, res) => {
-  if (!authAdmin(req.headers)) return res.json({ success: false, error: '未授权' });
-  const { status } = req.body;
-  const { id } = req.params;
-  if (supabase) {
-    const { error } = await supabase.from('leaves').update({ status }).eq('id', id);
-    if (error) return res.json({ success: false, error: error.message });
-  } else {
-    const idx = mem.leaves.findIndex(l => l.id === id);
-    if (idx >= 0) mem.leaves[idx].status = status;
-  }
-  return res.json({ success: true });
-});
+  mem.leaves.push(newLeave);
+  await saveLeaves(env);
 
-// DELETE /api/leaves  (admin only)
-router.delete('/', async (req, res) => {
-  if (!authAdmin(req.headers)) return res.json({ success: false, error: '未授权' });
-  if (supabase) {
-    await supabase.from('leaves').delete().neq('id', '');
+  return json({ success: true, data: newLeave }, 201);
+}
+
+export async function handleLeavesPut(request, id, env) {
+  if (!checkAdmin(request.headers)) return err('管理员密码错误', 401);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch(e) {
+    return err('请求格式错误');
   }
+
+  const { status } = body;
+  if (!status || !['pending', 'approved', 'rejected'].includes(status))
+    return err('status 必须是 pending / approved / rejected');
+
+  const idx = mem.leaves.findIndex(l => l.id === id);
+  if (idx === -1) return err('请假记录不存在', 404);
+
+  mem.leaves[idx] = { ...mem.leaves[idx], status, updatedAt: new Date().toISOString() };
+  await saveLeaves(env);
+
+  return json({ success: true, data: mem.leaves[idx] });
+}
+
+export async function handleLeavesDelete(env) {
+  if (!checkAdmin(request.headers)) return err('管理员密码错误', 401);
   mem.leaves = [];
-  return res.json({ success: true });
-});
+  await saveLeaves(env);
+  return json({ success: true });
+}
 
-module.exports = router;
+// ── 持久化 ─────────────────────────────────────────────
+async function loadLeaves(env) {
+  if (env?.LEAVES_KV) {
+    const raw = await env.LEAVES_KV.get('leaves');
+    if (raw) mem.leaves = JSON.parse(raw);
+  }
+  return { leaves: mem.leaves };
+}
+
+async function saveLeaves(env) {
+  if (env?.LEAVES_KV) {
+    await env.LEAVES_KV.put('leaves', JSON.stringify(mem.leaves));
+  }
+}

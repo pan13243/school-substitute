@@ -1,94 +1,87 @@
-// Cloudflare Pages Function for /api/substitutes
-const SUPABASE_URL = 'https://mucdpljnchabygrrdvda.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE';
+/**
+ * 代课记录 API — Cloudflare Workers 版本
+ * GET    /api/substitutes          → 列表
+ * POST   /api/substitutes/generate → 生成代课（需管理员）
+ * POST   /api/substitutes          → 手动新增
+ * DELETE /api/substitutes          → 清空（需管理员）
+ */
+import { mem, json, err, checkAdmin } from './supabase-client.js';
+import { buildTeacherAssignment, buildTeacherSchedule,
+         findSubstitute, generateSubstitutes } from './algorithm.js';
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+// GET /api/substitutes
+export async function handleSubstitutesGet(env) {
+  return json({ success: true, data: mem.substitutes });
 }
 
-export async function onRequestGet(context) {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/substitute_records?select=*`, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
-    });
-    if (!res.ok) {
-      console.error('Substitutes GET failed:', res.status);
-      return jsonResponse({ success: true, data: [] });
-    }
-    const records = await res.json();
-    return jsonResponse({ success: true, data: records || [] });
-  } catch (error) {
-    console.error('Substitutes GET Error:', error);
-    return jsonResponse({ success: true, data: [] });
+// POST /api/substitutes/generate
+export async function handleSubstitutesGenerate(request, env) {
+  if (!checkAdmin(request.headers)) return err('管理员密码错误', 401);
+
+  let body = {};
+  try { body = await request.json(); } catch(e) {}
+
+  if (!mem.config?.timetable)
+    return err('课表未导入，请先导入课表数据');
+
+  const leaves = (mem.leaves || []).filter(l => l.status === 'pending');
+  if (leaves.length === 0)
+    return json({ success: true, results: [], summary: { total: 0, arranged: 0, failed: 0 }, message: '暂无待处理的请假记录' });
+
+  const timetable        = mem.config.timetable;
+  const teacherAssignment = buildTeacherAssignment(timetable);
+
+  const { results, summary } = generateSubstitutes(
+    timetable, teacherAssignment, leaves, body.targetDate
+  );
+
+  // 追加到代课记录（去重）
+  const existingIds = new Set(mem.substitutes.map(s => s.id));
+  const newOnes     = results.filter(r => !existingIds.has(r.id));
+  mem.substitutes.push(...newOnes);
+
+  await saveSubs(env);
+
+  return json({ success: true, results: newOnes, summary, message: `代课安排完成：成功 ${summary.arranged} 条，失败 ${summary.failed} 条` });
+}
+
+// POST /api/substitutes 手动添加
+export async function handleSubstitutesPost(request, env) {
+  let body = {};
+  try { body = await request.json(); } catch(e) {}
+  const { leaveTeacher, substituteTeacher, className, subject, leaveDate, dayOfWeek, period, reason } = body;
+  if (!leaveTeacher || !className || !subject || !leaveDate)
+    return err('缺少必填字段');
+
+  const rec = {
+    id:               `sub_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+    leaveTeacher:    leaveTeacher,
+    substituteTeacher: substituteTeacher || null,
+    className,
+    subject,
+    leaveDate,
+    dayOfWeek:       dayOfWeek || '',
+    period:          parseInt(period) || 0,
+    reason:          reason || '',
+    status:          substituteTeacher ? 'arranged' : 'manual',
+    createdAt:       new Date().toISOString()
+  };
+  mem.substitutes.push(rec);
+  await saveSubs(env);
+  return json({ success: true, data: rec }, 201);
+}
+
+// DELETE /api/substitutes
+export async function handleSubstitutesDelete(request, env) {
+  if (!checkAdmin(request.headers)) return err('管理员密码错误', 401);
+  mem.substitutes = [];
+  await saveSubs(env);
+  return json({ success: true });
+}
+
+// ── 持久化 ────────────────────────────────────────────
+async function saveSubs(env) {
+  if (env?.SUBS_KV) {
+    await env.SUBS_KV.put('subs', JSON.stringify(mem.substitutes));
   }
-}
-
-export async function onRequestPost(context) {
-  try {
-    const body = await context.request.json();
-    const { records } = body;
-    if (!Array.isArray(records)) {
-      return jsonResponse({ error: 'records must be an array' }, 400);
-    }
-    const dbRecords = records.map(r => ({
-      leave_id: r.leaveId || r.leave_id,
-      substitute_teacher: r.substituteTeacher || r.substitute_teacher,
-      class_name: r.className || r.class_name,
-      day_of_week: r.dayOfWeek || r.day_of_week,
-      period: r.period,
-      subject: r.subject || '',
-      created_at: new Date().toISOString(),
-    }));
-    if (dbRecords.length > 0) {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/substitute_records`, {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify(dbRecords),
-      });
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error('Substitutes POST failed:', res.status, errText);
-        return jsonResponse({ error: `Insert failed: ${res.status}` }, 500);
-      }
-    }
-    return jsonResponse({ success: true, count: dbRecords.length }, 201);
-  } catch (error) {
-    console.error('Substitutes POST Error:', error);
-    return jsonResponse({ error: error.message }, 500);
-  }
-}
-
-export async function onRequestDelete(context) {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/substitute_records`, {
-      method: 'DELETE',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=minimal' },
-    });
-    if (!res.ok) {
-      console.error('Substitutes DELETE failed:', res.status);
-    }
-    return jsonResponse({ success: true });
-  } catch (error) {
-    console.error('Substitutes DELETE Error:', error);
-    return jsonResponse({ success: true });
-  }
-}
-
-export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
 }

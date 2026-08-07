@@ -1,92 +1,85 @@
-// Cloudflare Pages Function for /api/leaves
-const SUPABASE_URL = 'https://mucdpljnchabygrrdvda.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE';
+/**
+ * 请假管理 API — Cloudflare Workers 版本
+ * GET    /api/leaves          → 列表
+ * POST   /api/leaves          → 新增
+ * PUT    /api/leaves/:id      → 审批（需管理员）
+ * DELETE /api/leaves          → 清空（需管理员）
+ */
+import { mem, json, err, checkAdmin } from './supabase-client.js';
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+export async function handleLeavesGet(env) {
+  const { leaves } = await loadLeaves(env);
+  return json({ success: true, data: leaves });
 }
 
-export async function onRequestGet(context) {
+export async function handleLeavesPost(request, env) {
+  let body;
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/leave_records?select=*`, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
-    });
-    if (!res.ok) {
-      console.error('Leaves GET failed:', res.status);
-      return jsonResponse({ success: true, data: [] });
-    }
-    const records = await res.json();
-    return jsonResponse({ success: true, data: records || [] });
-  } catch (error) {
-    console.error('Leaves GET Error:', error);
-    return jsonResponse({ success: true, data: [] });
+    body = await request.json();
+  } catch(e) {
+    return err('请求格式错误');
   }
+
+  const { teacherName, leaveDate, reason } = body;
+  if (!teacherName || !leaveDate)
+    return err('teacherName 和 leaveDate 为必填');
+
+  const newLeave = {
+    id:          Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    teacherName: teacherName.trim(),
+    leaveDate:   leaveDate,
+    reason:      (reason || '').trim(),
+    status:      'pending',
+    createdAt:   new Date().toISOString()
+  };
+
+  mem.leaves.push(newLeave);
+  await saveLeaves(env);
+
+  return json({ success: true, data: newLeave }, 201);
 }
 
-export async function onRequestPost(context) {
+export async function handleLeavesPut(request, id, env) {
+  if (!checkAdmin(request.headers)) return err('管理员密码错误', 401);
+
+  let body;
   try {
-    const body = await context.request.json();
-    const { leave } = body;
-    if (!leave) {
-      return jsonResponse({ error: 'leave data is required' }, 400);
-    }
-    const newLeave = {
-      teacher_name: leave.teacherName || leave.teacher_name,
-      teacher_id: leave.teacherId || leave.teacher_id,
-      leave_date: leave.leaveDate || leave.leave_date,
-      day_of_week: leave.dayOfWeek || leave.day_of_week,
-      period: leave.period,
-      reason: leave.reason || '',
-      created_at: new Date().toISOString(),
-    };
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/leave_records`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-      body: JSON.stringify(newLeave),
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('Leaves POST failed:', res.status, errText);
-      return jsonResponse({ error: `Insert failed: ${res.status}` }, 500);
-    }
-    return jsonResponse({ success: true }, 201);
-  } catch (error) {
-    console.error('Leaves POST Error:', error);
-    return jsonResponse({ error: error.message }, 500);
+    body = await request.json();
+  } catch(e) {
+    return err('请求格式错误');
   }
+
+  const { status } = body;
+  if (!status || !['pending', 'approved', 'rejected'].includes(status))
+    return err('status 必须是 pending / approved / rejected');
+
+  const idx = mem.leaves.findIndex(l => l.id === id);
+  if (idx === -1) return err('请假记录不存在', 404);
+
+  mem.leaves[idx] = { ...mem.leaves[idx], status, updatedAt: new Date().toISOString() };
+  await saveLeaves(env);
+
+  return json({ success: true, data: mem.leaves[idx] });
 }
 
-export async function onRequestDelete(context) {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/leave_records`, {
-      method: 'DELETE',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=minimal' },
-    });
-    if (!res.ok) {
-      console.error('Leaves DELETE failed:', res.status);
-    }
-    return jsonResponse({ success: true });
-  } catch (error) {
-    console.error('Leaves DELETE Error:', error);
-    return jsonResponse({ success: true });
-  }
+export async function handleLeavesDelete(env) {
+  if (!checkAdmin(request.headers)) return err('管理员密码错误', 401);
+  mem.leaves = [];
+  await saveLeaves(env);
+  return json({ success: true });
 }
 
-export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+// ── 持久化 ─────────────────────────────────────────────
+async function loadLeaves(env) {
+  if (env?.LEAVES_KV) {
+    const raw = await env.LEAVES_KV.get('leaves');
+    if (raw) mem.leaves = JSON.parse(raw);
+  }
+  return { leaves: mem.leaves };
+}
+
+async function saveLeaves(env) {
+  if (env?.LEAVES_KV) {
+    await env.LEAVES_KV.put('leaves', JSON.stringify(mem.leaves));
+  }
 }

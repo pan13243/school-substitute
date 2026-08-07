@@ -1,78 +1,87 @@
-const express = require('express');
-const router  = express.Router();
-const { supabase, mem, authAdmin } = require('./supabase-client');
-const { generateSubstitutes, buildTeacherSchedule } = require('./algorithm');
+/**
+ * 代课记录 API — Cloudflare Workers 版本
+ * GET    /api/substitutes          → 列表
+ * POST   /api/substitutes/generate → 生成代课（需管理员）
+ * POST   /api/substitutes          → 手动新增
+ * DELETE /api/substitutes          → 清空（需管理员）
+ */
+import { mem, json, err, checkAdmin } from './supabase-client.js';
+import { buildTeacherAssignment, buildTeacherSchedule,
+         findSubstitute, generateSubstitutes } from './algorithm.js';
 
 // GET /api/substitutes
-router.get('/', async (req, res) => {
-  if (supabase) {
-    const { data, error } = await supabase
-      .from('substitutes').select('*').order('created_at', { ascending: false });
-    if (error) return res.json({ success: false, error: error.message });
-    return res.json({ success: true, data: data || [] });
-  }
-  return res.json({ success: true, data: mem.substitutes });
-});
+export async function handleSubstitutesGet(env) {
+  return json({ success: true, data: mem.substitutes });
+}
 
-// POST /api/substitutes/generate  ← 核心：自动生成代课
-router.post('/generate', async (req, res) => {
-  if (!authAdmin(req.headers)) return res.json({ success: false, error: '未授权，请联系管理员' });
+// POST /api/substitutes/generate
+export async function handleSubstitutesGenerate(request, env) {
+  if (!checkAdmin(request.headers)) return err('管理员密码错误', 401);
 
-  const cfg = mem.config || {};
-  const { timetable, teacherAssignment, allTeachers } = cfg;
-  if (!timetable || Object.keys(timetable).length === 0) {
-    return res.json({ success: false, error: '请先导入课表' });
-  }
+  let body = {};
+  try { body = await request.json(); } catch(e) {}
 
-  let leaves = [];
-  if (supabase) {
-    try { const r = await supabase.from('leaves').select('*').eq('status','pending'); if (!r.error && r.data) leaves = r.data; }
-    catch(e) { leaves = mem.leaves; }
-  } else {
-    leaves = mem.leaves;
-  }
+  if (!mem.config?.timetable)
+    return err('课表未导入，请先导入课表数据');
 
-  if (leaves.length === 0) {
-    return res.json({ success: false, error: '暂无请假记录' });
-  }
+  const leaves = (mem.leaves || []).filter(l => l.status === 'pending');
+  if (leaves.length === 0)
+    return json({ success: true, results: [], summary: { total: 0, arranged: 0, failed: 0 }, message: '暂无待处理的请假记录' });
 
-  const { teacherSchedule } = buildTeacherSchedule(timetable);
-  const results = generateSubstitutes(leaves, timetable, teacherAssignment,
-                                       teacherSchedule, allTeachers);
+  const timetable        = mem.config.timetable;
+  const teacherAssignment = buildTeacherAssignment(timetable);
 
-  // 保存到内存/数据库
-  const arranged = results.filter(r => r.status === 'arranged');
-  mem.substitutes.push(...arranged);
+  const { results, summary } = generateSubstitutes(
+    timetable, teacherAssignment, leaves, body.targetDate
+  );
 
-  if (supabase && arranged.length > 0) {
-    await supabase.from('substitutes').insert(arranged);
-  }
+  // 追加到代课记录（去重）
+  const existingIds = new Set(mem.substitutes.map(s => s.id));
+  const newOnes     = results.filter(r => !existingIds.has(r.id));
+  mem.substitutes.push(...newOnes);
 
-  return res.json({ success: true, data: results,
-                    summary: { total: results.length, arranged: arranged.length,
-                               failed: results.filter(r=>r.status==='failed').length } });
-});
+  await saveSubs(env);
 
-// POST /api/substitutes (manual add)
-router.post('/', async (req, res) => {
-  const { records } = req.body;
-  if (!records || !Array.isArray(records)) return res.json({ success: false });
-  const now = new Date().toISOString();
-  const recs = records.map(r => ({ ...r, id: r.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,7)), createdAt: now }));
-  if (supabase) {
-    await supabase.from('substitutes').insert(recs);
-  } else {
-    mem.substitutes.push(...recs);
-  }
-  return res.json({ success: true, data: recs });
-});
+  return json({ success: true, results: newOnes, summary, message: `代课安排完成：成功 ${summary.arranged} 条，失败 ${summary.failed} 条` });
+}
 
-// DELETE /api/substitutes (admin)
-router.delete('/', async (req, res) => {
-  if (!authAdmin(req.headers)) return res.json({ success: false, error: '未授权' });
+// POST /api/substitutes 手动添加
+export async function handleSubstitutesPost(request, env) {
+  let body = {};
+  try { body = await request.json(); } catch(e) {}
+  const { leaveTeacher, substituteTeacher, className, subject, leaveDate, dayOfWeek, period, reason } = body;
+  if (!leaveTeacher || !className || !subject || !leaveDate)
+    return err('缺少必填字段');
+
+  const rec = {
+    id:               `sub_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+    leaveTeacher:    leaveTeacher,
+    substituteTeacher: substituteTeacher || null,
+    className,
+    subject,
+    leaveDate,
+    dayOfWeek:       dayOfWeek || '',
+    period:          parseInt(period) || 0,
+    reason:          reason || '',
+    status:          substituteTeacher ? 'arranged' : 'manual',
+    createdAt:       new Date().toISOString()
+  };
+  mem.substitutes.push(rec);
+  await saveSubs(env);
+  return json({ success: true, data: rec }, 201);
+}
+
+// DELETE /api/substitutes
+export async function handleSubstitutesDelete(request, env) {
+  if (!checkAdmin(request.headers)) return err('管理员密码错误', 401);
   mem.substitutes = [];
-  if (supabase) await supabase.from('substitutes').delete().neq('id', '');
-  return res.json({ success: true });
-});
+  await saveSubs(env);
+  return json({ success: true });
+}
 
-module.exports = router;
+// ── 持久化 ────────────────────────────────────────────
+async function saveSubs(env) {
+  if (env?.SUBS_KV) {
+    await env.SUBS_KV.put('subs', JSON.stringify(mem.substitutes));
+  }
+}

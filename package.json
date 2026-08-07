@@ -2,6 +2,7 @@
   "name": "school-substitute",
   "version": "1.0.0",
   "description": "施秉县双井镇中心小学代课调课系统",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
