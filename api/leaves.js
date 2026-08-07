@@ -1,63 +1,67 @@
-const { supabase, memoryStore } = require('./supabase-client');
+const express = require('express');
+const router  = express.Router();
+const { supabase, mem, authAdmin } = require('./supabase-client');
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  try {
-    if (req.method === 'GET') {
-      let records = [];
-      if (supabase) {
-        const { data, error } = await supabase.from('leave_records').select('*');
-        if (error) throw error;
-        records = data || [];
-      } else {
-        records = memoryStore.leaves;
-      }
-      return res.json({ success: true, data: records });
-    }
-
-    if (req.method === 'POST') {
-      const { leave } = req.body;
-      if (!leave) return res.status(400).json({ success: false, error: '需要 leave 对象' });
-
-      if (supabase) {
-        const { data, error } = await supabase.from('leave_records').insert([leave]).select();
-        if (error) throw error;
-        return res.status(201).json({ success: true, id: data[0].id });
-      } else {
-        leave.id = Date.now();
-        memoryStore.leaves.push(leave);
-        return res.status(201).json({ success: true, id: leave.id });
-      }
-    }
-
-    if (req.method === 'DELETE') {
-      const { id } = req.query;
-      if (supabase) {
-        if (id) {
-          const { error } = await supabase.from('leave_records').delete().eq('id', id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('leave_records').delete().neq('id', 0);
-          if (error) throw error;
-        }
-      } else {
-        if (id) {
-          memoryStore.leaves = memoryStore.leaves.filter(l => l.id != id);
-        } else {
-          memoryStore.leaves = [];
-        }
-      }
-      return res.json({ success: true });
-    }
-
-    res.status(405).json({ success: false, error: '不支持的方法' });
-  } catch (error) {
-    console.error('Leaves API error:', error);
-    res.status(500).json({ success: false, error: error.message });
+// GET /api/leaves
+router.get('/', async (req, res) => {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('leaves').select('*').order('created_at', { ascending: false });
+    if (error) return res.json({ success: false, error: error.message });
+    return res.json({ success: true, data });
   }
-};
+  return res.json({ success: true, data: mem.leaves });
+});
+
+// POST /api/leaves
+router.post('/', async (req, res) => {
+  const { leave } = req.body;
+  if (!leave || !leave.teacherName || !leave.leaveDate) {
+    return res.json({ success: false, error: '缺少必填字段' });
+  }
+  const record = {
+    id: leave.id || (Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
+    teacherName: leave.teacherName,
+    teacherId:   leave.teacherId   || leave.teacherName,
+    leaveDate:   leave.leaveDate,
+    dayOfWeek:   leave.dayOfWeek   || '',
+    period:      parseInt(leave.period) || 0,
+    reason:      leave.reason      || '',
+    status:      'pending',
+    createdAt:   new Date().toISOString(),
+  };
+  if (supabase) {
+    const { error } = await supabase.from('leaves').insert(record);
+    if (error) return res.json({ success: false, error: error.message });
+  } else {
+    mem.leaves.push(record);
+  }
+  return res.json({ success: true, data: record });
+});
+
+// PUT /api/leaves/:id  (admin: approve/reject)
+router.put('/:id', async (req, res) => {
+  if (!authAdmin(req.headers)) return res.json({ success: false, error: '未授权' });
+  const { status } = req.body;
+  const { id } = req.params;
+  if (supabase) {
+    const { error } = await supabase.from('leaves').update({ status }).eq('id', id);
+    if (error) return res.json({ success: false, error: error.message });
+  } else {
+    const idx = mem.leaves.findIndex(l => l.id === id);
+    if (idx >= 0) mem.leaves[idx].status = status;
+  }
+  return res.json({ success: true });
+});
+
+// DELETE /api/leaves  (admin only)
+router.delete('/', async (req, res) => {
+  if (!authAdmin(req.headers)) return res.json({ success: false, error: '未授权' });
+  if (supabase) {
+    await supabase.from('leaves').delete().neq('id', '');
+  }
+  mem.leaves = [];
+  return res.json({ success: true });
+});
+
+module.exports = router;

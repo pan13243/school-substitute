@@ -3,69 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>代课安排系统</title>
+  <title>代课调课系统 · 施秉县双井镇中心小学</title>
   <link rel="stylesheet" href="styles/main.css">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-  <div class="app-container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1 class="app-title">代课安排系统</h1>
-        <p class="app-subtitle">教务管理工具</p>
-      </div>
-
-      <nav class="sidebar-nav">
-        <button class="nav-item active" data-page="schedule" onclick="switchPage('schedule')">
-          <span class="nav-icon">📅</span>
-          <span class="nav-text">课表管理</span>
-        </button>
-        <button class="nav-item" data-page="leave" onclick="switchPage('leave')">
-          <span class="nav-icon"></span>
-          <span class="nav-text">请假登记</span>
-        </button>
-        <button class="nav-item" data-page="substitute" onclick="switchPage('substitute')">
-          <span class="nav-icon">✅</span>
-          <span class="nav-text">代课安排</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="role-switcher">
-          <span id="role-label" class="role-label teacher">教师模式</span>
-          <button id="role-toggle-btn" class="btn btn-sm btn-primary" onclick="Role.isAdmin() ? Role.switchToTeacher() : Role.switchToAdmin()">切换为管理员</button>
-        </div>
-        <p class="storage-hint">数据存储于浏览器本地</p>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <!-- 课表管理页 -->
-      <section class="page-section active" id="page-schedule">
-        <h2 class="page-title">课表管理</h2>
-        <p class="page-desc">导入学校总课表，支持 Excel 格式（.xlsx / .xls）</p>
-        <div id="schedule-stats"></div>
-        <div id="schedule-content"></div>
-      </section>
-
-      <!-- 请假登记页 -->
-      <section class="page-section" id="page-leave">
-        <h2 class="page-title">请假登记</h2>
-        <p class="page-desc">登记教师请假信息，系统将自动标记该时间段不可用</p>
-        <div id="leave-content"></div>
-      </section>
-
-      <!-- 代课安排页 -->
-      <section class="page-section" id="page-substitute">
-        <h2 class="page-title">代课安排</h2>
-        <p class="page-desc">根据请假记录和课表自动安排代课教师</p>
-        <div id="substitute-content"></div>
-      </section>
-    </main>
-  </div>
-
-  <script src="js/app.js"></script>
+  <!-- 内容由 app.js 动态渲染 -->
+  <script src="app.js"></script>
 </body>
 </html>

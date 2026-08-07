@@ -1,57 +1,74 @@
-const { supabase, memoryStore } = require('./supabase-client');
+const express = require('express');
+const router  = express.Router();
+const { supabase, mem, authAdmin } = require('./supabase-client');
+const { generateSubstitutes, buildTeacherSchedule } = require('./algorithm');
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  try {
-    if (req.method === 'GET') {
-      let records = [];
-      if (supabase) {
-        const { data, error } = await supabase.from('substitute_records').select('*');
-        if (error) throw error;
-        records = data || [];
-      } else {
-        records = memoryStore.substitutes;
-      }
-      return res.json({ success: true, data: records });
-    }
-
-    if (req.method === 'POST') {
-      const { records } = req.body;
-      if (!records || !Array.isArray(records)) {
-        return res.status(400).json({ success: false, error: '需要 records 数组' });
-      }
-
-      if (supabase) {
-        const { error } = await supabase.from('substitute_records').delete().neq('id', 0);
-        if (error) throw error;
-        if (records.length > 0) {
-          const { error: insertError } = await supabase.from('substitute_records').insert(records);
-          if (insertError) throw insertError;
-        }
-      } else {
-        memoryStore.substitutes = records;
-      }
-      return res.json({ success: true, count: records.length });
-    }
-
-    if (req.method === 'DELETE') {
-      if (supabase) {
-        const { error } = await supabase.from('substitute_records').delete().neq('id', 0);
-        if (error) throw error;
-      } else {
-        memoryStore.substitutes = [];
-      }
-      return res.json({ success: true });
-    }
-
-    res.status(405).json({ success: false, error: '不支持的方法' });
-  } catch (error) {
-    console.error('Substitutes API error:', error);
-    res.status(500).json({ success: false, error: error.message });
+// GET /api/substitutes
+router.get('/', async (req, res) => {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('substitutes').select('*').order('created_at', { ascending: false });
+    if (error) return res.json({ success: false, error: error.message });
+    return res.json({ success: true, data: data || [] });
   }
-};
+  return res.json({ success: true, data: mem.substitutes });
+});
+
+// POST /api/substitutes/generate  ← 核心：自动生成代课
+router.post('/generate', async (req, res) => {
+  if (!authAdmin(req.headers)) return res.json({ success: false, error: '未授权，请联系管理员' });
+
+  const cfg = mem.config || {};
+  const { timetable, teacherAssignment, allTeachers } = cfg;
+  if (!timetable || Object.keys(timetable).length === 0) {
+    return res.json({ success: false, error: '请先导入课表' });
+  }
+
+  const leaves = supabase
+    ? (await supabase.from('leaves').select('*').eq('status', 'pending')).data || []
+    : mem.leaves;
+
+  if (leaves.length === 0) {
+    return res.json({ success: false, error: '暂无请假记录' });
+  }
+
+  const { teacherSchedule } = buildTeacherSchedule(timetable);
+  const results = generateSubstitutes(leaves, timetable, teacherAssignment,
+                                       teacherSchedule, allTeachers);
+
+  // 保存到内存/数据库
+  const arranged = results.filter(r => r.status === 'arranged');
+  mem.substitutes.push(...arranged);
+
+  if (supabase && arranged.length > 0) {
+    await supabase.from('substitutes').insert(arranged);
+  }
+
+  return res.json({ success: true, data: results,
+                    summary: { total: results.length, arranged: arranged.length,
+                               failed: results.filter(r=>r.status==='failed').length } });
+});
+
+// POST /api/substitutes (manual add)
+router.post('/', async (req, res) => {
+  const { records } = req.body;
+  if (!records || !Array.isArray(records)) return res.json({ success: false });
+  const now = new Date().toISOString();
+  const recs = records.map(r => ({ ...r, id: r.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,7)), createdAt: now }));
+  if (supabase) {
+    await supabase.from('substitutes').insert(recs);
+  } else {
+    mem.substitutes.push(...recs);
+  }
+  return res.json({ success: true, data: recs });
+});
+
+// DELETE /api/substitutes (admin)
+router.delete('/', async (req, res) => {
+  if (!authAdmin(req.headers)) return res.json({ success: false, error: '未授权' });
+  mem.substitutes = [];
+  if (supabase) await supabase.from('substitutes').delete().neq('id', '');
+  return res.json({ success: true });
+});
+
+module.exports = router;

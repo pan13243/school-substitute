@@ -1,20 +1,29 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://mucdpljnchabygrrdvda.supabase.co';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE';
+const supabaseUrl  = process.env.SUPABASE_URL  || 'https://mucdpljnchabygrrdvda.supabase.co';
+const supabaseKey  = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y2RwbGpuY2hhYnlncnJkdmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzY0OTMsImV4cCI6MjEwMTUxMjQ5M30.rXPhoaN4OfgDntjllIUkHsuOSZhCuMWZ7yLCUL76CrE';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Supabase 环境变量未配置，将使用内存存储（数据重启后丢失）');
+let supabase = null;
+if (supabaseUrl && supabaseKey) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('[DB] Supabase connected ✓');
+  } catch(e) {
+    console.error('[DB] Supabase init failed:', e.message);
+  }
+} else {
+  console.warn('[DB] No env vars — using in-memory store');
 }
 
-const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+// ── Memory store (dev fallback / offline mode) ──────────────────────────────
+const mem = { schedule: [], leaves: [], substitutes: [], config: {} };
 
-const memoryStore = {
-  schedule: [],
-  leaves: [],
-  substitutes: []
-};
+// ── Admin password ───────────────────────────────────────────────────────────
+const ADMIN_HASH = 'admin888'; // 首次部署请改为强密码
 
-module.exports = { supabase, memoryStore };
+function authAdmin(headers) {
+  const p = headers['x-admin-password'] || headers['x-admin-pwd'] || '';
+  return p === ADMIN_HASH;
+}
+
+module.exports = { supabase, mem, authAdmin, ADMIN_HASH };

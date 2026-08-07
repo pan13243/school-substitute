@@ -1,0 +1,6544 @@
+{
+  "generatedAt": "2026-08-07T13:50:53.958Z",
+  "schoolName": "施秉县双井镇中心小学",
+  "semester": "2025-2026学年度第二学期",
+  "totalClasses": 21,
+  "classes": [
+    "一（1）",
+    "一（2）",
+    "一（3）",
+    "二（1）",
+    "二（2）",
+    "二（3）",
+    "三（1）",
+    "三（2）",
+    "三（3）",
+    "四（1）",
+    "四（2）",
+    "四（3）",
+    "四（4）",
+    "五（1）",
+    "五（2）",
+    "五（3）",
+    "五（4）",
+    "六（1）",
+    "六（2）",
+    "六（3）",
+    "六（4）"
+  ],
+  "timetable": {
+    "星期一": {
+      "一（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙燕",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙燕",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "龙光辉",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "龙光辉",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "龙杰",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "邰昌礼",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "健康",
+          "teacher": "邰昌礼",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "吴寿成",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "吴寿成",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙建华",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "何昭能",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "综合",
+          "teacher": "何昭能",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "罗顺芝",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "罗顺芝",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "龙再明",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "罗顺芝",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "田如香",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "田如香",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "吴君书",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "劳动",
+          "teacher": "吴君书",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（3）": [
+        {
+          "period": 1,
+          "subject": "科学",
+          "teacher": "吴俊",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "吴俊",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "张书梅",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "张书梅",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "杨胜伦",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "文凯",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "陈发国",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "校本课程",
+          "teacher": "陈发国",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "龙再明",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "熊欢",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "熊欢",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "李青青",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "地方",
+          "teacher": "李青青",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "劳动",
+          "teacher": "文凯",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "熊欢",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "张琴",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙明",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "科学",
+          "teacher": "吴子珍",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "英语",
+          "teacher": "龙力芳",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "张琴",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "综合",
+          "teacher": "张琴",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "盘春足",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "盘春足",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "地方",
+          "teacher": "杨昌美",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "科学",
+          "teacher": "张琴",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "综合",
+          "teacher": "杨昌美",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "龙震",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "龙杰",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "廖志强",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "英语",
+          "teacher": "文凯",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "龙杰",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "廖志强",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "张百达",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "张百达",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "陈晓英",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "龙佳腾",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "李青青",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（4）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "邰燕",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "肖力",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "姚本军",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "肖力",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙震",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙震",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "潘懂平",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "吴方文",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "杨贵妃",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "江玲玲",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "科学",
+          "teacher": "龙杰",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "劳动",
+          "teacher": "杨贵妃",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "地方",
+          "teacher": "江玲玲",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "管明成",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "龙力芳",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "龙佳腾",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "校本课程",
+          "teacher": "龙佳腾",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "张成菊",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（4）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "姚本军",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "姚本军",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "英语",
+          "teacher": "龙力芳",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "舒秀梅",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "信息",
+          "teacher": "邰毅",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "田平",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "张烨",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "张成菊",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "校本课程",
+          "teacher": "张成菊",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "张烨",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "李忠明",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙金祥",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "信息",
+          "teacher": "吴昌荣",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "潘懂平",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "吴帆",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "吴帆",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "吴子珍",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "信息",
+          "teacher": "吴昌荣",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "科学",
+          "teacher": "陈晓英",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（4）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙向桃",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "科学",
+          "teacher": "杨昌美",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "田平",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "综合",
+          "teacher": "田平",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "龙金祥",
+          "time": "14:50-15:30"
+        }
+      ]
+    },
+    "星期二": {
+      "一（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "龙光辉",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙燕",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "龙燕",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "吴寿成",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "吴寿成",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "劳动",
+          "teacher": "邰昌礼",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "吴寿成",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "何昭能",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙建华",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "龙建华",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "陈发国",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "龙再明",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "罗顺芝",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "科学",
+          "teacher": "龙再明",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "道德与法治",
+          "teacher": "罗顺芝",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "田如香",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "科学",
+          "teacher": "吴君书",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "吴君书",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "田如香",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "张书梅",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "吴俊",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "地方",
+          "teacher": "吴俊",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "陈发国",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "杨胜伦",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "综合",
+          "teacher": "杨胜伦",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "科学",
+          "teacher": "张烨",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "道德与法治",
+          "teacher": "廖志强",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "陈发国",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（2）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "文凯",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "熊欢",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "地方",
+          "teacher": "李青青",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "吴帆",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "邰毅",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "信息",
+          "teacher": "邰毅",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙明",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙明",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "道德与法治",
+          "teacher": "龙向桃",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "张琴",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "劳动",
+          "teacher": "龙力芳",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "杨昌美",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "盘春足",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "美术",
+          "teacher": "盘春足",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "文凯",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "廖志强",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "廖志强",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "龙杰",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "科学",
+          "teacher": "杨贵妃",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "龙杰",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "吴胜贤",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "陈晓英",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "科学",
+          "teacher": "李青青",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "张百达",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "美术",
+          "teacher": "张洪斌",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "陈晓英",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（4）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "肖力",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "地方",
+          "teacher": "邰燕",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "舒秀梅",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "姚本军",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "潘懂平",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙震",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "信息",
+          "teacher": "邰毅",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "科学",
+          "teacher": "田平",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "盘春足",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "江玲玲",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "杨贵妃",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "张凌云",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙佳腾",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙佳腾",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "管明成",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "邰昌礼",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "吴子珍",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（4）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "龙力芳",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "姚本军",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "舒秀梅",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "道德与法治",
+          "teacher": "吴昌荣",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "舒秀梅",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "张成菊",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "张烨",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "道德与法治",
+          "teacher": "陈小开",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "综合",
+          "teacher": "张烨",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "地方",
+          "teacher": "张成菊",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "李忠明",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "龙金祥",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "宋宁宁",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "李忠明",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（3）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "吴子珍",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "吴帆",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "科学",
+          "teacher": "陈晓英",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "张琴",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "吴帆",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（4）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "田平",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙向桃",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "美术",
+          "teacher": "邰燕",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "龙向桃",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "14:50-15:30"
+        }
+      ]
+    },
+    "星期三": {
+      "一（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙燕",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "道德与法治",
+          "teacher": "龙燕",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "龙光辉",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "校本课程",
+          "teacher": "龙燕",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "健康",
+          "teacher": "龙光辉",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "邰昌礼",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "地方",
+          "teacher": "邰昌礼",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "吴寿成",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "李忠明",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙建华",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙建华",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "健康",
+          "teacher": "何昭能",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "何昭能",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "龙建华",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "罗顺芝",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "劳动",
+          "teacher": "龙再明",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "龙晓芳",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "吴君书",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "健康",
+          "teacher": "吴君书",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "田如香",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "吴君书",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "田如香",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "唐仁银",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "张书梅",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "张书梅",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "张书梅",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "陈发国",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "陈发国",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "杨胜伦",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "廖志强",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "信息",
+          "teacher": "邰毅",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "杨胜伦",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "李青青",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "科学",
+          "teacher": "李忠明",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "熊欢",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "体育",
+          "teacher": "龙再明",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "熊欢",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（3）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "龙力芳",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "张琴",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "信息",
+          "teacher": "邰毅",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "龙明",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "张烨",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "杨昌美",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "文凯",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "盘春足",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "美术",
+          "teacher": "杨昌美",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "龙震",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（2）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "文凯",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "廖志强",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "美术",
+          "teacher": "吴胜贤",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "综合",
+          "teacher": "龙杰",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "信息",
+          "teacher": "吴昌荣",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "张百达",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "道德与法治",
+          "teacher": "龙佳腾",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "张百达",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（4）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "邰燕",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "肖力",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "肖力",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "劳动",
+          "teacher": "孙焕英",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "信息",
+          "teacher": "吴昌荣",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "综合",
+          "teacher": "邰燕",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（1）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "潘懂平",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "龙震",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "盘春足",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "龙震",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "杨贵妃",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "江玲玲",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "道德与法治",
+          "teacher": "张洪斌",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "校本课程",
+          "teacher": "江玲玲",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "科学",
+          "teacher": "龙杰",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "管明成",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙佳腾",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "美术",
+          "teacher": "吴子珍",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "综合",
+          "teacher": "管明成",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "信息",
+          "teacher": "邰毅",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（4）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "姚本军",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "舒秀梅",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "英语",
+          "teacher": "龙力芳",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "科学",
+          "teacher": "邰燕",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "罗顺芝",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "地方",
+          "teacher": "姚本军",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（1）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "科学",
+          "teacher": "吴俊",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "张成菊",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "张烨",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "李青青",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙金祥",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "道德与法治",
+          "teacher": "宋宁宁",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "李忠明",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "熊欢",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "龙金祥",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "吴子珍",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "道德与法治",
+          "teacher": "管明成",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "吴帆",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "综合",
+          "teacher": "吴子珍",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（4）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙向桃",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙向桃",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "田平",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "杨昌美",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "14:50-15:30"
+        }
+      ]
+    },
+    "星期四": {
+      "一（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "龙光辉",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙燕",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "龙燕",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "道德与法治",
+          "teacher": "龙燕",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "龙杰",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "吴寿成",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "吴寿成",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "邰昌礼",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "综合",
+          "teacher": "邰昌礼",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "何昭能",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙建华",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "道德与法治",
+          "teacher": "龙建华",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "何昭能",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "陈发国",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "龙再明",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "健康",
+          "teacher": "龙再明",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "罗顺芝",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "龙再明",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "龙晓芳",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "田如香",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "田如香",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "张书梅",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "张书梅",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "综合",
+          "teacher": "吴俊",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 5,
+          "subject": "健康",
+          "teacher": "吴俊",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "吴俊",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（1）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "文凯",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "陈发国",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "陈发国",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "杨胜伦",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "龙再明",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "熊欢",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "综合",
+          "teacher": "李青青",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "李青青",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "美术",
+          "teacher": "李青青",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "李忠明",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "张琴",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙明",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "科学",
+          "teacher": "吴子珍",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "龙向桃",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "龙明",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "地方",
+          "teacher": "张琴",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "盘春足",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "盘春足",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "科学",
+          "teacher": "张琴",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "杨昌美",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "杨昌美",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "信息",
+          "teacher": "吴昌荣",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "龙杰",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "廖志强",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "廖志强",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "道德与法治",
+          "teacher": "邰毅",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "文凯",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "陈晓英",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "地方",
+          "teacher": "陈晓英",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "张百达",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "张百达",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "劳动",
+          "teacher": "孙焕英",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（4）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "肖力",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "肖力",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "邰燕",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "美术",
+          "teacher": "张洪斌",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙震",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "科学",
+          "teacher": "田平",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "潘懂平",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "吴方文",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "潘懂平",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（2）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "杨贵妃",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "综合",
+          "teacher": "杨贵妃",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "江玲玲",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "信息",
+          "teacher": "邰毅",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙佳腾",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙佳腾",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "管明成",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "龙佳腾",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "管明成",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（4）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "舒秀梅",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "姚本军",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "美术",
+          "teacher": "罗顺芝",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "道德与法治",
+          "teacher": "吴昌荣",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "综合",
+          "teacher": "舒秀梅",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "张烨",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "张成菊",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "信息",
+          "teacher": "吴昌荣",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（2）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "科学",
+          "teacher": "潘懂平",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "龙金祥",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "李忠明",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "熊欢",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "综合",
+          "teacher": "李忠明",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "吴帆",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "吴子珍",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "地方",
+          "teacher": "吴帆",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（4）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "田平",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙向桃",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "校本课程",
+          "teacher": "龙向桃",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "道德与法治",
+          "teacher": "龙金祥",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "田平",
+          "time": "14:50-15:30"
+        }
+      ]
+    },
+    "星期五": {
+      "一（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙燕",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙燕",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "综合",
+          "teacher": "龙光辉",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "劳动",
+          "teacher": "龙光辉",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "吴寿成",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "吴寿成",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "邰昌礼",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "吴寿成",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "李忠明",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "科学",
+          "teacher": "邰昌礼",
+          "time": "14:50-15:30"
+        }
+      ],
+      "一（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙建华",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙建华",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "何昭能",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "劳动",
+          "teacher": "何昭能",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "校本课程",
+          "teacher": "龙建华",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "罗顺芝",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "罗顺芝",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "龙再明",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "校本课程",
+          "teacher": "罗顺芝",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "综合",
+          "teacher": "龙再明",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "吴君书",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "田如香",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "综合",
+          "teacher": "吴君书",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "田如香",
+          "time": "14:50-15:30"
+        }
+      ],
+      "二（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "张书梅",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "校本课程",
+          "teacher": "张书梅",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "吴俊",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "雷安元",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "刘光军",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "杨胜伦",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "地方",
+          "teacher": "杨胜伦",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "陈发国",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "劳动",
+          "teacher": "文凯",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "科学",
+          "teacher": "张烨",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（2）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "李青青",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "文凯",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "熊欢",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "熊欢",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "道德与法治",
+          "teacher": "吴帆",
+          "time": "14:50-15:30"
+        }
+      ],
+      "三（3）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙明",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙明",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "地方",
+          "teacher": "张琴",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "张烨",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "龙明",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（1）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "文凯",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "杨昌美",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "盘春足",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "盘春足",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "廖志强",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "科学",
+          "teacher": "杨贵妃",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "体育",
+          "teacher": "唐小凯",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "龙杰",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "道德与法治",
+          "teacher": "邰毅",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "雷帮英",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（3）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "张百达",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "综合",
+          "teacher": "陈晓英",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "陈晓英",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "信息",
+          "teacher": "吴昌荣",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "张洪斌",
+          "time": "14:50-15:30"
+        }
+      ],
+      "四（4）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "肖力",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "孙焕英",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "科学",
+          "teacher": "舒秀梅",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "邰燕",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "张洪斌",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "地方",
+          "teacher": "邰燕",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（1）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "潘懂平",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "综合",
+          "teacher": "潘懂平",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "龙震",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "校本课程",
+          "teacher": "龙震",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "江玲玲",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "江玲玲",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "杨贵妃",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "张洪斌",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "吴方文",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（3）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "龙力芳",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "管明成",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "英语",
+          "teacher": "龙力芳",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "张成菊",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "邰昌礼",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "14:50-15:30"
+        }
+      ],
+      "五（4）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "舒秀梅",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "科学",
+          "teacher": "邰燕",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "姚本军",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "校本课程",
+          "teacher": "姚本军",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "体育",
+          "teacher": "田平",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（1）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "张成菊",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "张成菊",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "道德与法治",
+          "teacher": "陈小开",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "数学",
+          "teacher": "张烨",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "科学",
+          "teacher": "吴俊",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "李青青",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（2）": [
+        {
+          "period": 1,
+          "subject": "语文",
+          "teacher": "龙金祥",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "语文",
+          "teacher": "龙金祥",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "数学",
+          "teacher": "李忠明",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "音乐",
+          "teacher": "肖祥咏",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "地方",
+          "teacher": "龙金祥",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "健康",
+          "teacher": "范琳",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（3）": [
+        {
+          "period": 1,
+          "subject": "数学",
+          "teacher": "吴子珍",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "语文",
+          "teacher": "吴帆",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "道德与法治",
+          "teacher": "管明成",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "劳动",
+          "teacher": "吴子珍",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "美术",
+          "teacher": "张琴",
+          "time": "14:50-15:30"
+        }
+      ],
+      "六（4）": [
+        {
+          "period": 1,
+          "subject": "英语",
+          "teacher": "王秀显",
+          "time": "8:20-9:00"
+        },
+        {
+          "period": 2,
+          "subject": "数学",
+          "teacher": "田平",
+          "time": "9:10-9:50"
+        },
+        {
+          "period": 3,
+          "subject": "体育",
+          "teacher": "宋江鹏",
+          "time": "10:30-11:10"
+        },
+        {
+          "period": 4,
+          "subject": "语文",
+          "teacher": "龙向桃",
+          "time": "11:20-12:00"
+        },
+        {
+          "period": 5,
+          "subject": "美术",
+          "teacher": "邰燕",
+          "time": "14:00-14:40"
+        },
+        {
+          "period": 6,
+          "subject": "信息",
+          "teacher": "吴昌荣",
+          "time": "14:50-15:30"
+        }
+      ]
+    }
+  },
+  "teacherAssignments": {
+    "一⑴": {
+      "班主任": "龙燕",
+      "语文": "龙燕",
+      "数学": "龙光辉",
+      "道德与法治": "龙燕",
+      "科学": "吴光成",
+      "音乐": "刘光军",
+      "美术": "雷安元",
+      "体育": "龙杰",
+      "健康": "龙光辉",
+      "综合实践": "龙光辉",
+      "劳动教育": "龙光辉",
+      "地方课程": "龙光辉",
+      "校本课程": "龙燕"
+    },
+    "一⑵": {
+      "班主任": "邰昌礼",
+      "语文": "吴寿成",
+      "数学": "邰昌礼",
+      "道德与法治": "吴寿成",
+      "科学": "吴光成",
+      "音乐": "刘光军",
+      "美术": "雷安元",
+      "体育": "李忠明",
+      "健康": "邰昌礼",
+      "综合实践": "邰昌礼",
+      "劳动教育": "邰昌礼",
+      "地方课程": "邰昌礼",
+      "校本课程": "吴寿成"
+    },
+    "一⑶": {
+      "班主任": "龙建华",
+      "语文": "龙建华",
+      "数学": "何昭能",
+      "道德与法治": "龙建华",
+      "科学": "吴光成",
+      "音乐": "刘光军",
+      "美术": "雷安元",
+      "体育": "陈发国",
+      "健康": "何昭能",
+      "综合实践": "何昭能",
+      "劳动教育": "何昭能",
+      "地方课程": "何昭能",
+      "校本课程": "龙建华"
+    },
+    "二⑴": {
+      "班主任": "罗顺芝",
+      "语文": "罗顺芝",
+      "数学": "龙再明",
+      "道德与法治": "罗顺芝",
+      "科学": "吴光成",
+      "音乐": "刘光军",
+      "美术": "龙晓芳",
+      "体育": "唐小凯",
+      "健康": "龙再明",
+      "综合实践": "龙再明",
+      "劳动教育": "龙再明",
+      "地方课程": "龙再明",
+      "校本课程": "罗顺芝"
+    },
+    "二⑵": {
+      "班主任": "田如香",
+      "语文": "田如香",
+      "数学": "吴君书",
+      "道德与法治": "田如香",
+      "科学": "吴光成",
+      "音乐": "刘光军",
+      "美术": "雷安元",
+      "体育": "唐小凯",
+      "健康": "吴君书",
+      "综合实践": "吴君书",
+      "劳动教育": "吴君书",
+      "地方课程": "吴君书",
+      "校本课程": "田如香"
+    },
+    "二⑶": {
+      "班主任": "张书梅",
+      "语文": "张书梅",
+      "数学": "吴俊",
+      "道德与法治": "张书梅",
+      "科学": "吴光成",
+      "音乐": "刘光军",
+      "美术": "雷安元",
+      "体育": "唐小凯",
+      "健康": "吴俊",
+      "综合实践": "吴俊",
+      "劳动教育": "吴俊",
+      "地方课程": "吴俊",
+      "校本课程": "张书梅"
+    },
+    "三⑴": {
+      "班主任": "陈发国",
+      "语文": "陈发国",
+      "数学": "杨胜伦",
+      "英语": "文凯",
+      "道德与法治": "廖志强",
+      "科学": "张烨",
+      "音乐": "雷帮英",
+      "美术": "吴光成",
+      "体育": "龙再明",
+      "健康": "范琳",
+      "综合实践": "杨胜伦",
+      "信息技术": "邰毅",
+      "劳动教育": "文凯",
+      "地方课程": "杨胜伦",
+      "校本课程": "陈发国"
+    },
+    "三⑵": {
+      "班主任": "熊欢",
+      "语文": "熊欢",
+      "数学": "李青青",
+      "英语": "文凯",
+      "道德与法治": "吴帆",
+      "科学": "李忠明",
+      "音乐": "雷帮英",
+      "美术": "吴光成",
+      "体育": "邰毅",
+      "健康": "范琳",
+      "综合实践": "李青青",
+      "信息技术": "邰毅",
+      "劳动教育": "文凯",
+      "地方课程": "李青青",
+      "校本课程": "熊欢"
+    },
+    "三⑶": {
+      "班主任": "张琴",
+      "语文": "龙明",
+      "数学": "张琴",
+      "英语": "龙力芳",
+      "道德与法治": "龙向桃",
+      "科学": "吴子珍",
+      "音乐": "雷帮英",
+      "美术": "吴光成",
+      "体育": "张烨",
+      "健康": "范琳",
+      "综合实践": "张琴",
+      "信息技术": "邰毅",
+      "劳动教育": "龙力芳",
+      "地方课程": "张琴",
+      "校本课程": "龙明"
+    },
+    "四⑴": {
+      "班主任": "盘春足",
+      "语文": "盘春足",
+      "数学": "杨昌美",
+      "英语": "文凯",
+      "道德与法治": "龙震",
+      "科学": "张琴",
+      "音乐": "雷帮英",
+      "美术": "江文俊",
+      "体育": "唐小凯",
+      "健康": "范琳",
+      "综合实践": "杨昌美",
+      "信息技术": "吴昌荣",
+      "劳动教育": "文凯",
+      "地方课程": "杨昌美",
+      "校本课程": "盘春足"
+    },
+    "四⑵": {
+      "班主任": "龙杰",
+      "语文": "廖志强",
+      "数学": "龙杰",
+      "英语": "文凯",
+      "道德与法治": "邰毅",
+      "科学": "杨贵妃",
+      "音乐": "雷帮英",
+      "美术": "吴胜贤",
+      "体育": "唐小凯",
+      "健康": "范琳",
+      "综合实践": "龙杰",
+      "信息技术": "吴昌荣",
+      "劳动教育": "文凯",
+      "地方课程": "龙杰",
+      "校本课程": "廖志强"
+    },
+    "四⑶": {
+      "班主任": "张百达",
+      "语文": "张百达",
+      "数学": "陈晓英",
+      "英语": "孙焕英",
+      "道德与法治": "龙佳腾",
+      "科学": "李青青",
+      "音乐": "雷帮英",
+      "美术": "张洪斌",
+      "体育": "唐小凯",
+      "健康": "范琳",
+      "综合实践": "陈晓英",
+      "信息技术": "吴昌荣",
+      "劳动教育": "孙焕英",
+      "地方课程": "陈晓英",
+      "校本课程": "张百达"
+    },
+    "四⑷": {
+      "班主任": "邰燕",
+      "语文": "肖力",
+      "数学": "邰燕",
+      "英语": "孙焕英",
+      "道德与法治": "姚本军",
+      "科学": "舒秀梅",
+      "音乐": "雷帮英",
+      "美术": "张洪斌",
+      "体育": "唐小凯",
+      "健康": "范琳",
+      "综合实践": "邰燕",
+      "信息技术": "吴昌荣",
+      "劳动教育": "孙焕英",
+      "地方课程": "邰燕",
+      "校本课程": "肖力"
+    },
+    "五⑴": {
+      "班主任": "龙震",
+      "语文": "龙震",
+      "数学": "潘懂平",
+      "英语": "王秀显",
+      "道德与法治": "盘春足",
+      "科学": "田平",
+      "音乐": "肖祥咏",
+      "美术": "张凌云",
+      "体育": "宋江鹏",
+      "健康": "范琳",
+      "综合实践": "潘懂平",
+      "信息技术": "邰毅",
+      "劳动教育": "潘懂平",
+      "地方课程": "龙震",
+      "校本课程": "龙震"
+    },
+    "五⑵": {
+      "班主任": "杨贵妃",
+      "语文": "江玲玲",
+      "数学": "杨贵妃",
+      "英语": "王秀显",
+      "道德与法治": "张洪斌",
+      "科学": "龙杰",
+      "音乐": "肖祥咏",
+      "美术": "吴方文",
+      "体育": "宋江鹏",
+      "健康": "范琳",
+      "综合实践": "杨贵妃",
+      "信息技术": "邰毅",
+      "劳动教育": "杨贵妃",
+      "地方课程": "江玲玲",
+      "校本课程": "江玲玲"
+    },
+    "五⑶": {
+      "班主任": "龙佳腾",
+      "语文": "龙佳腾",
+      "数学": "管明成",
+      "英语": "龙力芳",
+      "道德与法治": "张成菊",
+      "科学": "邰昌礼",
+      "音乐": "肖祥咏",
+      "美术": "吴子珍",
+      "体育": "宋江鹏",
+      "健康": "范琳",
+      "综合实践": "管明成",
+      "信息技术": "邰毅",
+      "劳动教育": "管明成",
+      "地方课程": "龙佳腾",
+      "校本课程": "龙佳腾"
+    },
+    "五⑷": {
+      "班主任": "舒秀梅",
+      "语文": "姚本军",
+      "数学": "舒秀梅",
+      "英语": "龙力芳",
+      "道德与法治": "吴昌荣",
+      "科学": "邰燕",
+      "音乐": "肖祥咏",
+      "美术": "罗顺芝",
+      "体育": "田平",
+      "健康": "范琳",
+      "综合实践": "舒秀梅",
+      "信息技术": "邰毅",
+      "劳动教育": "舒秀梅",
+      "地方课程": "姚本军",
+      "校本课程": "姚本军"
+    },
+    "六⑴": {
+      "班主任": "张烨",
+      "语文": "张成菊",
+      "数学": "张烨",
+      "英语": "孙焕英",
+      "道德与法治": "陈小开",
+      "科学": "吴俊",
+      "音乐": "肖祥咏",
+      "美术": "李青青",
+      "体育": "宋江鹏",
+      "健康": "范琳",
+      "综合实践": "张烨",
+      "信息技术": "吴昌荣",
+      "劳动教育": "张烨",
+      "地方课程": "张成菊",
+      "校本课程": "张成菊"
+    },
+    "六⑵": {
+      "班主任": "李忠明",
+      "语文": "龙金祥",
+      "数学": "李忠明",
+      "英语": "孙焕英",
+      "道德与法治": "宋宁宁",
+      "科学": "潘懂平",
+      "音乐": "肖祥咏",
+      "美术": "熊欢",
+      "体育": "宋江鹏",
+      "健康": "范琳",
+      "综合实践": "李忠明",
+      "信息技术": "吴昌荣",
+      "劳动教育": "李忠明",
+      "地方课程": "龙金祥",
+      "校本课程": "龙金祥"
+    },
+    "六⑶": {
+      "班主任": "吴帆",
+      "语文": "吴帆",
+      "数学": "吴子珍",
+      "英语": "王秀显",
+      "道德与法治": "管明成",
+      "科学": "陈晓英",
+      "音乐": "肖祥咏",
+      "美术": "张琴",
+      "体育": "宋江鹏",
+      "健康": "范琳",
+      "综合实践": "吴子珍",
+      "信息技术": "吴昌荣",
+      "劳动教育": "吴子珍",
+      "地方课程": "吴帆",
+      "校本课程": "吴帆"
+    },
+    "六⑷": {
+      "班主任": "龙向桃",
+      "语文": "龙向桃",
+      "数学": "田平",
+      "英语": "王秀显",
+      "道德与法治": "龙金祥",
+      "科学": "杨昌美",
+      "音乐": "肖祥咏",
+      "美术": "邰燕",
+      "体育": "宋江鹏",
+      "健康": "范琳",
+      "综合实践": "田平",
+      "信息技术": "吴昌荣",
+      "劳动教育": "田平",
+      "地方课程": "龙向桃",
+      "校本课程": "龙向桃"
+    }
+  },
+  "afterSchoolService": {
+    "星期一": {
+      "午休": [
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "陈发国",
+          "className": "三1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "熊欢",
+          "className": "三2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙明",
+          "className": "三3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "盘春足",
+          "className": "四1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "廖志强",
+          "className": "四2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张百达",
+          "className": "四3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴昌荣",
+          "className": "四4"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙震",
+          "className": "五1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "江玲玲",
+          "className": "五2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙佳腾",
+          "className": "五3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "姚本军",
+          "className": "五4"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张成菊",
+          "className": "六1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙金祥",
+          "className": "六2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴帆",
+          "className": "六3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙向桃",
+          "className": "六4"
+        }
+      ],
+      "课后服务": [
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "陈发国",
+          "className": "三1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "熊欢",
+          "className": "三2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙明",
+          "className": "三3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "盘春足",
+          "className": "四1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "廖志强",
+          "className": "四2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张百达",
+          "className": "四3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "肖力",
+          "className": "四4"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙震",
+          "className": "五1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "江玲玲",
+          "className": "五2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙佳腾",
+          "className": "五3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "姚本军",
+          "className": "五4"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张成菊",
+          "className": "六1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙金祥",
+          "className": "六2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴帆",
+          "className": "六3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙向桃",
+          "className": "六4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "文凯",
+          "className": "三1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "李青青",
+          "className": "三2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙力芳",
+          "className": "三3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "杨昌美",
+          "className": "四1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "廖志强龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "孙焕英",
+          "className": "四3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "王秀显",
+          "className": "五1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "管明成",
+          "className": "五3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "舒秀梅",
+          "className": "五4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "张烨",
+          "className": "六1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "宋宁宁潘懂平",
+          "className": "六2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "吴子珍",
+          "className": "六3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "田平",
+          "className": "六4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "文凯",
+          "className": "三1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "李青青",
+          "className": "三2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙力芳",
+          "className": "三3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "杨昌美",
+          "className": "四1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "廖志强龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "孙焕英",
+          "className": "四3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "王秀显",
+          "className": "五1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "管明成",
+          "className": "五3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "舒秀梅",
+          "className": "五4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "张烨",
+          "className": "六1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "宋宁宁潘懂平",
+          "className": "六2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "吴子珍",
+          "className": "六3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "田平",
+          "className": "六4"
+        }
+      ],
+      "晚自习": [
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "文凯熊欢",
+          "className": "三2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "张琴",
+          "className": "三3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "盘春足文凯",
+          "className": "四1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "孙焕英邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "江玲玲",
+          "className": "五2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙力芳",
+          "className": "五3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "姚本军",
+          "className": "五4"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "陈小开孙焕英",
+          "className": "六1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "李忠明",
+          "className": "六2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴帆王秀显",
+          "className": "六3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙金祥杨昌美",
+          "className": "六4"
+        }
+      ]
+    },
+    "星期二": {
+      "午休": [
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "李青青",
+          "className": "三2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张琴",
+          "className": "三3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "杨昌美",
+          "className": "四1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "管明成",
+          "className": "五3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "舒秀梅",
+          "className": "五4"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张烨",
+          "className": "六1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "李忠明",
+          "className": "六2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴子珍",
+          "className": "六3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "田平",
+          "className": "六4"
+        }
+      ],
+      "课后服务": [
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "李青青",
+          "className": "三2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张琴",
+          "className": "三3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "杨昌美",
+          "className": "四1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "肖力",
+          "className": "四4"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "江玲玲",
+          "className": "五2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙佳腾",
+          "className": "五3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "舒秀梅",
+          "className": "五4"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张烨",
+          "className": "六1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "李忠明",
+          "className": "六2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴子珍",
+          "className": "六3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "田平",
+          "className": "六4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "陈发国",
+          "className": "三1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "文凯",
+          "className": "三2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙明",
+          "className": "三3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "盘春足",
+          "className": "四1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "廖志强",
+          "className": "四2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "张百达",
+          "className": "四3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "孙焕英",
+          "className": "四4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙震",
+          "className": "五1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "王秀显",
+          "className": "五2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙力芳",
+          "className": "五3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "姚本军",
+          "className": "五4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "张成菊",
+          "className": "六1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙金祥",
+          "className": "六2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "管明成陈晓英",
+          "className": "六3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙向桃",
+          "className": "六4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "陈发国",
+          "className": "三1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "文凯",
+          "className": "三2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙明",
+          "className": "三3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "盘春足",
+          "className": "四1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "廖志强",
+          "className": "四2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "张百达",
+          "className": "四3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "孙焕英",
+          "className": "四4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙震",
+          "className": "五1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "王秀显",
+          "className": "五2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙力芳",
+          "className": "五3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "姚本军",
+          "className": "五4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "张成菊",
+          "className": "六1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙金祥",
+          "className": "六2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "管明成陈晓英",
+          "className": "六3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙向桃",
+          "className": "六4"
+        }
+      ],
+      "晚自习": [
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "文凯陈发国",
+          "className": "三1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "熊欢",
+          "className": "三2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "张琴",
+          "className": "三3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "杨昌美",
+          "className": "四1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "廖志强龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "孙焕英张百达",
+          "className": "四3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "肖力邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "王秀显潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "管明成龙佳腾",
+          "className": "五3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "舒秀梅",
+          "className": "五4"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "张烨",
+          "className": "六1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "潘懂平宋宁宁",
+          "className": "六2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "陈晓英管明成",
+          "className": "六3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙向桃王秀显",
+          "className": "六4"
+        }
+      ]
+    },
+    "星期三": {
+      "午休": [
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "陈发国",
+          "className": "三1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "李青青",
+          "className": "三2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙明",
+          "className": "三3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "盘春足",
+          "className": "四1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "廖志强",
+          "className": "四2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张百达",
+          "className": "四3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴昌荣",
+          "className": "四4"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙震",
+          "className": "五1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "江玲玲",
+          "className": "五2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙佳腾",
+          "className": "五3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "姚本军",
+          "className": "五4"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张成菊",
+          "className": "六1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙金祥",
+          "className": "六2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴帆",
+          "className": "六3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙向桃",
+          "className": "六4"
+        }
+      ],
+      "课后服务": [
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "陈发国",
+          "className": "三1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "李青青",
+          "className": "三2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙明",
+          "className": "三3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "盘春足",
+          "className": "四1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "廖志强",
+          "className": "四2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张百达",
+          "className": "四3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙震",
+          "className": "五1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "管明成",
+          "className": "五3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "姚本军",
+          "className": "五4"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张成菊",
+          "className": "六1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙金祥",
+          "className": "六2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴帆",
+          "className": "六3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙向桃",
+          "className": "六4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "熊欢",
+          "className": "三2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "张琴",
+          "className": "三3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "文凯",
+          "className": "四1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "肖力",
+          "className": "四4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "江玲玲",
+          "className": "五2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙佳腾",
+          "className": "五3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "姚本军舒秀梅",
+          "className": "五4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "孙焕英",
+          "className": "六1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "李忠明",
+          "className": "六2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "王秀显",
+          "className": "六3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙金祥杨昌美",
+          "className": "六4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "熊欢",
+          "className": "三2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "张琴",
+          "className": "三3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "文凯",
+          "className": "四1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "肖力",
+          "className": "四4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "江玲玲",
+          "className": "五2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙佳腾",
+          "className": "五3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "姚本军舒秀梅",
+          "className": "五4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "孙焕英",
+          "className": "六1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "李忠明",
+          "className": "六2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "王秀显",
+          "className": "六3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙金祥杨昌美",
+          "className": "六4"
+        }
+      ],
+      "晚自习": [
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "陈发国",
+          "className": "三1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "李青青",
+          "className": "三2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙明",
+          "className": "三3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "盘春足",
+          "className": "四1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙杰文凯",
+          "className": "四2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "张百达",
+          "className": "四3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙震",
+          "className": "五1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "王秀显杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "管明成",
+          "className": "五3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙力芳",
+          "className": "五4"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴俊张烨",
+          "className": "六1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "李忠明孙焕英",
+          "className": "六2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴帆",
+          "className": "六3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙向桃",
+          "className": "六4"
+        }
+      ]
+    },
+    "星期四": {
+      "午休": [
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "熊欢",
+          "className": "三2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张琴",
+          "className": "三3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "杨昌美",
+          "className": "四1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "管明成",
+          "className": "五3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "舒秀梅",
+          "className": "五4"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "张烨",
+          "className": "六1"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "李忠明",
+          "className": "六2"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "吴子珍",
+          "className": "六3"
+        },
+        {
+          "time": "13：00—13：50",
+          "teacher": "田平",
+          "className": "六4"
+        }
+      ],
+      "课后服务": [
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "熊欢",
+          "className": "三2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张琴",
+          "className": "三3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "杨昌美",
+          "className": "四1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "龙杰",
+          "className": "四2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "管明成",
+          "className": "五3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "舒秀梅",
+          "className": "五4"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "张烨",
+          "className": "六1"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "李忠明",
+          "className": "六2"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "吴子珍",
+          "className": "六3"
+        },
+        {
+          "time": "15：40—16：20",
+          "teacher": "田平",
+          "className": "六4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "陈发国杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "熊欢李青青",
+          "className": "三2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙明张琴",
+          "className": "三3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "盘春足杨昌美",
+          "className": "四1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "文凯",
+          "className": "四2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "张百达陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "肖力邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙震潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "江玲玲杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙佳腾管明成",
+          "className": "五3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "龙力芳",
+          "className": "五4"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "陈小开张成菊",
+          "className": "六1"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "孙焕英",
+          "className": "六2"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "吴帆",
+          "className": "六3"
+        },
+        {
+          "time": "16：25—17:05",
+          "teacher": "王秀显",
+          "className": "六4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙燕",
+          "className": "一1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "吴寿成",
+          "className": "一2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙建华",
+          "className": "一3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "罗顺芝",
+          "className": "二1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "田如香",
+          "className": "二2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "张书梅",
+          "className": "二3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "陈发国杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "熊欢李青青",
+          "className": "三2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙明张琴",
+          "className": "三3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "盘春足杨昌美",
+          "className": "四1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "文凯",
+          "className": "四2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "张百达陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "肖力邰燕",
+          "className": "四4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙震潘懂平",
+          "className": "五1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "江玲玲杨贵妃",
+          "className": "五2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙佳腾管明成",
+          "className": "五3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "龙力芳",
+          "className": "五4"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "陈小开张成菊",
+          "className": "六1"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "孙焕英",
+          "className": "六2"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "吴帆",
+          "className": "六3"
+        },
+        {
+          "time": "17:10—17:50",
+          "teacher": "王秀显",
+          "className": "六4"
+        }
+      ],
+      "晚自习": [
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "陈发国杨胜伦",
+          "className": "三1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "熊欢李青青",
+          "className": "三2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙明",
+          "className": "三3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "杨昌美盘春足",
+          "className": "四1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "廖志强",
+          "className": "四2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "张百达陈晓英",
+          "className": "四3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "肖力",
+          "className": "四4"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "潘懂平龙震",
+          "className": "五1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "杨贵妃江玲玲",
+          "className": "五2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙佳腾",
+          "className": "五3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "舒秀梅姚本军",
+          "className": "五4"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "张成菊",
+          "className": "六1"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "龙金祥",
+          "className": "六2"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "吴子珍",
+          "className": "六3"
+        },
+        {
+          "time": "19:30—20:30",
+          "teacher": "田平",
+          "className": "六4"
+        }
+      ]
+    },
+    "星期五": {
+      "课后服务": [
+        {
+          "time": "14：40—15：20",
+          "teacher": "龙燕龙光辉",
+          "className": "一1"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "吴寿成邰昌礼",
+          "className": "一2"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "龙建华何昭能",
+          "className": "一3"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "罗顺芝龙再明",
+          "className": "二1"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "田如香吴君书",
+          "className": "二2"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "张书梅吴俊",
+          "className": "二3"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "张烨廖志强",
+          "className": "三1"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "李忠明吴帆",
+          "className": "三2"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "吴子珍龙向桃",
+          "className": "三3"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "张琴龙震",
+          "className": "四1"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "杨贵妃邰毅",
+          "className": "四2"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "李青青龙佳腾",
+          "className": "四3"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "舒秀梅姚本军",
+          "className": "四4"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "田平盘春足",
+          "className": "五1"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "龙杰张洪斌",
+          "className": "五2"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "邰昌礼张成菊",
+          "className": "五3"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "邰燕吴昌荣",
+          "className": "五4"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "张成菊张烨",
+          "className": "六1"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "龙金祥李忠明",
+          "className": "六2"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "吴帆吴子珍",
+          "className": "六3"
+        },
+        {
+          "time": "14：40—15：20",
+          "teacher": "龙向桃田平",
+          "className": "六4"
+        }
+      ]
+    }
+  },
+  "allTeachers": [
+    "何昭能",
+    "刘光军",
+    "吴俊",
+    "吴光成",
+    "吴君书",
+    "吴子珍",
+    "吴寿成",
+    "吴帆",
+    "吴方文",
+    "吴昌荣",
+    "吴胜贤",
+    "唐仁银",
+    "唐小凯",
+    "姚本军",
+    "孙焕英",
+    "宋宁宁",
+    "宋江鹏",
+    "廖志强",
+    "张书梅",
+    "张凌云",
+    "张成菊",
+    "张洪斌",
+    "张烨",
+    "张琴",
+    "张百达",
+    "文凯",
+    "李忠明",
+    "李青青",
+    "杨昌美",
+    "杨胜伦",
+    "杨贵妃",
+    "江文俊",
+    "江玲玲",
+    "潘懂平",
+    "熊欢",
+    "王秀显",
+    "田如香",
+    "田平",
+    "盘春足",
+    "管明成",
+    "罗顺芝",
+    "肖力",
+    "肖祥咏",
+    "舒秀梅",
+    "范琳",
+    "邰昌礼",
+    "邰毅",
+    "邰燕",
+    "陈发国",
+    "陈小开",
+    "陈晓英",
+    "雷安元",
+    "雷帮英",
+    "龙佳腾",
+    "龙光辉",
+    "龙再明",
+    "龙力芳",
+    "龙向桃",
+    "龙建华",
+    "龙明",
+    "龙晓芳",
+    "龙杰",
+    "龙燕",
+    "龙金祥",
+    "龙震"
+  ]
+}

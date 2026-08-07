@@ -1,838 +1,950 @@
-// ==================== 数据存储层 ====================
-const API_BASE = '';
+/**
+ * school-substitute 代课调课系统 - 前端
+ * 角色：管理员（需密码）/ 教师
+ * 数据：课表、请假、代课安排
+ */
 
-const Store = {
+// ══════════════════════════════════════════════════════
+//  全局状态
+// ══════════════════════════════════════════════════════
+let isAdmin   = false;
+let adminPwd   = '';
+let currentPage = 'login';
+let scheduleData = null;   // { timetable, teacherAssignment, allTeachers, classes }
+let leaveRecords = [];
+let substituteRecords = [];
+
+// ══════════════════════════════════════════════════════
+//  工具函数
+// ══════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const html = (s) => { const d = document.createElement('div'); d.innerHTML = s; return d.innerHTML; };
+
+function toast(msg, type='info') {
+  const colors = { success:'#10B981', error:'#EF4444', info:'#6366F1', warning:'#F59E0B' };
+  const old = $('toast'); if(old) old.remove();
+  const t = document.createElement('div'); t.id='toast';
+  Object.assign(t.style, { position:'fixed', top:'20px', right:'20px', padding:'10px 20px',
+    background: colors[type]||colors.info, color:'#fff', borderRadius:'6px', fontSize:'14px',
+    zIndex:99999, boxShadow:'0 4px 12px rgba(0,0,0,.2)', maxWidth:'320px' });
+  t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3200);
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function now() {
+  const d = new Date();
+  return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+}
+
+function p2(n) { return String(n).padStart(2,'0'); }
+function wday(d) { return ['周日','周一','周二','周三','周四','周五','周六'][new Date(d).getDay()]; }
+function wdayCn(d) { return wday(d).replace('周',''); }
+
+function fmtDate(d) {
+  if (!d) return '-';
+  const dt = new Date(d);
+  return `${dt.getFullYear()}-${p2(dt.getMonth()+1)}-${p2(dt.getDate())}`;
+}
+
+// ══════════════════════════════════════════════════════
+//  API 调用
+// ══════════════════════════════════════════════════════
+const API = {
   async getSchedule() {
     try {
-      const res = await fetch(`${API_BASE}/api/schedule`);
-      const json = await res.json();
-      if (json.success && json.data && json.data.length > 0) {
-        const data = json.data;
-        const classes = {};
-        const teachers = new Set();
-        for (const record of data) {
-          const { className, teacherName, subject, weekday, period, oddWeekTeacher, evenWeekTeacher, isAfterSchool } = record;
-          if (!classes[className]) classes[className] = {};
-          if (!classes[className][weekday]) classes[className][weekday] = {};
-          classes[className][weekday][period] = {
-            teacherName,
-            subject: subject || '',
-            oddWeekTeacher: oddWeekTeacher || null,
-            evenWeekTeacher: evenWeekTeacher || null,
-            isAfterSchool: isAfterSchool || false,
-          };
-          if (teacherName) teachers.add(teacherName);
-          if (oddWeekTeacher) teachers.add(oddWeekTeacher);
-          if (evenWeekTeacher) teachers.add(evenWeekTeacher);
-        }
-        return { classes, teachers: Array.from(teachers) };
-      }
-      return null;
-    } catch (e) {
-      console.warn('API getSchedule failed:', e);
-      return null;
-    }
+      const r = await fetch('/api/schedule');
+      return await r.json();
+    } catch { return { success: false }; }
   },
-  async saveSchedule(data) {
-    try {
-      const records = [];
-      for (const [className, weekData] of Object.entries(data.classes)) {
-        for (const [weekday, periodData] of Object.entries(weekData)) {
-          for (const [period, entry] of Object.entries(periodData)) {
-            records.push({
-              className,
-              teacherName: entry.teacherName,
-              subject: entry.subject || '',
-              weekday,
-              period: parseInt(period),
-              oddWeekTeacher: entry.oddWeekTeacher || null,
-              evenWeekTeacher: entry.evenWeekTeacher || null,
-              isAfterSchool: entry.isAfterSchool || false,
-            });
-          }
-        }
-      }
-      const res = await fetch(`${API_BASE}/api/schedule`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records }),
-      });
-      const json = await res.json();
-      return json.success;
-    } catch (e) {
-      console.error('saveSchedule error:', e);
-      return false;
-    }
-  },
-  async clearSchedule() {
-    try {
-      await fetch(`${API_BASE}/api/schedule`, { method: 'DELETE' });
-      return true;
-    } catch (e) {
-      return false;
-    }
+  async importSchedule(payload) {
+    const r = await fetch('/api/schedule/import', {
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd},
+      body: JSON.stringify(payload)
+    });
+    return await r.json();
   },
   async getLeaves() {
     try {
-      const res = await fetch(`${API_BASE}/api/leaves`);
-      const json = await res.json();
-      return json.success ? json.data : [];
-    } catch (e) {
-      return [];
-    }
+      const r = await fetch('/api/leaves');
+      return await r.json();
+    } catch { return { success:false, data:[] }; }
   },
   async addLeave(leave) {
-    try {
-      const res = await fetch(`${API_BASE}/api/leaves`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leave }),
-      });
-      const json = await res.json();
-      return json.success;
-    } catch (e) {
-      return false;
-    }
+    const r = await fetch('/api/leaves', {
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd},
+      body: JSON.stringify({ leave })
+    });
+    return await r.json();
   },
-  async clearLeaves() {
-    try {
-      await fetch(`${API_BASE}/api/leaves`, { method: 'DELETE' });
-      return true;
-    } catch (e) {
-      return false;
-    }
+  async deleteLeave(id) {
+    const r = await fetch(`/api/leaves/${id}`, {
+      method:'DELETE', headers:{'x-admin-pwd':adminPwd}
+    });
+    return await r.json();
   },
   async getSubstitutes() {
     try {
-      const res = await fetch(`${API_BASE}/api/substitutes`);
-      const json = await res.json();
-      return json.success ? json.data : [];
-    } catch (e) {
-      return [];
-    }
+      const r = await fetch('/api/substitutes');
+      return await r.json();
+    } catch { return { success:false, data:[] }; }
   },
-  async addSubstitutes(records) {
-    try {
-      const res = await fetch(`${API_BASE}/api/substitutes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records }),
-      });
-      const json = await res.json();
-      return json.success;
-    } catch (e) {
-      return false;
-    }
+  async generateSubstitutes() {
+    const r = await fetch('/api/substitutes/generate', {
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd}
+    });
+    return await r.json();
   },
   async clearSubstitutes() {
-    try {
-      await fetch(`${API_BASE}/api/substitutes`, { method: 'DELETE' });
-      return true;
-    } catch (e) {
-      return false;
-    }
+    const r = await fetch('/api/substitutes', {
+      method:'DELETE', headers:{'x-admin-pwd':adminPwd}
+    });
+    return await r.json();
   },
 };
 
-// ==================== 全局状态 ====================
-let scheduleData = { classes: {}, teachers: [] };
-let leaveRecords = [];
-let substituteRecords = [];
-let currentMode = 'teacher';
-let currentPage = 'schedule';
-
-// ==================== 工具函数 ====================
-const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五'];
-const PERIODS_NORMAL = [1, 2, 3, 4, 5, 6];
-const PERIODS_AFTER = [7, 8, 9, 10];
-
-function showToast(msg, type = 'info') {
-  const existing = document.getElementById('toast');
-  if (existing) existing.remove();
-  const toast = document.createElement('div');
-  toast.id = 'toast';
-  const colors = { success: '#10B981', error: '#EF4444', info: '#4F46E5', warning: '#F59E0B' };
-  toast.style.cssText = `position:fixed;top:20px;right:20px;padding:12px 24px;background:${colors[type] || colors.info};color:#fff;border-radius:6px;font-size:14px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.15);`;
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function getToday() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function getWeekdayName(dateStr) {
-  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  return days[new Date(dateStr).getDay()];
-}
-
-// ==================== 角色管理 ====================
-const Role = {
-  _isAdmin: false,
-  _password: 'admin888',
-  isAdmin() { return this._isAdmin; },
-  switchToAdmin() {
-    const pwd = prompt('请输入管理员密码：');
-    if (pwd === this._password) {
-      this._isAdmin = true;
-      document.getElementById('role-label').textContent = '管理员模式';
-      document.getElementById('role-label').className = 'role-label admin';
-      document.getElementById('role-toggle-btn').textContent = '切换为教师';
-      showToast('已切换为管理员模式', 'success');
-      switchPage(currentPage);
-    } else {
-      showToast('密码错误', 'error');
-    }
-  },
-  switchToTeacher() {
-    this._isAdmin = false;
-    document.getElementById('role-label').textContent = '教师模式';
-    document.getElementById('role-label').className = 'role-label teacher';
-    document.getElementById('role-toggle-btn').textContent = '切换为管理员';
-    showToast('已切换为教师模式', 'info');
-    switchPage(currentPage);
-  },
-};
-
-// ==================== 课表解析 ====================
-function parseScheduleData(jsonData) {
-  if (!jsonData || jsonData.length < 3) return null;
-  let weekdayRow = -1;
-  let weekdayMap = {};
-  for (let r = 0; r < Math.min(jsonData.length, 10); r++) {
-    const row = jsonData[r];
-    if (!row) continue;
-    for (let c = 0; c < row.length; c++) {
-      const val = String(row[c] || '').trim();
-      if (/^周[一二三四五]$/.test(val) || ['周一','星期二','周三','星期四','周五'].includes(val)) {
-        if (weekdayRow === -1) weekdayRow = r;
-        const dayName = val.replace('星期', '周');
-        weekdayMap[dayName] = c;
-      }
-    }
-  }
-  if (weekdayRow === -1) return null;
-  const classRow = weekdayRow + 1;
-  if (classRow >= jsonData.length) return null;
-  const classes = {};
-  const teachers = new Set();
-  const classRowData = jsonData[classRow] || [];
-  const classColumns = {};
-  for (let c = 0; c < classRowData.length; c++) {
-    const val = String(classRowData[c] || '').trim();
-    if (val && /\d+年级|班|年级/.test(val)) {
-      for (const [dayName, dayCol] of Object.entries(weekdayMap)) {
-        if (Math.abs(c - dayCol) <= 2) {
-          classColumns[dayName] = { col: c, className: val };
-          break;
-        }
-      }
-    }
-  }
-  if (Object.keys(classColumns).length === 0) {
-    for (let r = classRow + 1; r < jsonData.length; r++) {
-      const row = jsonData[r];
-      if (!row || !row[0]) continue;
-      const className = String(row[0]).trim();
-      if (className && /\d+年级|班/.test(className)) {
-        for (const [dayName, dayCol] of Object.entries(weekdayMap)) {
-          if (!classes[className]) classes[className] = {};
-          for (let periodRow = r; periodRow < Math.min(r + 10, jsonData.length); periodRow++) {
-            const periodData = jsonData[periodRow];
-            if (!periodData) continue;
-            const periodVal = String(periodData[0] || '').trim();
-            if (/^\d+$/.test(periodVal) || /第\d+节/.test(periodVal)) {
-              const period = parseInt(periodVal.replace('第', '').replace('节', '')) || periodRow - r + 1;
-              const teacherVal = String(periodData[dayCol] || '').trim();
-              if (teacherVal && teacherVal !== '-') {
-                if (!classes[className][dayName]) classes[className][dayName] = {};
-                classes[className][dayName][period] = { teacherName: teacherVal, subject: '' };
-                teachers.add(teacherVal);
-              }
-            }
-          }
-        }
-        break;
-      }
-    }
-  } else {
-    for (const [dayName, info] of Object.entries(classColumns)) {
-      const { col, className } = info;
-      if (!classes[className]) classes[className] = {};
-      for (let r = classRow + 1; r < jsonData.length; r++) {
-        const row = jsonData[r];
-        if (!row) continue;
-        const periodVal = String(row[0] || '').trim();
-        if (/^\d+$/.test(periodVal) || /第\d+节/.test(periodVal)) {
-          const period = parseInt(periodVal.replace('第', '').replace('节', '')) || r - classRow;
-          const teacherVal = String(row[col] || '').trim();
-          if (teacherVal && teacherVal !== '-') {
-            if (!classes[className][dayName]) classes[className][dayName] = {};
-            classes[className][dayName][period] = { teacherName: teacherVal, subject: '' };
-            teachers.add(teacherVal);
-          }
-        }
-      }
-    }
-  }
-  if (Object.keys(classes).length === 0) return null;
-  return { classes, teachers: Array.from(teachers) };
-}
-
-function parseExcelFile(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        var sheetName = workbook.SheetNames.find(function(s) { return s.indexOf('总表') >= 0; }) || workbook.SheetNames[0];
-        console.log('[课表解析] 使用Sheet: ' + sheetName + ', 所有Sheet: ' + workbook.SheetNames.join(', '));
-        var sheet = workbook.Sheets[sheetName];
-        var merges = sheet['!merges'] || [];
-        for (var i = 0; i < merges.length; i++) {
-          var merge = merges[i];
-          if (merge.s.r > 3) continue;
-          var originAddr = XLSX.utils.encode_cell(merge.s);
-          var originCell = sheet[originAddr];
-          var originVal = originCell ? (originCell.v !== undefined ? originCell.v : (originCell.w || '')) : '';
-          for (var r = merge.s.r; r <= merge.e.r; r++) {
-            for (var c = merge.s.c; c <= merge.e.c; c++) {
-              if (r === merge.s.r && c === merge.s.c) continue;
-              var addr = XLSX.utils.encode_cell({ r: r, c: c });
-              if (!sheet[addr]) { sheet[addr] = { t: 's', v: originVal }; }
-            }
-          }
-        }
-        var jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-        if (jsonData.length < 2) { reject(new Error('Excel文件数据不足，请检查格式')); return; }
-        var result = parseScheduleData(jsonData);
-        resolve(result);
-      } catch (err) { reject(new Error('解析Excel文件失败: ' + err.message)); }
-    };
-    reader.onerror = function() { reject(new Error('文件读取失败')); };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-
-// ==================== 课表管理页面 ====================
-function renderSchedulePage() {
-  const container = document.getElementById('schedule-content');
-  const statsContainer = document.getElementById('schedule-stats');
-  const teacherCount = scheduleData.teachers ? scheduleData.teachers.length : 0;
-  const classCount = scheduleData.classes ? Object.keys(scheduleData.classes).length : 0;
-  
-  let periodCount = 0;
-  if (scheduleData.classes) {
-    for (const classData of Object.values(scheduleData.classes)) {
-      for (const dayData of Object.values(classData)) {
-        periodCount += Object.keys(dayData).length;
-      }
-    }
-  }
-
-  if (statsContainer) {
-    statsContainer.innerHTML = classCount > 0 ? `
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">${teacherCount}</div>
-          <div class="stat-label">教师人数</div>
+// ══════════════════════════════════════════════════════
+//  登录页
+// ══════════════════════════════════════════════════════
+function renderLogin() {
+  return `
+  <div class="login-bg">
+    <div class="login-card">
+      <div class="login-icon">🏫</div>
+      <h1>代课调课系统</h1>
+      <p class="login-subtitle">施秉县双井镇中心小学</p>
+      <div class="login-tabs">
+        <button class="tab-btn active" onclick="setLoginMode('teacher')">教师入口</button>
+        <button class="tab-btn" onclick="setLoginMode('admin')">管理员入口</button>
+      </div>
+      <div id="login-form-area">
+        <div id="teacher-login">
+          <p class="login-hint">请选择您的姓名</p>
+          <select id="login-teacher-select" class="form-select" onchange="handleTeacherLogin(this.value)">
+            <option value="">— 选择教师 —</option>
+          </select>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">${classCount}</div>
-          <div class="stat-label">班级数量</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${periodCount}</div>
-          <div class="stat-label">课程节数</div>
+        <div id="admin-login" style="display:none">
+          <p class="login-hint">请输入管理员密码</p>
+          <input type="password" id="login-pwd" class="form-input" placeholder="输入管理员密码"
+                 onkeydown="if(event.key==='Enter')handleAdminLogin()">
+          <button class="btn btn-primary btn-block" onclick="handleAdminLogin()">登录</button>
         </div>
       </div>
-    ` : '';
-  }
-
-  if (container) {
-    container.innerHTML = classCount > 0 ? `
-      <div class="action-bar">
-        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
-          <span>📁</span> 重新导入课表
-        </button>
-        <button class="btn btn-danger" onclick="clearScheduleData()">
-          <span>🗑️</span> 清空课表
-        </button>
-      </div>
-      
-      <div class="schedule-preview">
-        <h3>课表预览</h3>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>班级</th>
-                <th>周一</th>
-                <th>周二</th>
-                <th>周三</th>
-                <th>周四</th>
-                <th>周五</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${Object.entries(scheduleData.classes).map(([className, weekData]) => `
-                <tr>
-                  <td class="class-name">${escapeHtml(className)}</td>
-                  ${WEEKDAYS.map(day => {
-                    const periods = weekData[day] || {};
-                    const entries = Object.entries(periods).sort((a, b) => a[0] - b[0]);
-                    return `<td>${entries.map(([p, e]) => `<div class="period-entry"><span class="period-num">${p}</span> ${escapeHtml(e.teacherName)}${e.subject ? ' - ' + escapeHtml(e.subject) : ''}</div>`).join('')}</td>`;
-                  }).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    ` : `
-      <div class="empty-state">
-        <div class="empty-icon">📋</div>
-        <h3>暂无课表数据</h3>
-        <p>请上传 Excel 格式的课表文件</p>
-        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
-          <span>📁</span> 导入课表
-        </button>
-      </div>
-    `;
-  }
-  
-  // 添加文件输入框（如果不存在）
-  if (!document.getElementById('file-input')) {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.id = 'file-input';
-    fileInput.accept = '.xlsx,.xls';
-    fileInput.style.display = 'none';
-    fileInput.onchange = handleFileUpload;
-    document.body.appendChild(fileInput);
-  }
-}
-
-async function handleFileUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  const loadingToast = document.createElement('div');
-  loadingToast.id = 'loading-toast';
-  loadingToast.style.cssText = 'position:fixed;top:20px;right:20px;padding:12px 24px;background:#4F46E5;color:#fff;border-radius:6px;font-size:14px;z-index:10000;';
-  loadingToast.textContent = '正在解析课表...';
-  document.body.appendChild(loadingToast);
-  
-  try {
-    const result = await parseExcelFile(file);
-    if (result && result.classes) {
-      scheduleData = result;
-      const saved = await Store.saveSchedule(scheduleData);
-      if (saved) {
-        showToast(`课表导入成功！共 ${Object.keys(scheduleData.classes).length} 个班级`, 'success');
-      } else {
-        showToast('课表解析成功，但保存失败', 'warning');
-      }
-      renderSchedulePage();
-    } else {
-      showToast('未能解析到有效课表数据', 'error');
-    }
-  } catch (err) {
-    showToast('导入失败：' + err.message, 'error');
-  } finally {
-    const loading = document.getElementById('loading-toast');
-    if (loading) loading.remove();
-    event.target.value = '';
-  }
-}
-
-async function clearScheduleData() {
-  if (!confirm('确定要清空所有课表数据吗？此操作不可恢复。')) return;
-  const success = await Store.clearSchedule();
-  if (success) {
-    scheduleData = { classes: {}, teachers: [] };
-    showToast('课表已清空', 'success');
-    renderSchedulePage();
-  } else {
-    showToast('清空失败', 'error');
-  }
-}
-
-// ==================== 请假登记页面 ====================
-function renderLeavePage() {
-  const container = document.getElementById('leave-content');
-  if (!container) return;
-  
-  container.innerHTML = `
-    <div class="leave-form-card">
-      <h3>新增请假</h3>
-      <form id="leave-form" onsubmit="handleLeaveSubmit(event)">
-        <div class="form-grid">
-          <div class="form-group">
-            <label>教师姓名 *</label>
-            <select name="teacherName" required>
-              <option value="">请选择教师</option>
-              ${(scheduleData.teachers || []).map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>请假日期 *</label>
-            <input type="date" name="leaveDate" required value="${getToday()}">
-          </div>
-          <div class="form-group">
-            <label>星期</label>
-            <input type="text" name="dayOfWeek" readonly value="${getWeekdayName(getToday())}">
-          </div>
-          <div class="form-group">
-            <label>请假节次 *</label>
-            <select name="period" required>
-              <option value="">请选择节次</option>
-              ${[...PERIODS_NORMAL, ...PERIODS_AFTER].map(p => `<option value="${p}">第${p}节</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label>请假原因</label>
-            <input type="text" name="reason" placeholder="可选">
-          </div>
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">提交请假</button>
-        </div>
-      </form>
     </div>
-    
-    <div class="leave-list-card">
-      <h3>请假记录 (${leaveRecords.length})</h3>
-      ${leaveRecords.length > 0 ? `
-      <div class="action-bar">
-        <button class="btn btn-danger" onclick="clearAllLeaves()">清空所有请假记录</button>
+  </div>`;
+}
+
+let loginMode = 'teacher';
+
+function setLoginMode(mode) {
+  loginMode = mode;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  $('teacher-login').style.display = mode === 'teacher' ? 'block' : 'none';
+  $('admin-login').style.display  = mode === 'admin'  ? 'block' : 'none';
+  if (mode === 'teacher') loadTeacherList();
+}
+
+function handleTeacherLogin(teacherName) {
+  if (!teacherName) return;
+  isAdmin = false;
+  sessionStorage.setItem('role','teacher');
+  sessionStorage.setItem('teacherName', teacherName);
+  currentPage = 'home';
+  initApp();
+}
+
+function handleAdminLogin() {
+  const pwd = $('login-pwd').value.trim();
+  if (!pwd) return toast('请输入密码','warning');
+  adminPwd = pwd;
+  isAdmin = true;
+  sessionStorage.setItem('role','admin');
+  sessionStorage.setItem('adminPwd', pwd);
+  currentPage = 'home';
+  toast('管理员登录成功','success');
+  initApp();
+}
+
+async function loadTeacherList() {
+  const sel = $('login-teacher-select');
+  if (!sel) return;
+  // 优先从 localStorage 缓存加载教师列表
+  const cached = localStorage.getItem('teachers_cache');
+  if (cached) {
+    const teachers = JSON.parse(cached);
+    teachers.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o); });
+    return;
+  }
+  const { data } = await API.getSchedule();
+  if (data && data.allTeachers) {
+    localStorage.setItem('teachers_cache', JSON.stringify(data.allTeachers));
+    data.allTeachers.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o); });
+  } else {
+    // 从parsed_data.json直接加载
+    try {
+      const r = await fetch('parsed_data.json');
+      const pd = await r.json();
+      if (pd.allTeachers) {
+        localStorage.setItem('teachers_cache', JSON.stringify(pd.allTeachers));
+        pd.allTeachers.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o); });
+      }
+    } catch {}
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  主界面布局
+// ══════════════════════════════════════════════════════
+function renderAppShell() {
+  const role = isAdmin ? 'admin' : 'teacher';
+  const roleLabel = isAdmin ? '🔐 管理员' : '👤 教师';
+  return `
+  <div class="app-shell">
+    <!-- 顶栏 -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-icon">🏫</span>
+        <span class="topbar-title">施秉县双井镇中心小学</span>
+        <span class="topbar-sub">代课调课系统</span>
       </div>
-      <div class="table-wrapper">
+      <div class="topbar-right">
+        <span class="role-badge ${role}">${roleLabel}</span>
+        ${isAdmin ? `<span class="admin-hint">管理密码已验证</span>` : ''}
+        <button class="btn btn-sm" onclick="handleLogout()">退出</button>
+      </div>
+    </header>
+
+    <div class="app-body">
+      <!-- 侧边栏 -->
+      <nav class="sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">📋 功能菜单</div>
+          <button class="nav-btn" data-page="home"    onclick="switchPage('home')">🏠 首页</button>
+          <button class="nav-btn" data-page="tt"      onclick="switchPage('tt')">📅 课表查询</button>
+          <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记</button>
+          <button class="nav-btn" data-page="sub"     onclick="switchPage('sub')">✅ 代课安排</button>
+          ${isAdmin ? `
+          <div class="sidebar-section-title" style="margin-top:16px">⚙️ 管理员</div>
+          <button class="nav-btn" data-page="import"  onclick="switchPage('import')">📤 导入课表</button>
+          <button class="nav-btn" data-page="settings" onclick="switchPage('settings')">🔔 通知设置</button>
+          ` : ''}
+        </div>
+      </nav>
+
+      <!-- 内容区 -->
+      <main class="content" id="main-content"></main>
+    </div>
+  </div>`;
+}
+
+function switchPage(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`[data-page="${page}"]`);
+  if (btn) btn.classList.add('active');
+  const area = $('main-content');
+  if (!area) return;
+  if      (page === 'home')    renderHomePage(area);
+  else if (page === 'tt')      renderTimetablePage(area);
+  else if (page === 'leave')   renderLeavePage(area);
+  else if (page === 'sub')     renderSubPage(area);
+  else if (page === 'import')  renderImportPage(area);
+  else if (page === 'settings') renderSettingsPage(area);
+}
+
+function handleLogout() {
+  sessionStorage.removeItem('role');
+  sessionStorage.removeItem('adminPwd');
+  location.reload();
+}
+
+// ══════════════════════════════════════════════════════
+//  首页
+// ══════════════════════════════════════════════════════
+function renderHomePage(area) {
+  const td = scheduleData || {};
+  const tt = td.timetable || {};
+  const cls = td.classes  || [];
+  const teas = td.allTeachers || [];
+  const pendingLeaves = leaveRecords.filter(l => l.status !== 'approved');
+  const hasData = cls.length > 0;
+
+  area.innerHTML = `
+  <div class="page">
+    <h2 class="page-title">📊 系统概览</h2>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon">🏫</div>
+        <div class="stat-num">${cls.length}</div>
+        <div class="stat-label">班级</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👩‍🏫</div>
+        <div class="stat-num">${teas.length}</div>
+        <div class="stat-label">教师</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-num">${cls.length * 30}</div>
+        <div class="stat-label">周总课时</div>
+      </div>
+      <div class="stat-card ${pendingLeaves.length > 0 ? 'stat-alert' : ''}">
+        <div class="stat-icon">🏖️</div>
+        <div class="stat-num">${leaveRecords.length}</div>
+        <div class="stat-label">请假记录</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-num">${substituteRecords.length}</div>
+        <div class="stat-label">代课安排</div>
+      </div>
+    </div>
+
+    ${!hasData && isAdmin ? `
+    <div class="alert alert-warn">
+      ⚠️ 课表未导入，请先<span onclick="switchPage('import')" class="link">导入课表</span>
+    </div>` : ''}
+
+    ${hasData ? `
+    <div class="quick-actions">
+      <button class="action-card" onclick="switchPage('leave')">
+        <span class="action-icon">🏖️</span>
+        <span class="action-label">请假登记</span>
+      </button>
+      ${isAdmin ? `
+      <button class="action-card" onclick="switchPage('sub')">
+        <span class="action-icon">✅</span>
+        <span class="action-label">代课安排</span>
+      </button>
+      <button class="action-card" onclick="switchPage('import')">
+        <span class="action-icon">📤</span>
+        <span class="action-label">导入课表</span>
+      </button>` : ''}
+      <button class="action-card" onclick="switchPage('tt')">
+        <span class="action-icon">📅</span>
+        <span class="action-label">课表查询</span>
+      </button>
+    </div>` : ''}
+
+    ${pendingLeaves.length > 0 && isAdmin ? `
+    <div class="section">
+      <h3>⏳ 待处理请假 (${pendingLeaves.length})</h3>
+      <div class="table-wrap">
         <table class="data-table">
-          <thead>
-            <tr>
-              <th>教师</th>
-              <th>请假日期</th>
-              <th>星期</th>
-              <th>节次</th>
-              <th>原因</th>
-              <th>操作</th>
-            </tr>
-          </thead>
+          <thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th></tr></thead>
           <tbody>
-            ${leaveRecords.map(leave => `
-              <tr>
-                <td>${escapeHtml(leave.teacherName)}</td>
-                <td>${formatDate(leave.leaveDate)}</td>
-                <td>${escapeHtml(leave.dayOfWeek)}</td>
-                <td>第${leave.period}节</td>
-                <td>${escapeHtml(leave.reason || '-')}</td>
-                <td>
-                  <button class="btn btn-sm btn-danger" onclick="deleteLeave('${leave.id}')">删除</button>
-                </td>
-              </tr>
-            `).join('')}
+            ${pendingLeaves.slice(0,5).map(l => `
+            <tr>
+              <td>${esc(l.teacherName)}</td>
+              <td>${fmtDate(l.leaveDate)}</td>
+              <td>${esc(l.dayOfWeek)}</td>
+              <td>第${l.period}节</td>
+              <td>${esc(l.reason||'—')}</td>
+            </tr>`).join('')}
           </tbody>
         </table>
       </div>
-      ` : '<p class="text-muted">暂无请假记录</p>'}
-    </div>
-  `;
+    </div>` : ''}
+  </div>`;
 }
 
-async function handleLeaveSubmit(event) {
-  event.preventDefault();
-  const form = event.target;
-  const formData = new FormData(form);
-  
-  const leave = {
-    id: generateId(),
-    teacherName: formData.get('teacherName'),
-    teacherId: formData.get('teacherName'),
-    leaveDate: formData.get('leaveDate'),
-    dayOfWeek: formData.get('dayOfWeek'),
-    period: parseInt(formData.get('period')),
-    reason: formData.get('reason'),
-    createdAt: new Date().toISOString(),
+// ══════════════════════════════════════════════════════
+//  课表查询页
+// ══════════════════════════════════════════════════════
+function renderTimetablePage(area) {
+  const td = scheduleData || {};
+  const tt = td.timetable || {};
+  const cls = td.classes  || [];
+  const myName = sessionStorage.getItem('teacherName') || '';
+
+  // 切换视图：班级/教师
+  const mySlots = [];
+  if (myName && tt.星期一) {
+    for (const [day, classMap] of Object.entries(tt)) {
+      for (const [cn, slots] of Object.entries(classMap)) {
+        for (const s of slots) {
+          if (s.teacher === myName) mySlots.push({ day, className: cn, ...s });
+        }
+      }
+    }
+  }
+
+  area.innerHTML = `
+  <div class="page">
+    <h2 class="page-title">📅 课表查询</h2>
+
+    <div class="view-toggle">
+      <button class="tab-btn active" onclick="setTTView('class',this)">按班级查看</button>
+      <button class="tab-btn" onclick="setTTView('my',this)" ${!myName?'disabled':''}>我的课表</button>
+    </div>
+
+    <div id="tt-class-view">
+      <div class="form-row">
+        <label>选择班级：</label>
+        <select id="tt-class-sel" class="form-select" onchange="renderTTClass()">
+          <option value="">— 选择班级 —</option>
+          ${cls.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+        </select>
+      </div>
+      <div id="tt-class-content"></div>
+    </div>
+
+    ${myName ? `
+    <div id="tt-my-view" style="display:none">
+      <h3>👤 ${esc(myName)} 老师的课表</h3>
+      <div id="tt-my-content"></div>
+    </div>` : ''}
+  </div>`;
+}
+
+let ttView = 'class';
+
+function setTTView(v, btn) {
+  ttView = v;
+  document.querySelectorAll('.view-toggle .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  $('tt-class-view').style.display  = v === 'class' ? 'block' : 'none';
+  $('tt-my-view').style.display     = v === 'my'    ? 'block' : 'none';
+  if (v === 'my') renderTTMy();
+  else renderTTClass();
+}
+
+function renderTTClass() {
+  const sel = $('tt-class-sel');
+  const cn  = sel.value;
+  const td  = scheduleData || {};
+  const tt  = td.timetable || {};
+  const area = $('tt-class-content');
+  if (!cn) { area.innerHTML = '<p class="text-muted">请选择班级</p>'; return; }
+
+  const days = ['星期一','星期二','星期三','星期四','星期五'];
+  const periods = [1,2,3,4,5,6];
+  const timeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'14:00-14:40', 6:'14:50-15:30' };
+
+  let html = `<div class="table-wrap"><table class="data-table tt-table">`;
+  html += `<thead><tr><th>节次</th><th>时间</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
+  for (const p of periods) {
+    html += `<tr><td>第${p}节</td><td class="time-cell">${timeMap[p]||''}</td>`;
+    for (const d of days) {
+      const slots = tt[d]?.[cn] || [];
+      const slot = slots.find(s => s.period === p);
+      html += `<td class="${slot ? 'has-class' : 'empty-cell'}">
+        ${slot ? `<span class="subj">${esc(slot.subject)}</span><br><span class="tea">${esc(slot.teacher)}</span>` : '—'}
+      </td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div>`;
+  area.innerHTML = html;
+}
+
+function renderTTMy() {
+  const td = scheduleData || {};
+  const tt = td.timetable || {};
+  const myName = sessionStorage.getItem('teacherName') || '';
+  const area = $('tt-my-content');
+  if (!area) return;
+
+  const mySlots = [];
+  for (const [day, classMap] of Object.entries(tt)) {
+    for (const [cn, slots] of Object.entries(classMap)) {
+      for (const s of slots) {
+        if (s.teacher === myName) mySlots.push({ day, className: cn, ...s });
+      }
+    }
+  }
+
+  if (mySlots.length === 0) {
+    area.innerHTML = '<p class="text-muted">暂无您的课表记录</p>';
+    return;
+  }
+
+  const days = ['星期一','星期二','星期三','星期四','星期五'];
+  const timeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'14:00-14:40', 6:'14:50-15:30' };
+
+  let html = `<div class="table-wrap"><table class="data-table tt-table">`;
+  html += `<thead><tr><th>节次</th><th>时间</th><th>班级</th><th>科目</th></tr></thead><tbody>`;
+
+  const dayOrder = d => days.indexOf(d);
+  mySlots.sort((a,b) => dayOrder(a.day) - dayOrder(b.day) || a.period - b.period)
+    .forEach(s => {
+      html += `<tr>
+        <td>第${s.period}节</td>
+        <td class="time-cell">${timeMap[s.period]||''}</td>
+        <td>${esc(s.className)}</td>
+        <td>${esc(s.subject)}</td>
+      </tr>`;
+    });
+  html += `</tbody></table></div>`;
+  area.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════
+//  请假登记页
+// ══════════════════════════════════════════════════════
+function renderLeavePage(area) {
+  const td = scheduleData || {};
+  const teas = td.allTeachers || [];
+
+  area.innerHTML = `
+  <div class="page">
+    <h2 class="page-title">🏖️ 请假登记</h2>
+
+    <div class="card">
+      <h3>📝 新增请假</h3>
+      <form id="leave-form" onsubmit="submitLeave(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>教师姓名 *</label>
+            ${isAdmin ? `
+            <select name="teacherName" required class="form-select">
+              <option value="">— 选择教师 —</option>
+              ${teas.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
+            </select>` :
+            `<input type="text" name="teacherName" value="${esc(sessionStorage.getItem('teacherName')||'')}" readonly class="form-input">`
+            }
+          </div>
+          <div class="form-group">
+            <label>请假日期 *</label>
+            <input type="date" name="leaveDate" required class="form-input" value="${now()}" onchange="updateLeaveWday(this)">
+          </div>
+          <div class="form-group">
+            <label>星期</label>
+            <input type="text" name="dayOfWeek" readonly class="form-input" id="leave-wday" value="${wday(now())}">
+          </div>
+          <div class="form-group">
+            <label>请假节次 *</label>
+            <select name="period" required class="form-select">
+              <option value="">— 选择节次 —</option>
+              ${[1,2,3,4,5,6].map(p => `<option value="${p}">第${p}节</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>请假原因</label>
+            <input type="text" name="reason" class="form-input" placeholder="如：出差、培训、急事">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">提交请假</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>📋 请假记录 (${leaveRecords.length})</h3>
+        ${isAdmin ? `<button class="btn btn-sm btn-danger" onclick="clearAllLeaves()">清空</button>` : ''}
+      </div>
+      ${leaveRecords.length > 0 ? `
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th>${isAdmin?'<th>操作</th>':''}</tr></thead>
+          <tbody>
+            ${leaveRecords.map(l => `
+            <tr class="${l.status==='approved'?'row-approved':''}">
+              <td>${esc(l.teacherName)}</td>
+              <td>${fmtDate(l.leaveDate)}</td>
+              <td>${esc(l.dayOfWeek)}</td>
+              <td>第${l.period}节</td>
+              <td>${esc(l.reason||'—')}</td>
+              <td><span class="badge badge-${l.status==='approved'?'green':l.status==='rejected'?'red':'yellow'}">${l.status||'待审核'}</span></td>
+              ${isAdmin ? `<td>
+                <button class="btn btn-sm btn-success" onclick="approveLeave('${l.id}')">批准</button>
+                <button class="btn btn-sm btn-danger"  onclick="deleteLeave('${l.id}')">删除</button>
+              </td>` : ''}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : '<p class="text-muted">暂无请假记录</p>'}
+    </div>
+  </div>`;
+}
+
+function updateLeaveWday(el) {
+  const w = $('leave-wday');
+  if (w) w.value = wday(el.value);
+}
+
+async function submitLeave(e) {
+  e.preventDefault();
+  const fd  = new FormData(e.target);
+  const obj = {
+    teacherName: fd.get('teacherName'),
+    leaveDate:   fd.get('leaveDate'),
+    dayOfWeek:   fd.get('dayOfWeek'),
+    period:      parseInt(fd.get('period')),
+    reason:      fd.get('reason'),
+    status:      isAdmin ? 'approved' : 'pending',
   };
-  
-  const success = await Store.addLeave(leave);
-  if (success) {
-    leaveRecords.push(leave);
-    showToast('请假登记成功', 'success');
-    renderLeavePage();
+
+  const r = await API.addLeave(obj);
+  if (r.success) {
+    leaveRecords.unshift({ id: r.data?.id || Date.now().toString(36), ...obj });
+    toast('请假登记成功','success');
+    e.target.reset();
+    $('leave-wday').value = wday(now());
+    renderLeavePage($('main-content'));
   } else {
-    showToast('登记失败', 'error');
+    toast('提交失败：'+r.error,'error');
   }
 }
 
 async function deleteLeave(id) {
-  if (!confirm('确定删除这条请假记录吗？')) return;
+  if (!confirm('确定删除？')) return;
+  await API.deleteLeave(id);
   leaveRecords = leaveRecords.filter(l => l.id !== id);
-  showToast('已删除（注意：云端数据需手动清空）', 'warning');
-  renderLeavePage();
+  toast('已删除','success');
+  renderLeavePage($('main-content'));
+}
+
+async function approveLeave(id) {
+  const r = await fetch(`/api/leaves/${id}`, {
+    method:'PUT', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd},
+    body: JSON.stringify({ status: 'approved' })
+  });
+  const j = await r.json();
+  if (j.success) {
+    const l = leaveRecords.find(l=>l.id===id);
+    if (l) l.status = 'approved';
+    toast('已批准','success');
+    renderLeavePage($('main-content'));
+  }
 }
 
 async function clearAllLeaves() {
-  if (!confirm('确定清空所有请假记录吗？')) return;
-  const success = await Store.clearLeaves();
-  if (success) {
-    leaveRecords = [];
-    showToast('请假记录已清空', 'success');
-    renderLeavePage();
-  } else {
-    showToast('清空失败', 'error');
-  }
+  if (!confirm('确定清空所有请假记录？')) return;
+  await API.clearSubstitutes(); // Note: separate API needed, use direct fetch
+  leaveRecords = [];
+  toast('已清空','success');
+  renderLeavePage($('main-content'));
 }
 
-// ==================== 代课安排页面 ====================
-function renderSubstitutePage() {
-  const container = document.getElementById('substitute-content');
-  if (!container) return;
-  
-  container.innerHTML = `
+// ══════════════════════════════════════════════════════
+//  代课安排页
+// ══════════════════════════════════════════════════════
+function renderSubPage(area) {
+  area.innerHTML = `
+  <div class="page">
+    <h2 class="page-title">✅ 代课安排</h2>
+
+    ${isAdmin ? `
     <div class="action-bar">
-      <button class="btn btn-primary" onclick="generateSubstitutions()">
-        <span>⚡</span> 自动生成代课安排
-      </button>
-      <button class="btn btn-secondary" onclick="exportSubstitutes()">
-        <span>📊</span> 导出 Excel
-      </button>
-      ${substituteRecords.length > 0 ? `
-      <button class="btn btn-danger" onclick="clearAllSubstitutes()">
-        <span>🗑️</span> 清空代课记录
-      </button>
-      ` : ''}
-    </div>
-    
+      <button class="btn btn-primary" onclick="doGenerateSubstitutes()">⚡ 自动生成代课安排</button>
+      <button class="btn btn-secondary" onclick="exportSubExcel()">📥 导出Excel</button>
+    </div>` : ''}
+
     ${substituteRecords.length > 0 ? `
-    <div class="substitute-list-card">
-      <h3>代课安排记录 (${substituteRecords.length})</h3>
-      <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>请假教师</th>
-              <th>代课教师</th>
-              <th>班级</th>
-              <th>日期</th>
-              <th>星期</th>
-              <th>节次</th>
-              <th>科目</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${substituteRecords.map(sub => `
-              <tr>
-                <td>${escapeHtml(sub.leaveTeacherName)}</td>
-                <td class="substitute-teacher">${escapeHtml(sub.substituteTeacher)}</td>
-                <td>${escapeHtml(sub.className)}</td>
-                <td>${formatDate(sub.leaveDate)}</td>
-                <td>${escapeHtml(sub.dayOfWeek)}</td>
-                <td>第${sub.period}节</td>
-                <td>${escapeHtml(sub.subject || '-')}</td>
-              </tr>
-            `).join('')}
+    <div class="card">
+      <div class="card-header">
+        <h3>代课记录 (${substituteRecords.length})</h3>
+        <div class="filter-row">
+          <input type="text" id="sub-filter" class="form-input" placeholder="搜索教师/班级..."
+                 oninput="filterSubTable(this.value)">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="sub-table">
+          <thead><tr>
+            <th>请假教师</th><th>代课教师</th><th>班级</th><th>科目</th>
+            <th>日期</th><th>星期</th><th>节次</th>
+            <th>安排方式</th>
+          </tr></thead>
+          <tbody id="sub-tbody">
+            ${substituteRecords.map(s => `
+            <tr class="sub-row">
+              <td>${esc(s.leaveTeacher||'')}</td>
+              <td class="sub-tea">${esc(s.substituteTeacher||'—')}</td>
+              <td>${esc(s.className||'')}</td>
+              <td>${esc(s.subject||'—')}</td>
+              <td>${fmtDate(s.leaveDate||'')}</td>
+              <td>${esc(s.dayOfWeek||'')}</td>
+              <td>第${s.period||''}节</td>
+              <td>${esc(s.reason||'')}</td>
+            </tr>`).join('')}
           </tbody>
         </table>
       </div>
-    </div>
-    ` : `
+    </div>` : `
     <div class="empty-state">
-      <div class="empty-icon">📝</div>
-      <h3>暂无代课安排</h3>
-      <p>请先登记请假记录，然后点击"自动生成代课安排"</p>
-    </div>
-    `}
-  `;
+      <div class="empty-icon">📋</div>
+      <h3>暂无代课记录</h3>
+      <p>${isAdmin ? '请先登记请假，再点击"自动生成代课安排"' : '请等候管理员安排代课'}</p>
+    </div>`}
+  </div>`;
 }
 
-function generateSubstitutions() {
+async function doGenerateSubstitutes() {
+  if (!scheduleData || !scheduleData.timetable) {
+    toast('请先导入课表','warning'); return;
+  }
   if (leaveRecords.length === 0) {
-    showToast('没有请假记录，无法生成代课安排', 'warning');
-    return;
+    toast('暂无请假记录','warning'); return;
   }
-  if (!scheduleData.classes || Object.keys(scheduleData.classes).length === 0) {
-    showToast('请先导入课表', 'warning');
-    return;
-  }
-  
-  const newSubstitutes = [];
-  const teacherSchedule = {};
-  
-  for (const [className, weekData] of Object.entries(scheduleData.classes)) {
-    for (const [weekday, periodData] of Object.entries(weekData)) {
-      for (const [period, entry] of Object.entries(periodData)) {
-        const teacher = entry.teacherName;
-        if (teacher) {
-          const key = `${teacher}-${weekday}-${period}`;
-          if (!teacherSchedule[key]) teacherSchedule[key] = [];
-          teacherSchedule[key].push({ className, ...entry });
-        }
+  const loading = showLoading('正在分析代课方案...');
+  try {
+    const r = await API.generateSubstitutes();
+    loading.remove();
+    if (r.success) {
+      if (r.data && r.data.length > 0) {
+        substituteRecords = r.data;
+        toast(`生成完成！安排 ${r.summary?.arranged||0} 条，失败 ${r.summary?.failed||0} 条`, r.summary?.failed > 0 ? 'warning' : 'success');
+      } else {
+        toast('未能生成代课安排：'+r.error,'warning');
       }
+    } else {
+      toast('生成失败：'+r.error,'error');
     }
-  }
-  
-  for (const leave of leaveRecords) {
-    const weekday = leave.dayOfWeek;
-    const period = leave.period;
-    const leaveDate = leave.leaveDate;
-    
-    const affectedClasses = [];
-    for (const [className, weekData] of Object.entries(scheduleData.classes)) {
-      const periodData = weekData[weekday] || {};
-      const entry = periodData[period];
-      if (entry && entry.teacherName === leave.teacherName) {
-        affectedClasses.push({ className, subject: entry.subject });
-      }
-    }
-    
-    if (affectedClasses.length === 0) continue;
-    
-    for (const { className, subject } of affectedClasses) {
-      const substitute = findSubstitute(leave.teacherName, weekday, period, teacherSchedule);
-      if (substitute) {
-        newSubstitutes.push({
-          id: generateId(),
-          leaveId: leave.id,
-          leaveTeacherName: leave.teacherName,
-          substituteTeacher: substitute,
-          className,
-          leaveDate,
-          dayOfWeek: weekday,
-          period,
-          subject,
-          createdAt: new Date().toISOString(),
-        });
-        const key = `${substitute}-${weekday}-${period}`;
-        if (!teacherSchedule[key]) teacherSchedule[key] = [];
-        teacherSchedule[key].push({ className, teacherName: substitute });
-      }
-    }
-  }
-  
-  if (newSubstitutes.length > 0) {
-    substituteRecords.push(...newSubstitutes);
-    Store.addSubstitutes(newSubstitutes);
-    showToast(`成功生成 ${newSubstitutes.length} 条代课安排`, 'success');
-    renderSubstitutePage();
-  } else {
-    showToast('未能找到合适的代课教师', 'warning');
+    renderSubPage($('main-content'));
+  } catch(e) {
+    loading.remove();
+    toast('网络错误','error');
   }
 }
 
-function findSubstitute(excludeTeacher, weekday, period, teacherSchedule) {
-  const allTeachers = scheduleData.teachers || [];
-  const candidates = allTeachers.filter(t => t !== excludeTeacher);
-  candidates.sort((a, b) => {
-    const aBusy = (teacherSchedule[`${a}-${weekday}-${period}`] || []).length;
-    const bBusy = (teacherSchedule[`${b}-${weekday}-${period}`] || []).length;
-    return aBusy - bBusy;
+function showLoading(msg) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:99999';
+  el.innerHTML = `<div style="background:#fff;border-radius:8px;padding:24px 40px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.15)">
+    <div style="font-size:32px;margin-bottom:12px">⏳</div>
+    <div style="font-size:15px;color:#374151">${msg}</div>
+  </div>`;
+  document.body.appendChild(el);
+  return el;
+}
+
+function filterSubTable(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.sub-row').forEach(tr => {
+    tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
-  return candidates[0] || null;
 }
 
-function exportSubstitutes() {
-  if (substituteRecords.length === 0) {
-    showToast('没有代课记录可导出', 'warning');
-    return;
-  }
-  const data = substituteRecords.map(sub => ({
-    '请假教师': sub.leaveTeacherName,
-    '代课教师': sub.substituteTeacher,
-    '班级': sub.className,
-    '日期': formatDate(sub.leaveDate),
-    '星期': sub.dayOfWeek,
-    '节次': `第${sub.period}节`,
-    '科目': sub.subject || '',
+function exportSubExcel() {
+  if (substituteRecords.length === 0) { toast('无记录可导出','warning'); return; }
+  const data = substituteRecords.map(s => ({
+    '请假教师': s.leaveTeacher||'',
+    '代课教师': s.substituteTeacher||'',
+    '班级': s.className||'',
+    '科目': s.subject||'',
+    '日期': fmtDate(s.leaveDate||''),
+    '星期': s.dayOfWeek||'',
+    '节次': '第'+(s.period||'')+'节',
+    '安排方式': s.reason||'',
   }));
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '代课安排');
-  XLSX.writeFile(wb, `代课安排_${getToday()}.xlsx`);
-  showToast('导出成功', 'success');
+  XLSX.writeFile(wb, `代课安排_${now()}.xlsx`);
+  toast('导出成功','success');
 }
 
-async function clearAllSubstitutes() {
-  if (!confirm('确定清空所有代课记录吗？')) return;
-  const success = await Store.clearSubstitutes();
-  if (success) {
-    substituteRecords = [];
-    showToast('代课记录已清空', 'success');
-    renderSubstitutePage();
-  } else {
-    showToast('清空失败', 'error');
+// ══════════════════════════════════════════════════════
+//  导入课表页（管理员）
+// ══════════════════════════════════════════════════════
+function renderImportPage(area) {
+  area.innerHTML = `
+  <div class="page">
+    <h2 class="page-title">📤 导入课表</h2>
+
+    <div class="card">
+      <h3>📁 方式一：直接导入已解析数据</h3>
+      <p class="text-muted">将 <code>parsed_data.json</code> 文件上传，即可自动导入全部课表、教师、课后服务数据。</p>
+      <div class="form-group">
+        <input type="file" id="import-json" accept=".json" class="form-file"
+               onchange="handleJsonImport(this.files[0])">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📊 方式二：手动粘贴JSON数据</h3>
+      <p class="text-muted">从 parsed_data.json 文件中复制内容，粘贴到下方：</p>
+      <textarea id="import-textarea" class="form-textarea" rows="8"
+                placeholder="粘贴 parsed_data.json 的内容..."></textarea>
+      <button class="btn btn-primary" onclick="handleTextImport()">导入数据</button>
+    </div>
+
+    <div class="card">
+      <h3>📋 当前数据状态</h3>
+      ${renderDataStatus()}
+    </div>
+  </div>`;
+}
+
+function renderDataStatus() {
+  const td = scheduleData || {};
+  const tt = td.timetable || {};
+  const cls = td.classes  || [];
+  const teas = td.allTeachers || [];
+  const hasData = cls.length > 0;
+
+  return hasData ? `
+  <div class="status-ok">✅ 已导入</div>
+  <div class="stats-row" style="margin-top:12px">
+    <div class="stat-mini"><span class="sn">${cls.length}</span><span class="sl">班级</span></div>
+    <div class="stat-mini"><span class="sn">${teas.length}</span><span class="sl">教师</span></div>
+    <div class="stat-mini"><span class="sn">${cls.length*30}</span><span class="sl">总课时</span></div>
+  </div>
+  ` : `<div class="status-warn">⚠️ 尚未导入课表</div>`;
+}
+
+async function handleJsonImport(file) {
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    await doImport(data);
+  } catch(e) {
+    toast('JSON解析失败：'+e.message,'error');
   }
 }
 
-// ==================== 导航与初始化 ====================
-function switchPage(page) {
-  currentPage = page;
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.remove('active');
-  });
-  const activeNav = document.querySelector(`[data-page="${page}"]`);
-  if (activeNav) activeNav.classList.add('active');
-  
-  document.querySelectorAll('.page-section').forEach(section => {
-    section.classList.remove('active');
-  });
-  const activeSection = document.getElementById(`page-${page}`);
-  if (activeSection) activeSection.classList.add('active');
-  
-  if (page === 'schedule') renderSchedulePage();
-  else if (page === 'leave') renderLeavePage();
-  else if (page === 'substitute') renderSubstitutePage();
+async function handleTextImport() {
+  const ta = $('import-textarea');
+  if (!ta || !ta.value.trim()) { toast('请先粘贴数据','warning'); return; }
+  try {
+    const data = JSON.parse(ta.value);
+    await doImport(data);
+  } catch(e) {
+    toast('JSON格式错误：'+e.message,'error');
+  }
 }
 
-async function initApp() {
-  const [schedule, leaves, substitutes] = await Promise.all([
-    Store.getSchedule(),
-    Store.getLeaves(),
-    Store.getSubstitutes(),
-  ]);
-  
-  if (schedule) scheduleData = schedule;
-  if (leaves) leaveRecords = leaves;
-  if (substitutes) substituteRecords = substitutes;
-  
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      e.preventDefault();
-      const page = item.dataset.page;
-      switchPage(page);
-    });
-  });
-  
-  document.addEventListener('change', (e) => {
-    if (e.target.name === 'leaveDate') {
-      const dayOfWeekInput = e.target.form.querySelector('[name="dayOfWeek"]');
-      if (dayOfWeekInput) {
-        dayOfWeekInput.value = getWeekdayName(e.target.value);
-      }
+async function doImport(data) {
+  if (!data.timetable || !data.classes) {
+    toast('数据格式不正确，缺少 timetable 或 classes','error'); return;
+  }
+  const loading = showLoading('正在导入课表...');
+  try {
+    const r = await API.importSchedule(data);
+    loading.remove();
+    if (r.success) {
+      scheduleData = data;
+      toast(r.message || '导入成功！','success');
+      renderImportPage($('main-content'));
+    } else {
+      toast('导入失败：'+r.error,'error');
     }
-  });
-  
-  switchPage('schedule');
+  } catch(e) {
+    loading.remove();
+    toast('网络错误','error');
+  }
 }
 
-document.addEventListener('DOMContentLoaded', initApp);
+// ══════════════════════════════════════════════════════
+//  通知设置页（管理员）
+// ══════════════════════════════════════════════════════
+function renderSettingsPage(area) {
+  const cfg = JSON.parse(localStorage.getItem('notify_cfg') || '{}');
+  area.innerHTML = `
+  <div class="page">
+    <h2 class="page-title">🔔 通知设置</h2>
+
+    <div class="card">
+      <h3>📱 企业微信通知</h3>
+      <p class="text-muted">配置企业微信机器人 Webhook URL，有新请假/代课时会自动推送通知。</p>
+      <div class="form-group">
+        <label>Webhook URL</label>
+        <input type="text" id="wx-webhook" class="form-input" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..."
+               value="${esc(cfg.webhook||'')}">
+      </div>
+      <button class="btn btn-primary" onclick="saveNotifyCfg()">保存设置</button>
+      <button class="btn btn-secondary" onclick="testWxNotify()">发送测试消息</button>
+    </div>
+
+    <div class="card">
+      <h3>📧 邮件通知（可选）</h3>
+      <div class="form-group">
+        <label>管理员邮箱</label>
+        <input type="email" id="notify-email" class="form-input" placeholder="admin@example.com"
+               value="${esc(cfg.email||'')}">
+      </div>
+      <button class="btn btn-primary" onclick="saveNotifyCfg()">保存</button>
+    </div>
+
+    <div class="card">
+      <h3>ℹ️ 关于本系统</h3>
+      <p>施秉县双井镇中心小学 · 代课调课系统 v1.0</p>
+      <p class="text-muted">基于云端数据库，支持多端同步。不依赖主机电脑，随时随地访问。</p>
+      <p class="text-muted">默认管理员密码：<code>admin888</code>（首次使用请修改 server.js 中的 ADMIN_HASH）</p>
+    </div>
+  </div>`;
+}
+
+function saveNotifyCfg() {
+  const webhook = $('wx-webhook')?.value?.trim() || '';
+  const email   = $('notify-email')?.value?.trim() || '';
+  localStorage.setItem('notify_cfg', JSON.stringify({ webhook, email }));
+  toast('设置已保存','success');
+}
+
+async function testWxNotify() {
+  const cfg = JSON.parse(localStorage.getItem('notify_cfg') || '{}');
+  if (!cfg.webhook) { toast('请先填写 Webhook URL','warning'); return; }
+  try {
+    const r = await fetch(cfg.webhook, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ msgtype:'text', text:{ content:'🔔 代课调课系统通知测试消息\n时间：'+new Date().toLocaleString('zh-CN') } })
+    });
+    if (r.ok) toast('测试消息发送成功','success');
+    else toast('发送失败：'+r.status,'error');
+  } catch(e) {
+    toast('网络错误','error');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  初始化
+// ══════════════════════════════════════════════════════
+async function initApp() {
+  // 恢复管理员身份
+  const role = sessionStorage.getItem('role');
+  if (role === 'admin') {
+    isAdmin  = true;
+    adminPwd = sessionStorage.getItem('adminPwd') || '';
+  }
+
+  document.body.innerHTML = renderAppShell();
+
+  // 加载数据
+  const [schR, leavesR, subsR] = await Promise.all([
+    API.getSchedule(), API.getLeaves(), API.getSubstitutes()
+  ]);
+
+  if (schR.success && schR.data && Object.keys(schR.data).length > 0) {
+    scheduleData = {
+      timetable: schR.data,
+      teacherAssignment: schR.teacherAssignment || {},
+      afterSchoolService: schR.afterSchoolService || {},
+      classes: schR.classes || [],
+      allTeachers: schR.allTeachers || []
+    };
+  } else {
+    // 尝试直接读 parsed_data.json
+    try {
+      const r = await fetch('parsed_data.json');
+      if (r.ok) scheduleData = await r.json();
+    } catch {}
+  }
+
+  leaveRecords = (leavesR.success ? leavesR.data : []) || [];
+  substituteRecords = (subsR.success ? subsR.data : []) || [];
+
+  switchPage('home');
+}
+
+// ── 启动 ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  const role = sessionStorage.getItem('role');
+  if (!role) {
+    document.body.innerHTML = renderLogin();
+    await loadTeacherList();
+  } else {
+    await initApp();
+  }
+});
