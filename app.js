@@ -459,9 +459,12 @@ function renderTTClass() {
     if (!m) return cleaned;
     return '星期' + m[1];
   };
+  // 归一化：去掉所有空白字符后比较（Excel单元格可能含全角空格/换行）
+  const normD = (s) => String(s || '').replace(/[\s\n\r]/g, '');
   const getAfterSchoolSlot = (day, period) => {
     const slots = afterschool.slots || [];
-    const found = slots.find(s => s.day === day && s.period === period);
+    const target = normD(day);
+    const found = slots.find(s => normD(s.day) === target && s.period === period);
     return found;
   };
 
