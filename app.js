@@ -513,20 +513,40 @@ function renderLeavePage(area) {
             `<input type="text" name="teacherName" value="${esc(sessionStorage.getItem('teacherName')||'')}" readonly class="form-input">`
             }
           </div>
-          <div class="form-group">
-            <label>请假日期 *</label>
-            <input type="date" name="leaveDate" required class="form-input" value="${now()}" onchange="updateLeaveWday(this)">
-          </div>
-          <div class="form-group">
-            <label>星期</label>
-            <input type="text" name="dayOfWeek" readonly class="form-input" id="leave-wday" value="${wday(now())}">
-          </div>
-          <div class="form-group">
-            <label>请假节次 *</label>
-            <select name="period" required class="form-select">
-              <option value="">— 选择节次 —</option>
-              ${[1,2,3,4,5,6].map(p => `<option value="${p}">第${p}节</option>`).join('')}
+          <div class="form-group" style="grid-column:1/-1">
+            <label>请假类型 *</label>
+            <select name="leaveType" id="leave-type" class="form-select" onchange="toggleLeaveType(this.value)">
+              <option value="single">单日请假（选具体节次）</option>
+              <option value="range">连续多天（全天）</option>
             </select>
+          </div>
+          <div id="single-leave">
+            <div class="form-group">
+              <label>请假日期 *</label>
+              <input type="date" name="leaveDate" id="leave-date-single" class="form-input" value="${now()}" onchange="updateLeaveWday(this)">
+            </div>
+            <div class="form-group">
+              <label>星期</label>
+              <input type="text" name="dayOfWeek" readonly class="form-input" id="leave-wday" value="${wday(now())}">
+            </div>
+            <div class="form-group">
+              <label>请假节次 *</label>
+              <select name="period" id="leave-period" class="form-select">
+                <option value="">— 选择节次 —</option>
+                ${[1,2,3,4,5,6].map(p => `<option value="${p}">第${p}节</option>`).join('')}
+                <option value="all">全天（1-6节）</option>
+              </select>
+            </div>
+          </div>
+          <div id="range-leave" style="display:none">
+            <div class="form-group">
+              <label>开始日期 *</label>
+              <input type="date" name="startDate" id="leave-start" class="form-input" value="${now()}">
+            </div>
+            <div class="form-group">
+              <label>结束日期 *</label>
+              <input type="date" name="endDate" id="leave-end" class="form-input" value="${now()}">
+            </div>
           </div>
           <div class="form-group" style="grid-column:1/-1">
             <label>请假原因</label>
@@ -552,7 +572,7 @@ function renderLeavePage(area) {
               <td>${esc(l.teacherName)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
               <td>${esc(l.dayOfWeek)}</td>
-              <td>第${l.period}节</td>
+              <td>${l.period ? '第'+l.period+'节' : '—'}</td>
               <td>${esc(l.reason||'—')}</td>
               <td><span class="badge badge-${l.status==='approved'?'green':l.status==='rejected'?'red':'yellow'}">${l.status||'待审核'}</span></td>
               ${isAdmin ? `<td>
@@ -572,27 +592,76 @@ function updateLeaveWday(el) {
   if (w) w.value = wday(el.value);
 }
 
+function toggleLeaveType(type) {
+  $('single-leave').style.display = type === 'single' ? '' : 'none';
+  $('range-leave').style.display = type === 'range' ? '' : 'none';
+  const periodSel = $('leave-period');
+  if (periodSel) {
+    periodSel.required = type === 'single';
+  }
+}
+
 async function submitLeave(e) {
   e.preventDefault();
   const fd  = new FormData(e.target);
-  const obj = {
-    teacherName: fd.get('teacherName'),
-    leaveDate:   fd.get('leaveDate'),
-    dayOfWeek:   wdayFull(fd.get('leaveDate')),  // 始终以日期为准，自动转为完整'星期一'
-    period:      parseInt(fd.get('period')),
-    reason:      fd.get('reason'),
-    status:      isAdmin ? 'approved' : 'pending',
-  };
+  const leaveType = fd.get('leaveType');
+  const teacherName = fd.get('teacherName');
+  const reason = fd.get('reason');
+  const status = isAdmin ? 'approved' : 'pending';
 
-  const r = await API.addLeave(obj);
-  if (r.success) {
-    leaveRecords.unshift({ id: r.data?.id || Date.now().toString(36), ...obj });
-    toast('请假登记成功','success');
+  const leavesToAdd = [];
+
+  if (leaveType === 'single') {
+    // 单日请假
+    const leaveDate = fd.get('leaveDate');
+    const periodVal = fd.get('period');
+    const dayOfWeek = wdayFull(leaveDate);
+
+    if (periodVal === 'all') {
+      // 全天1-6节
+      for (let p = 1; p <= 6; p++) {
+        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: p, reason, status });
+      }
+    } else {
+      // 单节
+      leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: parseInt(periodVal), reason, status });
+    }
+  } else {
+    // 连续多天
+    const startDate = fd.get('startDate');
+    const endDate = fd.get('endDate');
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      const dayOfWeek = wdayFull(dateStr);
+      // 跳过周末
+      if (dayOfWeek === '星期六' || dayOfWeek === '星期日') continue;
+      // 每天1-6节
+      for (let p = 1; p <= 6; p++) {
+        leavesToAdd.push({ teacherName, leaveDate: dateStr, dayOfWeek, period: p, reason, status });
+      }
+    }
+  }
+
+  // 批量提交
+  let successCount = 0;
+  for (const obj of leavesToAdd) {
+    const r = await API.addLeave(obj);
+    if (r.success) {
+      leaveRecords.unshift({ id: r.data?.id || Date.now().toString(36), ...obj });
+      successCount++;
+    }
+  }
+
+  if (successCount > 0) {
+    toast(`成功登记 ${successCount} 条请假记录`, 'success');
     e.target.reset();
     $('leave-wday').value = wday(now());
     renderLeavePage($('main-content'));
   } else {
-    toast('提交失败：'+r.error,'error');
+    toast('提交失败', 'error');
   }
 }
 
