@@ -163,30 +163,56 @@ async function handleScheduleGet(env) {
 async function handleScheduleImport(request, env) {
   if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
   const body = await request.json().catch(() => ({}));
-  const { timetable, afterSchoolService } = body;
-  if (!timetable) return json({ success: false, error: '缺少 timetable' }, 400);
+  const { timetable, afterSchoolService, classes, allTeachers } = body;
   
-  const classSet = new Set(), teacherSet = new Set();
-  const ta = {};
-  for (const [day, cm] of Object.entries(timetable)) {
-    for (const [cls, periods] of Object.entries(cm)) {
-      classSet.add(cls);
-      if (!ta[cls]) ta[cls] = {};
-      for (const s of periods) {
-        if (s.teacher) teacherSet.add(s.teacher);
-        if (s.subject && s.teacher) ta[cls][s.subject] = s.teacher;
+  // 获取现有配置（用于合并）
+  const existing = await getKV(env, 'config') || {};
+  
+  const classSet = new Set(existing.classes || []);
+  const teacherSet = new Set(existing.allTeachers || []);
+  const ta = existing.teacherAssignment || {};
+  
+  // 处理总课表
+  if (timetable) {
+    for (const [day, cm] of Object.entries(timetable)) {
+      for (const [cls, periods] of Object.entries(cm)) {
+        classSet.add(cls);
+        if (!ta[cls]) ta[cls] = {};
+        for (const s of periods) {
+          if (s.teacher) teacherSet.add(s.teacher);
+          if (s.subject && s.teacher) ta[cls][s.subject] = s.teacher;
+        }
       }
     }
   }
+  
+  // 处理课后服务表中的教师
+  if (afterSchoolService?.slots) {
+    for (const slot of afterSchoolService.slots) {
+      for (const cls in (slot.assignments || {})) {
+        classSet.add(cls);
+        const asn = slot.assignments[cls];
+        if (asn.teacher) teacherSet.add(asn.teacher);
+        if (asn.singleWeek) teacherSet.add(asn.singleWeek);
+        if (asn.doubleWeek) teacherSet.add(asn.doubleWeek);
+      }
+    }
+  }
+  
+  // 传入的 classes/allTeachers 也加入
+  if (classes) classes.forEach(c => classSet.add(c));
+  if (allTeachers) allTeachers.forEach(t => teacherSet.add(t));
+  
   const cfg = {
-    timetable,
+    timetable: timetable || existing.timetable || {},
     teacherAssignment: ta,
-    afterSchoolService: afterSchoolService || [],
+    afterSchoolService: afterSchoolService || existing.afterSchoolService || {},
     classes: [...classSet].sort(),
     allTeachers: [...teacherSet].sort()
   };
   await putKV(env, 'config', cfg);
-  const total = Object.values(timetable).reduce((a, b) => a + Object.values(b).reduce((a2, b2) => a2 + b2.length, 0), 0);
+  
+  const total = Object.values(cfg.timetable).reduce((a, b) => a + Object.values(b).reduce((a2, b2) => a2 + b2.length, 0), 0);
   return json({ success: true, message: '导入成功', stats: { classes: cfg.classes.length, teachers: cfg.allTeachers.length, slots: total } });
 }
 
