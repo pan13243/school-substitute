@@ -879,7 +879,9 @@ async function handleAfterSchoolImport(file) {
  * 期望：表头[教师姓名, 星期, 节次, 班级, 课程, 教师]；每一行 = 一节课
  */
 function parseTimetableWorkbook(wb) {
-  const ws = wb.Sheets[wb.SheetNames[0]];
+  // 优先找"总表"，否则用第一个 Sheet
+  const sheetName = wb.SheetNames.includes('总表') ? '总表' : wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
   if (!ws) return null;
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
   if (!rows.length) return null;
