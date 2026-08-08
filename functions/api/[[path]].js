@@ -338,5 +338,21 @@ export async function onRequest(context) {
     if (method === 'POST') return handleSubstitutesSave(request, env);
   }
   
+  // 调试接口：查看数据状态
+  if (path === '/api/debug/status') {
+    const cfg = await getKV(env, 'config') || {};
+    const leaves = await getKV(env, 'leaves') || [];
+    const substitutes = await getKV(env, 'substitutes') || [];
+    return json({
+      success: true,
+      hasTimetable: !!cfg.timetable,
+      timetableKeys: cfg.timetable ? Object.keys(cfg.timetable) : [],
+      timetableSample: cfg.timetable ? Object.entries(cfg.timetable).slice(0,2).map(([k,v]) => ({day: k, classes: Object.keys(v).slice(0,2)})) : null,
+      leavesCount: leaves.length,
+      leavesStatus: leaves.reduce((acc, l) => { acc[l.status] = (acc[l.status]||0)+1; return acc; }, {}),
+      substitutesCount: substitutes.length
+    });
+  }
+  
   return json({ success: false, error: 'API 路由未找到: ' + path }, 404);
 }
