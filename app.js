@@ -439,17 +439,39 @@ function renderTTClass() {
   const cn  = sel.value;
   const td  = scheduleData || {};
   const tt  = td.timetable || {};
+  const afterschool = td.afterSchoolService || {};
   const area = $('tt-class-content');
   if (!cn) { area.innerHTML = '<p class="text-muted">请选择班级</p>'; return; }
 
   const days = ['星期一','星期二','星期三','星期四','星期五'];
-  const periods = [1,2,3,4,5,6];
-  const timeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'14:00-14:40', 6:'14:50-15:30' };
+  const timeMap = {
+    1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00',
+    5:'14:00-14:40', 6:'14:50-15:30',
+    7:'课后服务1', 8:'课后服务2', 9:'课后服务3',
+    10:'晚自习', 11:'午休'
+  };
+
+  // 获取课后服务的班级数据
+  const getAfterSchoolSlot = (day, period) => {
+    const slots = afterschool.slots || [];
+    return slots.find(s => s.day === day && s.period === period);
+  };
+
+  // 获取课后服务教师（显示单周/双周）
+  const getAfterSchoolTeacher = (day, period) => {
+    const slot = getAfterSchoolSlot(day, period);
+    if (!slot) return null;
+    const asn = slot.assignments?.[cn];
+    if (!asn) return null;
+    return asn;
+  };
 
   let html = `<div class="table-wrap"><table class="data-table tt-table">`;
   html += `<thead><tr><th>节次</th><th>时间</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
-  for (const p of periods) {
-    html += `<tr><td>第${p}节</td><td class="time-cell">${timeMap[p]||''}</td>`;
+
+  // 常规课程（1-6节）
+  for (const p of [1,2,3,4,5,6]) {
+    html += `<tr><td>第${p}节</td><td class="time-cell">${timeMap[p]}</td>`;
     for (const d of days) {
       const slots = tt[d]?.[cn] || [];
       const slot = slots.find(s => s.period === p);
@@ -459,6 +481,32 @@ function renderTTClass() {
     }
     html += `</tr>`;
   }
+
+  // 课后服务（7-11节）
+  const afterschoolPeriods = [7,8,9,10,11];
+  for (const p of afterschoolPeriods) {
+    html += `<tr class="afterschool-row"><td>第${p}节</td><td class="time-cell">${timeMap[p]}</td>`;
+    for (const d of days) {
+      const asn = getAfterSchoolTeacher(d, p);
+      if (asn) {
+        if (asn.week === '单周/双周') {
+          html += `<td class="has-class afterschool-cell">
+            <span class="subj">${esc(asn.singleWeek||'')}</span><span class="week-tag">单周</span><br>
+            <span class="subj">${esc(asn.doubleWeek||'')}</span><span class="week-tag week-double">双周</span>
+          </td>`;
+        } else {
+          html += `<td class="has-class afterschool-cell">
+            <span class="subj">${esc(asn.teacher||'')}</span>
+            ${asn.week ? `<span class="week-tag">${esc(asn.week)}</span>` : ''}
+          </td>`;
+        }
+      } else {
+        html += `<td class="empty-cell afterschool-cell">—</td>`;
+      }
+    }
+    html += `</tr>`;
+  }
+
   html += `</tbody></table></div>`;
   area.innerHTML = html;
 }
@@ -1393,18 +1441,42 @@ function parseAfterSchoolSheet(ws, sheetName) {
     }
   }
   if (!classCols.length) return null;
+
+  // 节次映射：课后服务1=7, 2=8, 3=9, 晚自习=10, 午休=11
+  const PROJECT_PERIOD_MAP = {
+    '课后服务1': 7,
+    '课后服务2': 8,
+    '课后服务3': 9,
+    '晚自习': 10,
+    '午休': 11
+  };
+
   const slots = [];
   let currentDay = '';
   for (let i = headerRow + 1; i < rows.length; i++) {
     const r = rows[i] || [];
     if (r[0]) currentDay = normDay(String(r[0]).trim());
     const timeRange = String(r[1] || '').trim();
-    const project   = String(r[3] || '').trim();
+    const project = String(r[3] || '').trim();
     if (!timeRange && !project) continue;
-    const slot = { day: currentDay, time: timeRange, project, sheet: sheetName, assignments: {} };
+    
+    // 映射节次
+    const period = PROJECT_PERIOD_MAP[project] || 0;
+    if (!period) continue;
+    
+    const slot = { day: currentDay, time: timeRange, project, period, sheet: sheetName, assignments: {} };
     for (const c of classCols) {
       const v = String(r[c.idx] || '').trim();
-      if (v) slot.assignments[c.name] = v;
+      if (!v) continue;
+      // 拆分双教师：第一个=单周，第二个=双周
+      const parts = v.split(/[\n，,]/).map(t => t.trim()).filter(t => t);
+      if (parts.length === 1) {
+        slot.assignments[c.name] = { teacher: parts[0], week: '通用' };
+      } else if (parts.length === 2) {
+        slot.assignments[c.name] = { singleWeek: parts[0], doubleWeek: parts[1], week: '单周/双周' };
+      } else {
+        slot.assignments[c.name] = { teacher: parts[0], week: '通用' };
+      }
     }
     slots.push(slot);
   }
@@ -1532,6 +1604,15 @@ async function initApp() {
       afterSchoolService: schR.afterSchoolService || {},
       classes: schR.classes || [],
       allTeachers: schR.allTeachers || []
+    };
+  } else if (schR.afterSchoolService) {
+    // 只有课后服务数据
+    scheduleData = {
+      timetable: {},
+      teacherAssignment: {},
+      afterSchoolService: schR.afterSchoolService || {},
+      classes: [],
+      allTeachers: []
     };
   } else {
     // 尝试直接读 parsed_data.json

@@ -193,6 +193,17 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
 .tt-table .subj { font-weight: 600; color: var(--blue-dark); font-size: 13px; }
 .tt-table .tea  { font-size: 12px; color: var(--gray-500); }
 
+/* 课后服务行 */
+.afterschool-row td { background: #FFF7ED !important; }
+.afterschool-cell.has-class { background: #FFEDD5 !important; }
+.afterschool-cell.empty-cell { background: #FFF7ED !important; }
+.afterschool-cell .subj { color: #C2410C; font-size: 12px; }
+.week-tag {
+  display: inline-block; padding: 1px 5px; border-radius: 4px;
+  font-size: 10px; font-weight: 600; margin-left: 3px; background: #93C5FD; color: #1E40AF;
+}
+.week-tag.week-double { background: #FCA5A5; color: #991B1B; }
+
 /* ── 徽章 ─────────────────────────────────────────── */
 .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
 .badge-green  { background: var(--green-bg); color: var(--green); }
