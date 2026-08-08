@@ -1,0 +1,71 @@
+{
+  "leaves": [
+    {
+      "id": "msjp2qgiazrl",
+      "teacherName": "龙燕",
+      "leaveDate": "2026-08-10",
+      "reason": "测试",
+      "status": "approved",
+      "createdAt": "2026-08-08T01:28:10.866Z",
+      "updatedAt": "2026-08-08T01:28:10.876Z"
+    }
+  ],
+  "substitutes": [
+    {
+      "id": "sub_1786152223593_7mek",
+      "leaveId": "msjox0760nd8",
+      "leaveTeacher": "龙燕",
+      "substituteTeacher": "雷安元",
+      "className": "一（1）",
+      "subject": "语文",
+      "leaveDate": "2026-08-10",
+      "dayOfWeek": "星期一",
+      "period": 1,
+      "reason": "测试",
+      "status": "arranged",
+      "createdAt": "2026-08-08T01:23:43.593Z"
+    },
+    {
+      "id": "sub_1786152223593_pdew",
+      "leaveId": "msjox0760nd8",
+      "leaveTeacher": "龙燕",
+      "substituteTeacher": "刘光军",
+      "className": "一（1）",
+      "subject": "语文",
+      "leaveDate": "2026-08-10",
+      "dayOfWeek": "星期一",
+      "period": 2,
+      "reason": "测试",
+      "status": "arranged",
+      "createdAt": "2026-08-08T01:23:43.593Z"
+    },
+    {
+      "id": "sub_1786152490911_qn39",
+      "leaveId": "msjp2qgiazrl",
+      "leaveTeacher": "龙燕",
+      "substituteTeacher": "雷安元",
+      "className": "一（1）",
+      "subject": "语文",
+      "leaveDate": "2026-08-10",
+      "dayOfWeek": "星期一",
+      "period": 1,
+      "reason": "测试",
+      "status": "arranged",
+      "createdAt": "2026-08-08T01:28:10.911Z"
+    },
+    {
+      "id": "sub_1786152490911_8uos",
+      "leaveId": "msjp2qgiazrl",
+      "leaveTeacher": "龙燕",
+      "substituteTeacher": "刘光军",
+      "className": "一（1）",
+      "subject": "语文",
+      "leaveDate": "2026-08-10",
+      "dayOfWeek": "星期一",
+      "period": 2,
+      "reason": "测试",
+      "status": "arranged",
+      "createdAt": "2026-08-08T01:28:10.911Z"
+    }
+  ]
+}

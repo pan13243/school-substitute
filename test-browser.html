@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Excel 解析测试</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <h2>Excel 解析测试</h2>
+  <p>请选择 <code>双井镇中心小学 2026 年春季学期总课表_标准化.xlsx</code>：</p>
+  <input type="file" id="file" accept=".xlsx,.xls">
+  <pre id="out" style="background:#f0f0f0;padding:12px;margin-top:16px;white-space:pre-wrap;word-break:break-all;"></pre>
+
+  <script>
+    document.getElementById('file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const out = document.getElementById('out');
+      try {
+        out.textContent = '文件名: ' + file.name + '\n大小: ' + file.size + ' bytes\n\n开始解析...';
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array' });
+        out.textContent += '\n\nSheets: ' + JSON.stringify(wb.SheetNames);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+        out.textContent += '\n\n总行数: ' + rows.length;
+        out.textContent += '\n\n前 3 行:\n' + JSON.stringify(rows.slice(0, 3), null, 2);
+
+        // 测试列识别
+        const header = (rows[0] || []).map(c => String(c || '').trim());
+        const findCol = re => { for (let i = 0; i < header.length; i++) if (re.test(header[i])) return i; return -1; };
+        const iTeacher = findCol(/教师姓名|姓名/);
+        const iDay     = findCol(/星期/);
+        const iPeriod  = findCol(/节次|第.*节/);
+        const iClass   = findCol(/班级/);
+        const iSubject = findCol(/课程|科目/);
+
+        out.textContent += '\n\n表头: ' + JSON.stringify(header);
+        out.textContent += '\n\n列索引: iTeacher=' + iTeacher + ' iDay=' + iDay + ' iPeriod=' + iPeriod + ' iClass=' + iClass + ' iSubject=' + iSubject;
+
+        if (iDay >= 0 && iClass >= 0 && iPeriod >= 0 && iSubject >= 0) {
+          let count = 0;
+          for (let i = 1; i < rows.length; i++) {
+            const r = rows[i] || [];
+            const day = String(r[iDay] || '').trim();
+            const cls = String(r[iClass] || '').trim();
+            const period = parseInt(String(r[iPeriod] || '').replace(/[^\d]/g,''));
+            const subject = String(r[iSubject] || '').trim();
+            if (day && cls && period && subject) count++;
+          }
+          out.textContent += '\n\n✅ 解析成功！有效数据行: ' + count;
+        } else {
+          out.textContent += '\n\n❌ 列识别失败！请检查文件格式';
+        }
+      } catch (err) {
+        out.textContent = '❌ 错误: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
