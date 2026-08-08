@@ -33,16 +33,50 @@ function getWeekdayFromDate(dateStr) {
   return weekdays[date.getDay()];
 }
 
-function priorityWeight(teacher, subject, className, teacherAssignment) {
-  const sameClassMain = teacherAssignment?.[className]?.[subject];
-  if (sameClassMain && sameClassMain !== teacher) {
-    if (MAIN_SUBJECTS.includes(subject)) return 1;
+// 判断教师是否在某班任课（任意科目）
+function teacherInClass(teacher, className, teacherAssignment) {
+  const clsSubjects = teacherAssignment?.[className] || {};
+  return Object.values(clsSubjects).some(t => t === teacher);
+}
+
+// 获取教师在某班任教的科目（用于判断主科/副科）
+function getTeacherMainSubject(teacher, className, teacherAssignment) {
+  const clsSubjects = teacherAssignment?.[className] || {};
+  for (const [subj, t] of Object.entries(clsSubjects)) {
+    if (t === teacher) return subj;
   }
-  if (MAIN_SUBJECTS.includes(subject)) return 2;
-  if (SECONDARY_EARLY.includes(subject)) return 3;
-  if (SECONDARY_LATE.includes(subject)) return 4;
-  if (SIDE_SUBJECTS.includes(subject)) return 6;
-  return 7;
+  return null;
+}
+
+function priorityWeight(teacher, subject, className, teacherAssignment) {
+  // 1. 同班同科（语文/数学）- 最理想
+  const sameClassSameSubject = teacherAssignment?.[className]?.[subject];
+  if (sameClassSameSubject === teacher && MAIN_SUBJECTS.includes(subject)) return 1;
+  
+  // 2. 同班其他科目的主科老师（语文/数学）
+  const teacherMainSubj = getTeacherMainSubject(teacher, className, teacherAssignment);
+  if (teacherMainSubj && MAIN_SUBJECTS.includes(teacherMainSubj)) return 2;
+  
+  // 3. 同班英语老师
+  if (teacherMainSubj && SECONDARY_EARLY.includes(teacherMainSubj)) return 3;
+  
+  // 4. 同班道法/科学老师
+  if (teacherMainSubj && SECONDARY_LATE.includes(teacherMainSubj)) return 4;
+  
+  // 5. 同班其他副科老师
+  if (teacherInClass(teacher, className, teacherAssignment)) return 5;
+  
+  // 6. 其他班的主科老师
+  if (MAIN_SUBJECTS.includes(teacherMainSubj || '')) return 6;
+  
+  // 7. 其他班的英语老师
+  if (SECONDARY_EARLY.includes(teacherMainSubj || '')) return 7;
+  
+  // 8. 其他班的道法/科学老师
+  if (SECONDARY_LATE.includes(teacherMainSubj || '')) return 8;
+  
+  // 9. 其他班的副科老师
+  return 9;
 }
 
 function buildTeacherSchedule(timetable) {
@@ -83,19 +117,23 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, targetDate 
   const { teacherSchedule, allClasses } = buildTeacherSchedule(timetable);
   const results = [];
   const existingSubs = [];
-  const dayMap = {};
-  const base = new Date(targetDate);
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(base);
-    d.setDate(base.getDate() - base.getDay() + i);
-    const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-    dayMap[weekdays[i]] = d.toISOString().split('T')[0];
-  }
 
   for (const leave of leaves) {
     if (leave.status !== 'pending' && leave.status !== 'approved') continue;
     const leaveWeekday = normalizeDay(leave.dayOfWeek) || normalizeDay(getWeekdayFromDate(leave.leaveDate));
     if (!leaveWeekday) continue;
+    
+    // 计算该请假的实际日期（基于 leaveDate 所在周）
+    const leaveDateStr = leave.leaveDate || targetDate;
+    const leaveBase = new Date(leaveDateStr);
+    const dayMap = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(leaveBase);
+      d.setDate(leaveBase.getDate() - leaveBase.getDay() + i);
+      const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      dayMap[weekdays[i]] = d.toISOString().split('T')[0];
+    }
+    
     const teacherSlots = teacherSchedule[leave.teacherName];
     if (!teacherSlots) continue;
     for (const [slotKey, slot] of Object.entries(teacherSlots)) {
