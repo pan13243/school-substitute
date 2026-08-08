@@ -1117,24 +1117,17 @@ function parseTimetableWorkbook(wb) {
   const ws = wb.Sheets[sheetName];
   if (!ws) return null;
   
-  // 使用 cell 地址直接访问（和 Node.js 版本一致）
-  const decode_cell = XLSX.utils.decode_cell;
-  const encode_cell = XLSX.utils.encode_cell;
-  
-  // 获取有数据的范围
-  const range = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : {s:{r:0,c:0},e:{r:0,c:0}};
-  
   // 调试信息
   const dbg = document.createElement('div');
   dbg.id = 'parse-debug';
   dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:yellow;color:black;padding:8px;z-index:99999;font-size:11px;max-height:180px;overflow:auto;font-family:monospace';
-  dbg.textContent = 'PARSING... sheet=' + sheetName + ' range=' + JSON.stringify(range);
+  dbg.textContent = 'PARSING... sheet=' + sheetName;
   document.body.appendChild(dbg);
   
   // 先尝试解析为原始总课表格式
-  const result = parseOriginalTimetable(ws, range);
+  const result = parseOriginalTimetableV2(ws);
   if (result) {
-    dbg.textContent += ' | 识别为原始总课表格式: ' + result.classes.length + '班';
+    dbg.textContent += ' | 识别为原始总课表格式: ' + result.classes.length + '班, ' + result.summary.totalSlots + '节课';
     setTimeout(() => { const e = document.getElementById('parse-debug'); if (e) e.remove(); }, 5000);
     return result;
   }
@@ -1152,39 +1145,39 @@ function parseTimetableWorkbook(wb) {
 }
 
 /**
- * 解析原始总课表格式（施秉县双井镇中心小学格式）
+ * 解析原始总课表格式 V2 - 使用 sheet_to_json
  */
-function parseOriginalTimetable(ws, range) {
-  const getCell = (r, c) => {
-    const cell = ws[encode_cell({r, c})];
-    return cell ? String(cell.v || '').trim() : '';
-  };
+function parseOriginalTimetableV2(ws) {
+  // 读取所有数据（header:1 返回二维数组）
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  if (!rows || rows.length < 10) return null;
   
-  // 读取班级名（Row 3, idx 2，从 col 2 开始）
+  // 班级名在第3行（index 2），从第3列（index 2）开始
+  const classRow = rows[2] || [];
   const classes = [];
-  for (let c = 2; c < 23; c++) { // 21个班，col 2-22
-    const cls = getCell(2, c);
-    if (cls) classes.push(cls);
+  for (let c = 2; c < 23 && c < classRow.length; c++) {
+    const cls = String(classRow[c] || '').trim();
+    if (cls && cls !== 'null' && cls !== 'undefined') classes.push(cls);
   }
   if (classes.length === 0) return null;
   
-  // 每天起始列和星期
+  // 每天起始列（0-based index）
   const dayConfig = [
-    { day: '星期一', startCol: 2 },
-    { day: '星期二', startCol: 23 },
-    { day: '星期三', startCol: 44 },
-    { day: '星期四', startCol: 65 },
-    { day: '星期五', startCol: 86 }
+    { day: '星期一', startCol: 2 },   // C列
+    { day: '星期二', startCol: 23 },  // X列
+    { day: '星期三', startCol: 44 },  // AS列
+    { day: '星期四', startCol: 65 },  // BN列
+    { day: '星期五', startCol: 86 }   // CI列
   ];
   
-  // 节次定义：学科行 + 教师行
-  const periodRows = [
-    { period: 1, subjectRow: 5, teacherRow: 6 },   // Row 6, 7
-    { period: 2, subjectRow: 7, teacherRow: 8 },   // Row 8, 9
-    { period: 3, subjectRow: 10, teacherRow: 11 }, // Row 11, 12
-    { period: 4, subjectRow: 12, teacherRow: 13 }, // Row 13, 14
-    { period: 5, subjectRow: 19, teacherRow: 20 }, // Row 20, 21
-    { period: 6, subjectRow: 21, teacherRow: 22 }  // Row 22, 23
+  // 节次定义（0-based row index）
+  const periodConfig = [
+    { period: 1, subjectRow: 5, teacherRow: 6 },    // 第6,7行
+    { period: 2, subjectRow: 7, teacherRow: 8 },    // 第8,9行
+    { period: 3, subjectRow: 10, teacherRow: 11 },  // 第11,12行
+    { period: 4, subjectRow: 12, teacherRow: 13 },  // 第13,14行
+    { period: 5, subjectRow: 19, teacherRow: 20 },  // 第20,21行
+    { period: 6, subjectRow: 21, teacherRow: 22 }   // 第22,23行
   ];
   
   const timetable = {};
@@ -1199,9 +1192,11 @@ function parseOriginalTimetable(ws, range) {
       const col = startCol + i;
       timetable[day][cls] = [];
       
-      for (const { period, subjectRow, teacherRow } of periodRows) {
-        const subject = getCell(subjectRow, col);
-        const teacher = getCell(teacherRow, col);
+      for (const { period, subjectRow, teacherRow } of periodConfig) {
+        const subjectRowData = rows[subjectRow] || [];
+        const teacherRowData = rows[teacherRow] || [];
+        const subject = String(subjectRowData[col] || '').trim();
+        const teacher = String(teacherRowData[col] || '').trim();
         
         if (subject && subject !== 'null' && subject !== 'undefined') {
           timetable[day][cls].push({
