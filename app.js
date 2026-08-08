@@ -64,7 +64,7 @@ const API = {
     } catch { return { success: false }; }
   },
   async importSchedule(payload) {
-    const r = await fetch('/api/schedule/import', {
+    const r = await fetch('/api/schedule', {
       method:'POST', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd},
       body: JSON.stringify(payload)
     });
