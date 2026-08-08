@@ -242,8 +242,11 @@ async function handleSubstitutesGenerate(request, env) {
   const leaves = await getKV(env, 'leaves') || [];
   const pendingLeaves = leaves.filter(l => l.status === 'pending' || l.status === 'approved');
   
-  if (!cfg.timetable || pendingLeaves.length === 0) {
-    return json({ success: true, results: [], summary: { total: 0, arranged: 0, failed: 0 }, message: '暂无待处理请假' });
+  if (!cfg.timetable) {
+    return json({ success: false, error: '尚未导入课表，请先导入总课表' }, 400);
+  }
+  if (pendingLeaves.length === 0) {
+    return json({ success: false, error: '暂无待处理请假（没有pending或approved状态的请假记录）' }, 400);
   }
   
   const results = generateSubstitutes({
