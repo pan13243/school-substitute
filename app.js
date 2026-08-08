@@ -534,7 +534,7 @@ function renderLeavePage(area) {
               <select name="period" id="leave-period" class="form-select">
                 <option value="">— 选择节次 —</option>
                 ${[1,2,3,4,5,6].map(p => `<option value="${p}">第${p}节</option>`).join('')}
-                <option value="all">全天（1-6节）</option>
+                <option value="all">全天（按课表自动判断）</option>
               </select>
             </div>
           </div>
@@ -601,6 +601,26 @@ function toggleLeaveType(type) {
   }
 }
 
+// 根据课表获取教师某天的有课节次
+function getTeacherPeriods(teacherName, dayOfWeek) {
+  const periods = [];
+  if (!scheduleData || !scheduleData.timetable) return periods;
+  
+  const dayData = scheduleData.timetable[dayOfWeek];
+  if (!dayData) return periods;
+  
+  for (const [className, slots] of Object.entries(dayData)) {
+    for (const slot of slots) {
+      if (slot.teacher === teacherName && slot.period) {
+        periods.push(parseInt(slot.period));
+      }
+    }
+  }
+  
+  // 去重并排序
+  return [...new Set(periods)].sort((a, b) => a - b);
+}
+
 async function submitLeave(e) {
   e.preventDefault();
   const fd  = new FormData(e.target);
@@ -618,8 +638,13 @@ async function submitLeave(e) {
     const dayOfWeek = wdayFull(leaveDate);
 
     if (periodVal === 'all') {
-      // 全天1-6节
-      for (let p = 1; p <= 6; p++) {
+      // 根据课表自动判断该教师当天有哪些课
+      const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
+      if (teacherPeriods.length === 0) {
+        toast('该教师当天没有课程', 'warning');
+        return;
+      }
+      for (const p of teacherPeriods) {
         leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: p, reason, status });
       }
     } else {
@@ -638,11 +663,17 @@ async function submitLeave(e) {
       const dayOfWeek = wdayFull(dateStr);
       // 跳过周末
       if (dayOfWeek === '星期六' || dayOfWeek === '星期日') continue;
-      // 每天1-6节
-      for (let p = 1; p <= 6; p++) {
+      // 根据课表判断该教师当天有哪些课
+      const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
+      for (const p of teacherPeriods) {
         leavesToAdd.push({ teacherName, leaveDate: dateStr, dayOfWeek, period: p, reason, status });
       }
     }
+  }
+
+  if (leavesToAdd.length === 0) {
+    toast('没有可请假的课程记录', 'warning');
+    return;
   }
 
   // 批量提交
