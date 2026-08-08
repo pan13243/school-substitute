@@ -1196,8 +1196,9 @@ async function handleAfterSchoolImport(weekType, file) {
     const wb = XLSX.read(buf, { type: 'array' });
     console.log(`[AfterSchoolImport ${weekType}] SheetNames:`, wb.SheetNames);
     
-    // 直接解析 Sheet1，标记为单周或双周
-    const data = parseAfterSchoolSheet(wb.Sheets['Sheet1'], weekType === 'single' ? '单周' : '双周');
+    // 直接解析第一个 Sheet（可能是 Sheet1/单周/双周等），标记为单周或双周
+    const firstSheetName = wb.SheetNames[0];
+    const data = parseAfterSchoolSheet(wb.Sheets[firstSheetName], weekType === 'single' ? '单周' : '双周');
     console.log(`[AfterSchoolImport ${weekType}] parsed slots:`, data?.slots?.length);
     loading.remove();
     
