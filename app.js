@@ -442,6 +442,11 @@ function renderTTClass() {
   const afterschool = td.afterSchoolService || {};
   const area = $('tt-class-content');
   if (!cn) { area.innerHTML = '<p class="text-muted">请选择班级</p>'; return; }
+  
+  // 调试信息
+  console.log('[renderTTClass] afterSchoolService:', afterschool);
+  console.log('[renderTTClass] slots:', afterschool.slots?.length);
+  console.log('[renderTTClass] first slot:', afterschool.slots?.[0]);
 
   const days = ['星期一','星期二','星期三','星期四','星期五'];
   const timeMap = {
