@@ -39,44 +39,40 @@ function teacherInClass(teacher, className, teacherAssignment) {
   return Object.values(clsSubjects).some(t => t === teacher);
 }
 
-// 获取教师在某班任教的科目（用于判断主科/副科）
+// 获取教师在某班任教的主科（优先级：语文/数学 > 英语 > 科学/道法）
 function getTeacherMainSubject(teacher, className, teacherAssignment) {
   const clsSubjects = teacherAssignment?.[className] || {};
+  const subjects = [];
   for (const [subj, t] of Object.entries(clsSubjects)) {
-    if (t === teacher) return subj;
+    if (t === teacher) subjects.push(subj);
   }
-  return null;
+  // 按优先级返回最高级的主科
+  if (subjects.some(s => MAIN_SUBJECTS.includes(s))) return subjects.find(s => MAIN_SUBJECTS.includes(s));
+  if (subjects.some(s => SECONDARY_EARLY.includes(s))) return subjects.find(s => SECONDARY_EARLY.includes(s));
+  if (subjects.some(s => SECONDARY_LATE.includes(s))) return subjects.find(s => SECONDARY_LATE.includes(s));
+  return subjects[0] || null;
 }
 
 function priorityWeight(teacher, subject, className, teacherAssignment) {
-  // 1. 同班同科（语文/数学）- 最理想
+  // 获取该教师在该班的主科（用于判断优先级）
+  const teacherMainSubj = getTeacherMainSubject(teacher, className, teacherAssignment);
+  const isSameClass = teacherInClass(teacher, className, teacherAssignment);
+  
+  // 1级：同班同科（语文/数学）
   const sameClassSameSubject = teacherAssignment?.[className]?.[subject];
   if (sameClassSameSubject === teacher && MAIN_SUBJECTS.includes(subject)) return 1;
   
-  // 2. 同班其他科目的主科老师（语文/数学）
-  const teacherMainSubj = getTeacherMainSubject(teacher, className, teacherAssignment);
-  if (teacherMainSubj && MAIN_SUBJECTS.includes(teacherMainSubj)) return 2;
+  // 2级：同班英语老师
+  if (isSameClass && teacherMainSubj && SECONDARY_EARLY.includes(teacherMainSubj)) return 2;
   
-  // 3. 同班英语老师
-  if (teacherMainSubj && SECONDARY_EARLY.includes(teacherMainSubj)) return 3;
+  // 3级：同班道法/科学老师
+  if (isSameClass && teacherMainSubj && SECONDARY_LATE.includes(teacherMainSubj)) return 3;
   
-  // 4. 同班道法/科学老师
-  if (teacherMainSubj && SECONDARY_LATE.includes(teacherMainSubj)) return 4;
+  // 4级：同班其他副科老师（或同班无主科的老师）
+  if (isSameClass) return 4;
   
-  // 5. 同班其他副科老师
-  if (teacherInClass(teacher, className, teacherAssignment)) return 5;
-  
-  // 6. 其他班的主科老师
-  if (MAIN_SUBJECTS.includes(teacherMainSubj || '')) return 6;
-  
-  // 7. 其他班的英语老师
-  if (SECONDARY_EARLY.includes(teacherMainSubj || '')) return 7;
-  
-  // 8. 其他班的道法/科学老师
-  if (SECONDARY_LATE.includes(teacherMainSubj || '')) return 8;
-  
-  // 9. 其他班的副科老师
-  return 9;
+  // 5级：其他班的老师（任何科目）
+  return 5;
 }
 
 function buildTeacherSchedule(timetable) {
