@@ -858,7 +858,7 @@ function renderPreviewTable() {
       <table class="data-table preview-table">
         <thead><tr>
           <th>请假教师</th><th>代课教师</th><th>班级</th><th>科目</th>
-          <th>日期</th><th>星期</th><th>节次</th><th>操作</th>
+          <th>代课日期</th><th>星期</th><th>节次</th><th>操作</th>
         </tr></thead>
         <tbody>
           ${previewSubstitutes.map((s, idx) => `
@@ -972,7 +972,7 @@ function renderSubTable() {
       <table class="data-table" id="sub-table">
         <thead><tr>
           <th>请假教师</th><th>代课教师</th><th>班级</th><th>科目</th>
-          <th>日期</th><th>星期</th><th>节次</th>
+          <th>代课日期</th><th>星期</th><th>节次</th>
           <th>安排方式</th>
         </tr></thead>
         <tbody id="sub-tbody">
