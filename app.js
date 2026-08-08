@@ -1574,8 +1574,8 @@ function parseAfterSchoolSheet(ws, sheetName) {
       }
       v = String(v || '').trim();
       if (!v || v === '[object Object]') continue;
-      // 拆分双教师：第一个=单周，第二个=双周
-      const parts = v.split(/[\n，,]/).map(t => t.trim()).filter(t => t);
+      // 拆分双教师（按换行/中英文逗号/分号/任意空白字符）
+      const parts = v.split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
       if (parts.length === 1) {
         slot.assignments[c.name] = { teacher: parts[0], week: '通用' };
       } else if (parts.length === 2) {
