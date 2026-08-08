@@ -1107,23 +1107,146 @@ async function handleAfterSchoolImport(file) {
 }
 
 /**
- * 标准化总课表解析
- * 期望：表头[教师姓名, 星期, 节次, 班级, 课程, 教师]；每一行 = 一节课
+ * 总课表解析 - 支持两种格式：
+ * 1. 标准化格式（6列：教师姓名、星期、节次、班级、课程、教师）
+ * 2. 原始总课表格式（每天21列，学科行+教师行）
  */
 function parseTimetableWorkbook(wb) {
   // 优先找"总表"，否则用第一个 Sheet
   const sheetName = wb.SheetNames.includes('总表') ? '总表' : wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
   if (!ws) return null;
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
-  if (!rows.length) return null;
-  // 调试：显示前 3 行内容到页面顶部
+  
+  // 使用 cell 地址直接访问（和 Node.js 版本一致）
+  const decode_cell = XLSX.utils.decode_cell;
+  const encode_cell = XLSX.utils.encode_cell;
+  
+  // 获取有数据的范围
+  const range = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : {s:{r:0,c:0},e:{r:0,c:0}};
+  
+  // 调试信息
   const dbg = document.createElement('div');
   dbg.id = 'parse-debug';
   dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:yellow;color:black;padding:8px;z-index:99999;font-size:11px;max-height:180px;overflow:auto;font-family:monospace';
-  dbg.textContent = 'PARSING... sheets=' + JSON.stringify(wb.SheetNames) + ' rows=' + rows.length + ' first3=' + JSON.stringify(rows.slice(0,3));
+  dbg.textContent = 'PARSING... sheet=' + sheetName + ' range=' + JSON.stringify(range);
   document.body.appendChild(dbg);
-  setTimeout(() => { const e = document.getElementById('parse-debug'); if (e) e.remove(); }, 8000);
+  
+  // 先尝试解析为原始总课表格式
+  const result = parseOriginalTimetable(ws, range);
+  if (result) {
+    dbg.textContent += ' | 识别为原始总课表格式: ' + result.classes.length + '班';
+    setTimeout(() => { const e = document.getElementById('parse-debug'); if (e) e.remove(); }, 5000);
+    return result;
+  }
+  
+  // 回退到标准化格式
+  const stdResult = parseStandardTimetable(ws);
+  if (stdResult) {
+    dbg.textContent += ' | 识别为标准格式: ' + stdResult.classes.length + '班';
+    setTimeout(() => { const e = document.getElementById('parse-debug'); if (e) e.remove(); }, 5000);
+    return stdResult;
+  }
+  
+  dbg.textContent += ' | 解析失败';
+  return null;
+}
+
+/**
+ * 解析原始总课表格式（施秉县双井镇中心小学格式）
+ */
+function parseOriginalTimetable(ws, range) {
+  const getCell = (r, c) => {
+    const cell = ws[encode_cell({r, c})];
+    return cell ? String(cell.v || '').trim() : '';
+  };
+  
+  // 读取班级名（Row 3, idx 2，从 col 2 开始）
+  const classes = [];
+  for (let c = 2; c < 23; c++) { // 21个班，col 2-22
+    const cls = getCell(2, c);
+    if (cls) classes.push(cls);
+  }
+  if (classes.length === 0) return null;
+  
+  // 每天起始列和星期
+  const dayConfig = [
+    { day: '星期一', startCol: 2 },
+    { day: '星期二', startCol: 23 },
+    { day: '星期三', startCol: 44 },
+    { day: '星期四', startCol: 65 },
+    { day: '星期五', startCol: 86 }
+  ];
+  
+  // 节次定义：学科行 + 教师行
+  const periodRows = [
+    { period: 1, subjectRow: 5, teacherRow: 6 },   // Row 6, 7
+    { period: 2, subjectRow: 7, teacherRow: 8 },   // Row 8, 9
+    { period: 3, subjectRow: 10, teacherRow: 11 }, // Row 11, 12
+    { period: 4, subjectRow: 12, teacherRow: 13 }, // Row 13, 14
+    { period: 5, subjectRow: 19, teacherRow: 20 }, // Row 20, 21
+    { period: 6, subjectRow: 21, teacherRow: 22 }  // Row 22, 23
+  ];
+  
+  const timetable = {};
+  const teachers = new Set();
+  const teacherAssignment = {};
+  
+  for (const { day, startCol } of dayConfig) {
+    timetable[day] = {};
+    
+    for (let i = 0; i < classes.length; i++) {
+      const cls = classes[i];
+      const col = startCol + i;
+      timetable[day][cls] = [];
+      
+      for (const { period, subjectRow, teacherRow } of periodRows) {
+        const subject = getCell(subjectRow, col);
+        const teacher = getCell(teacherRow, col);
+        
+        if (subject && subject !== 'null' && subject !== 'undefined') {
+          timetable[day][cls].push({
+            period,
+            subject,
+            teacher: teacher || ''
+          });
+          
+          if (teacher) {
+            teachers.add(teacher);
+            if (!teacherAssignment[cls]) teacherAssignment[cls] = {};
+            teacherAssignment[cls][subject] = teacher;
+          }
+        }
+      }
+    }
+  }
+  
+  const allTeachers = [...teachers];
+  const totalSlots = Object.values(timetable).reduce(
+    (sum, day) => sum + Object.values(day).reduce(
+      (s, cls) => s + cls.length, 0
+    ), 0
+  );
+  
+  return {
+    timetable,
+    teacherAssignment,
+    classes,
+    allTeachers,
+    summary: {
+      classes: classes.length,
+      teachers: allTeachers.length,
+      totalSlots
+    }
+  };
+}
+
+/**
+ * 解析标准化格式（6列表）
+ */
+function parseStandardTimetable(ws) {
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+  if (!rows.length) return null;
+  
   let headerRow = 0;
   for (let i = 0; i < Math.min(3, rows.length); i++) {
     const r = rows[i] || [];
@@ -1131,51 +1254,57 @@ function parseTimetableWorkbook(wb) {
       headerRow = i; break;
     }
   }
+  
   const header = (rows[headerRow] || []).map(c => String(c||'').trim());
   const findCol = re => { for (let i=0; i<header.length; i++) if (re.test(header[i])) return i; return -1; };
-  // 列识别：6 列表头 [教师姓名, 星期, 节次, 班级, 课程, 教师] -- 增 fallback
+  
   let iTeacher = findCol(/教师姓名|姓名/);
-  let iDay     = findCol(/星期/);
-  let iPeriod  = findCol(/节次|第.*节/);
-  let iClass   = findCol(/班级/);
+  let iDay = findCol(/星期/);
+  let iPeriod = findCol(/节次|第.*节/);
+  let iClass = findCol(/班级/);
   let iSubject = findCol(/课程|科目/);
-  // fallback: 如果未识别到表头，直接按 6 列推断位置
+  
+  // fallback: 6列格式
   if (iDay<0 && header.length === 6 && /^教师姓名|姓名$/.test(header[0])) {
     iTeacher = 0; iDay = 1; iPeriod = 2; iClass = 3; iSubject = 4;
   }
-  console.log('[parse] header:', header, 'iTeacher:', iTeacher, 'iDay:', iDay, 'iPeriod:', iPeriod, 'iClass:', iClass, 'iSubject:', iSubject);
-  if (iDay<0 || iClass<0 || iPeriod<0 || iSubject<0) {
-    console.log('[parse] 列识别失败:', { header, iTeacher, iDay, iPeriod, iClass, iSubject });
-    return null;
-  }
-
+  
+  if (iDay<0 || iClass<0 || iPeriod<0 || iSubject<0) return null;
+  
   const timetable = {};
   const classes = new Set();
   const teachers = new Set();
   const teacherAssignment = {};
+  
   for (let i = headerRow + 1; i < rows.length; i++) {
     const r = rows[i] || [];
     const teacher = String(r[iTeacher] || '').trim();
-    const day     = normDay(String(r[iDay] || '').trim());
-    const period  = parseInt(String(r[iPeriod] || '').replace(/[^\d]/g,'')) || 0;
-    const cls     = String(r[iClass] || '').trim();
+    const day = normDay(String(r[iDay] || '').trim());
+    const period = parseInt(String(r[iPeriod] || '').replace(/[^\d]/g,'')) || 0;
+    const cls = String(r[iClass] || '').trim();
     const subject = String(r[iSubject] || '').trim();
+    
     if (!day || !cls || !period || !subject) continue;
+    
     classes.add(cls);
     if (teacher) teachers.add(teacher);
+    
     if (!timetable[day]) timetable[day] = {};
     if (!timetable[day][cls]) timetable[day][cls] = [];
     timetable[day][cls].push({ period, subject, teacher });
+    
     if (teacher) {
       if (!teacherAssignment[cls]) teacherAssignment[cls] = {};
       teacherAssignment[cls][subject] = teacher;
     }
   }
+  
   return {
     timetable, teacherAssignment,
     classes: [...classes], allTeachers: [...teachers],
     summary: {
-      classes: classes.size, teachers: teachers.size,
+      classes: classes.size,
+      teachers: teachers.size,
       totalSlots: Object.values(timetable).reduce(
         (s,d) => s + Object.values(d).reduce((ss,p) => ss+p.length, 0), 0)
     }
