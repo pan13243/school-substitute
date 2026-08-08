@@ -935,11 +935,51 @@ function parseTimetableWorkbook(wb) {
  * 列结构：[星期, 时间段, 空, 项目, 21 班教师...]
  */
 function parseAfterSchoolWorkbook(wb) {
+  // 优先用「单周」/「双周」两个独立 Sheet（最准确的数据源）
+  const hasSeparateSheets = wb.SheetNames.includes('单周') && wb.SheetNames.includes('双周');
+  if (hasSeparateSheets) {
+    const single = parseAfterSchoolSheet(wb.Sheets['单周'], '单周');
+    const double = parseAfterSchoolSheet(wb.Sheets['双周'], '双周');
+    if (single && double) {
+      for (const slot of single.slots) for (const k in slot.assignments) slot.assignments[k] = { single: slot.assignments[k], week: '单周' };
+      for (const slot of double.slots) for (const k in slot.assignments) slot.assignments[k] = { single: slot.assignments[k], week: '双周' };
+      return {
+        source: 'separate-sheets',
+        days: single.days,
+        slots: [...single.slots, ...double.slots],
+        classes: single.classes,
+        single, double
+      };
+    }
+  }
+
+  // 否则用 3.3执行 / 无午休 Sheet；同一单元格双教师 → 上一个=单周，下一个=双周
   const preferred = ['3.3执行','无午休'];
   let mainSheet = null;
   for (const n of preferred) if (wb.SheetNames.includes(n)) { mainSheet = n; break; }
   if (!mainSheet) mainSheet = wb.SheetNames[0];
-  const ws = wb.Sheets[mainSheet];
+  const base = parseAfterSchoolSheet(wb.Sheets[mainSheet], mainSheet);
+  if (!base) return null;
+  // 给 assignments 打 week 标记：双行拆分
+  for (const slot of base.slots) {
+    const newAssign = {};
+    for (const cls in slot.assignments) {
+      const v = slot.assignments[cls];
+      const lines = String(v).split(/\r?\n/).filter(x => x.trim());
+      if (lines.length === 1) {
+        newAssign[cls] = { single: lines[0], week: '通用' };
+      } else if (lines.length === 2) {
+        newAssign[cls] = { single: lines[0], double: lines[1], week: '单周/双周' };
+      } else {
+        newAssign[cls] = lines.map((t, i) => i === 0 ? { single: t } : i === 1 ? { double: t } : { extra: t });
+      }
+    }
+    slot.assignments = newAssign;
+  }
+  return { source: mainSheet, days: base.days, slots: base.slots, classes: base.classes };
+}
+
+function parseAfterSchoolSheet(ws, sheetName) {
   if (!ws) return null;
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, blankrows: false });
   if (!rows.length) return null;
@@ -967,7 +1007,7 @@ function parseAfterSchoolWorkbook(wb) {
     const timeRange = String(r[1] || '').trim();
     const project   = String(r[3] || '').trim();
     if (!timeRange && !project) continue;
-    const slot = { day: currentDay, time: timeRange, project, assignments: {} };
+    const slot = { day: currentDay, time: timeRange, project, sheet: sheetName, assignments: {} };
     for (const c of classCols) {
       const v = String(r[c.idx] || '').trim();
       if (v) slot.assignments[c.name] = v;
@@ -975,7 +1015,7 @@ function parseAfterSchoolWorkbook(wb) {
     slots.push(slot);
   }
   const days = [...new Set(slots.map(s => s.day).filter(Boolean))];
-  return { sheet: mainSheet, days, slots, classes: classCols.map(c=>c.name) };
+  return { sheet: sheetName, days, slots, classes: classCols.map(c=>c.name) };
 }
 
 async function handleTextImport() {
