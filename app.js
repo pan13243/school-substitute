@@ -471,14 +471,26 @@ function renderTTClass() {
   const getAfterSchoolTeacher = (day, period) => {
     const slot = getAfterSchoolSlot(day, period);
     if (!slot) return null;
+    const assignments = slot.assignments || {};
     // 调试：打印所有 assignments 的 key
     if (day === '星期一' && period === 7) {
-      console.log(`[getAfterSchoolTeacher] slot.assignments keys:`, Object.keys(slot.assignments || {}));
+      console.log(`[getAfterSchoolTeacher] slot.assignments keys:`, Object.keys(assignments));
       console.log(`[getAfterSchoolTeacher] looking for class: "${cn}"`);
     }
-    const asn = slot.assignments?.[cn];
-    if (!asn) return null;
-    return asn;
+    // 尝试精确匹配
+    if (assignments[cn]) return assignments[cn];
+    // 尝试模糊匹配（去掉"班"字）
+    for (const key in assignments) {
+      const normalizedKey = key.replace(/班$/, '');
+      const normalizedCn = cn.replace(/班$/, '');
+      if (normalizedKey === normalizedCn) {
+        if (day === '星期一' && period === 7) {
+          console.log(`[getAfterSchoolTeacher] fuzzy match: "${key}" -> "${cn}"`);
+        }
+        return assignments[key];
+      }
+    }
+    return null;
   };
 
   let html = `<div class="table-wrap"><table class="data-table tt-table">`;
