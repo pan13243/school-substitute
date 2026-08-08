@@ -922,12 +922,13 @@ async function doGenerateSubstitutes() {
     const r = await API.generateSubstitutes();
     loading.remove();
     if (r.success) {
-      if (r.data && r.data.length > 0) {
-        previewSubstitutes = r.data; // 进入预览模式
+      const results = r.data || r.results || [];
+      if (results.length > 0) {
+        previewSubstitutes = results; // 进入预览模式
         toast(`生成完成！请检查预览方案，确认后再导出`, 'success');
         renderSubPage($('main-content'));
       } else {
-        toast('未能生成代课安排：'+r.error,'warning');
+        toast('未能生成代课安排：'+(r.error||r.message||'无可用数据'),'warning');
       }
     } else {
       toast('生成失败：'+r.error,'error');
