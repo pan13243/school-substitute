@@ -1080,11 +1080,18 @@ function renderImportPage(area) {
 
     <div class="card">
       <h3>📚 方式二：上传课后服务表 Excel</h3>
-      <p class="text-muted">上传 <code>课后服务安排表.xlsx</code>，系统自动解析所有班级的课后服务值班。</p>
+      <p class="text-muted">分别上传 <code>单周.xlsx</code> 和 <code>双周.xlsx</code>，系统自动合并生成单双周课表。</p>
       <div class="form-group">
-        <input type="file" id="import-after" accept=".xlsx,.xls" class="form-file"
-               onchange="handleAfterSchoolImport(this.files[0])">
+        <label style="display:block;margin-bottom:4px;color:#666;font-size:12px;">单周表：</label>
+        <input type="file" id="import-single" accept=".xlsx,.xls" class="form-file"
+               onchange="handleAfterSchoolImport('single', this.files[0])">
       </div>
+      <div class="form-group" style="margin-top:8px;">
+        <label style="display:block;margin-bottom:4px;color:#666;font-size:12px;">双周表：</label>
+        <input type="file" id="import-double" accept=".xlsx,.xls" class="form-file"
+               onchange="handleAfterSchoolImport('double', this.files[0])">
+      </div>
+      <div id="afterschool-status" style="margin-top:8px;font-size:12px;color:#666;"></div>
     </div>
 
     <div class="card">
@@ -1178,29 +1185,131 @@ async function handleExcelImport(file) {
 /**
  * 解析课后服务安排表（独立 Sheet）
  */
-async function handleAfterSchoolImport(file) {
+// 临时存储单周/双周数据
+let afterSchoolTemp = { single: null, double: null };
+
+async function handleAfterSchoolImport(weekType, file) {
   if (!file) return;
-  const loading = showLoading('正在解析课后服务表...');
+  const loading = showLoading(`正在解析${weekType === 'single' ? '单周' : '双周'}表...`);
   try {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array' });
-    console.log('[AfterSchoolImport] SheetNames:', wb.SheetNames);
-    const data = parseAfterSchoolWorkbook(wb);
-    console.log('[AfterSchoolImport] parsed slots:', data?.slots?.length);
+    console.log(`[AfterSchoolImport ${weekType}] SheetNames:`, wb.SheetNames);
+    
+    // 直接解析 Sheet1，标记为单周或双周
+    const data = parseAfterSchoolSheet(wb.Sheets['Sheet1'], weekType === 'single' ? '单周' : '双周');
+    console.log(`[AfterSchoolImport ${weekType}] parsed slots:`, data?.slots?.length);
     loading.remove();
-    if (!data) { toast('未识别到课后服务数据','error'); return; }
+    
+    if (!data) { toast(`未识别到${weekType === 'single' ? '单周' : '双周'}数据`,'error'); return; }
+    
+    // 存储到临时变量
+    afterSchoolTemp[weekType] = data;
+    
+    // 更新状态显示
+    const statusEl = $('afterschool-status');
+    if (statusEl) {
+      const singleOk = afterSchoolTemp.single ? '✅' : '⏳';
+      const doubleOk = afterSchoolTemp.double ? '✅' : '⏳';
+      statusEl.innerHTML = `单周：${singleOk} ${afterSchoolTemp.single?.slots?.length || 0}时段 / 双周：${doubleOk} ${afterSchoolTemp.double?.slots?.length || 0}时段`;
+    }
+    
+    toast(`${weekType === 'single' ? '单周' : '双周'}表已加载：${data.days?.length||0} 天 ${data.slots?.length||0} 时段`,'success');
+    
+    // 如果两个都加载了，自动合并导入
+    if (afterSchoolTemp.single && afterSchoolTemp.double) {
+      await mergeAndImportAfterSchool();
+    }
+  } catch(e) {
+    loading.remove();
+    toast(`${weekType === 'single' ? '单周' : '双周'}表解析失败：`+e.message,'error');
+  }
+}
+
+// 合并单周双周数据并导入
+async function mergeAndImportAfterSchool() {
+  const loading = showLoading('正在合并单周/双周数据...');
+  try {
+    const single = afterSchoolTemp.single;
+    const double = afterSchoolTemp.double;
+    
+    // 合并逻辑
+    const mergedSlots = [];
+    const slotKey = s => `${s.day}_${s.period}`;
+    const singleMap = {};
+    const doubleMap = {};
+    
+    for (const s of single.slots) singleMap[slotKey(s)] = s;
+    for (const s of double.slots) doubleMap[slotKey(s)] = s;
+    
+    const allKeys = new Set([...Object.keys(singleMap), ...Object.keys(doubleMap)]);
+    
+    for (const key of allKeys) {
+      const s = singleMap[key];
+      const d = doubleMap[key];
+      const newAssign = {};
+      
+      // 获取所有班级
+      const allClasses = new Set([
+        ...Object.keys(s?.assignments || {}),
+        ...Object.keys(d?.assignments || {})
+      ]);
+      
+      for (const cls of allClasses) {
+        const asnS = s?.assignments?.[cls];
+        const asnD = d?.assignments?.[cls];
+        
+        // 提取教师名字
+        const tS = typeof asnS === 'object' ? (asnS.teacher || asnS.singleWeek) : asnS;
+        const tD = typeof asnD === 'object' ? (asnD.teacher || asnD.singleWeek) : asnD;
+        
+        if (tS && tD && tS !== tD) {
+          newAssign[cls] = { singleWeek: tS, doubleWeek: tD, week: '单周/双周' };
+        } else if (tS) {
+          newAssign[cls] = { teacher: tS, week: '通用' };
+        } else if (tD) {
+          newAssign[cls] = { teacher: tD, week: '通用' };
+        }
+      }
+      
+      mergedSlots.push({
+        day: s?.day || d?.day,
+        time: s?.time || d?.time,
+        project: s?.project || d?.project,
+        period: s?.period || d?.period,
+        sheet: '单周/双周',
+        assignments: newAssign
+      });
+    }
+    
     const merged = {
+      source: 'separate-files',
+      days: single.days,
+      slots: mergedSlots,
+      classes: single.classes,
+      single, double
+    };
+    
+    const importData = {
       timetable: scheduleData?.timetable || {},
       teacherAssignment: scheduleData?.teacherAssignment || {},
       classes: scheduleData?.classes || [],
       allTeachers: scheduleData?.allTeachers || [],
-      afterSchoolService: data
+      afterSchoolService: merged
     };
-    await doImport(merged);
-    toast(`课后服务已导入：${data.days?.length||0} 天 ${data.slots?.length||0} 时段`,'success');
+    
+    await doImport(importData);
+    
+    // 清空临时存储
+    afterSchoolTemp = { single: null, double: null };
+    const statusEl = $('afterschool-status');
+    if (statusEl) statusEl.innerHTML = '';
+    
+    loading.remove();
+    toast(`课后服务导入成功：${merged.days?.length||0} 天 ${merged.slots?.length||0} 时段`,'success');
   } catch(e) {
     loading.remove();
-    toast('课后服务表解析失败：'+e.message,'error');
+    toast('合并导入失败：'+e.message,'error');
   }
 }
 
