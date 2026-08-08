@@ -442,12 +442,6 @@ function renderTTClass() {
   const afterschool = td.afterSchoolService || {};
   const area = $('tt-class-content');
   if (!cn) { area.innerHTML = '<p class="text-muted">请选择班级</p>'; return; }
-  
-  // 调试信息
-  console.log('[renderTTClass] afterSchoolService:', afterschool);
-  console.log('[renderTTClass] slots:', afterschool.slots?.length);
-  console.log('[renderTTClass] first slot:', JSON.stringify(afterschool.slots?.[0], null, 2));
-  console.log('[renderTTClass] selected class:', cn);
 
   const days = ['星期一','星期二','星期三','星期四','星期五'];
   const timeMap = {
@@ -458,12 +452,16 @@ function renderTTClass() {
   };
 
   // 获取课后服务的班级数据
+  const normDay = (s) => {
+    // 去除换行、空格、中文字符，只保留"星"+"期"+"数字"
+    const cleaned = String(s || '').replace(/[\s\n\r]/g, '');
+    const m = cleaned.match(/星\s*期\s*([一二三四五六日])/);
+    if (!m) return cleaned;
+    return '星期' + m[1];
+  };
   const getAfterSchoolSlot = (day, period) => {
     const slots = afterschool.slots || [];
     const found = slots.find(s => s.day === day && s.period === period);
-    if (day === '星期一' && period === 7) {
-      console.log(`[getAfterSchoolSlot] ${day} 第${period}节:`, found);
-    }
     return found;
   };
 
@@ -472,23 +470,17 @@ function renderTTClass() {
     const slot = getAfterSchoolSlot(day, period);
     if (!slot) return null;
     const assignments = slot.assignments || {};
-    // 调试：打印所有 assignments 的 key
-    if (day === '星期一' && period === 7) {
-      console.log(`[getAfterSchoolTeacher] slot.assignments keys:`, Object.keys(assignments));
-      console.log(`[getAfterSchoolTeacher] looking for class: "${cn}"`);
-    }
-    // 尝试精确匹配
-    if (assignments[cn]) return assignments[cn];
-    // 尝试模糊匹配（去掉"班"字）
+    // 班级名归一化：去除全角括号、空格、"班"字
+    const normalize = (s) => String(s || '').replace(/[\s（()）班]/g, '');
+    const targetKey = normalize(cn);
+    // 尝试精确匹配 + 归一化匹配
     for (const key in assignments) {
-      const normalizedKey = key.replace(/班$/, '');
-      const normalizedCn = cn.replace(/班$/, '');
-      if (normalizedKey === normalizedCn) {
-        if (day === '星期一' && period === 7) {
-          console.log(`[getAfterSchoolTeacher] fuzzy match: "${key}" -> "${cn}"`);
-        }
+      if (key === cn || normalize(key) === targetKey) {
         return assignments[key];
       }
+    }
+    if (day === '星期一' && period === 7) {
+      console.log(`[getAfterSchoolTeacher] not matched. cn="${cn}", keys=`, Object.keys(assignments));
     }
     return null;
   };
@@ -1469,13 +1461,21 @@ function parseAfterSchoolWorkbook(wb) {
     const newAssign = {};
     for (const cls in slot.assignments) {
       const v = slot.assignments[cls];
-      const lines = String(v).split(/\r?\n/).filter(x => x.trim());
-      if (lines.length === 1) {
-        newAssign[cls] = { single: lines[0], week: '通用' };
-      } else if (lines.length === 2) {
-        newAssign[cls] = { single: lines[0], double: lines[1], week: '单周/双周' };
+      // 提取教师名（可能是对象或字符串）
+      let teachers = [];
+      if (typeof v === 'object' && v !== null) {
+        if (v.teacher) teachers.push(v.teacher);
+        if (v.singleWeek) teachers.push(v.singleWeek);
+        if (v.doubleWeek) teachers.push(v.doubleWeek);
       } else {
-        newAssign[cls] = lines.map((t, i) => i === 0 ? { single: t } : i === 1 ? { double: t } : { extra: t });
+        teachers = String(v).split(/\r?\n/).map(t => t.trim()).filter(t => t);
+      }
+      if (teachers.length === 1) {
+        newAssign[cls] = { teacher: teachers[0], week: '通用' };
+      } else if (teachers.length === 2) {
+        newAssign[cls] = { singleWeek: teachers[0], doubleWeek: teachers[1], week: '单周/双周' };
+      } else if (teachers.length > 0) {
+        newAssign[cls] = { teacher: teachers[0], week: '通用' };
       }
     }
     slot.assignments = newAssign;
@@ -1498,8 +1498,15 @@ function parseAfterSchoolSheet(ws, sheetName) {
   const header = (rows[headerRow] || []).map(c => String(c||'').trim());
   const classCols = [];
   for (let i = 0; i < header.length; i++) {
+    // 匹配 "一1", "一（1）", "一(1)", "一 1" 等格式
     if (/[一二三四五六]/.test(header[i]) && /\d/.test(header[i])) {
-      classCols.push({ idx: i, name: header[i] });
+      // 归一化名称为 "一（1）" 格式以匹配前端
+      const m = header[i].match(/^([一二三四五六])\s*[（(]?\s*(\d+)\s*[）)]?\s*$/);
+      if (m) {
+        classCols.push({ idx: i, name: `${m[1]}（${m[2]}）` });
+      } else {
+        classCols.push({ idx: i, name: header[i] });
+      }
     }
   }
   if (!classCols.length) return null;
@@ -1512,24 +1519,54 @@ function parseAfterSchoolSheet(ws, sheetName) {
     '晚自习': 10,
     '午休': 11
   };
+  // 按时间段判断节次（处理"课后服务"不带数字的情况）
+  const TIME_PERIOD_MAP = {
+    '13:00': 11, '13：00': 11,
+    '15:40': 7, '15：40': 7,
+    '16:25': 8, '16：25': 8,
+    '17:10': 9, '17：10': 9,
+    '19:30': 10, '19：30': 10
+  };
+  const getPeriod = (project, timeRange) => {
+    if (PROJECT_PERIOD_MAP[project]) return PROJECT_PERIOD_MAP[project];
+    // 从时间中提取开始小时:分钟
+    const m = String(timeRange).match(/(\d{1,2})[:：]\d{2}/);
+    if (m) {
+      const key = m[0];
+      return TIME_PERIOD_MAP[key] || 0;
+    }
+    return 0;
+  };
 
   const slots = [];
   let currentDay = '';
   for (let i = headerRow + 1; i < rows.length; i++) {
     const r = rows[i] || [];
-    if (r[0]) currentDay = normDay(String(r[0]).trim());
+    if (r[0]) currentDay = normDay(String(r[0]).trim().replace(/\s/g,''));
     const timeRange = String(r[1] || '').trim();
     const project = String(r[3] || '').trim();
     if (!timeRange && !project) continue;
     
     // 映射节次
-    const period = PROJECT_PERIOD_MAP[project] || 0;
+    const period = getPeriod(project, timeRange);
     if (!period) continue;
     
-    const slot = { day: currentDay, time: timeRange, project, period, sheet: sheetName, assignments: {} };
+    // 存入时归一化星期：去掉空格/换行，转换为"星期一"格式
+    const rawDay = String(r[0] || currentDay).trim();
+    const normalizedDay = normDay(rawDay.replace(/\s/g, ''));
+    const slot = { day: normalizedDay, time: timeRange, project, period, sheet: sheetName, assignments: {} };
     for (const c of classCols) {
-      const v = String(r[c.idx] || '').trim();
-      if (!v) continue;
+      let v = r[c.idx];
+      // 处理富文本/对象：只取文字
+      if (v && typeof v === 'object') {
+        if (v.richText) {
+          v = v.richText.map(t => t.text || '').join('');
+        } else {
+          v = String(v);
+        }
+      }
+      v = String(v || '').trim();
+      if (!v || v === '[object Object]') continue;
       // 拆分双教师：第一个=单周，第二个=双周
       const parts = v.split(/[\n，,]/).map(t => t.trim()).filter(t => t);
       if (parts.length === 1) {
