@@ -250,7 +250,7 @@ function renderAppShell() {
     </header>
 
     <!-- 手机端顶部导航栏 -->
-    <div class="mobile-header" style="display:none;">
+    <div class="mobile-header">
       ${showBackBtn ? `<button class="mobile-back-btn" onclick="switchPage('home')">← 返回</button>` : ''}
       <span class="mobile-title">${currentTitle}</span>
       <span class="mobile-spacer"></span>
