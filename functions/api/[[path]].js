@@ -190,6 +190,12 @@ async function handleScheduleImport(request, env) {
   return json({ success: true, message: '导入成功', stats: { classes: cfg.classes.length, teachers: cfg.allTeachers.length, slots: total } });
 }
 
+async function handleScheduleDelete(env) {
+  if (!env.SCHOOL_SUB) return json({ success: false, error: 'KV 未配置' }, 500);
+  await env.SCHOOL_SUB.delete('config');
+  return json({ success: true, message: '课表数据已清空' });
+}
+
 async function handleLeavesGet(env) {
   const leaves = await getKV(env, 'leaves') || [];
   return json({ success: true, data: leaves });
@@ -316,6 +322,7 @@ export async function onRequest(context) {
   if (path === '/api/schedule' || path === '/api/schedule/') {
     if (method === 'GET') return handleScheduleGet(env);
     if (method === 'POST') return handleScheduleImport(request, env);
+    if (method === 'DELETE') return handleScheduleDelete(env);
   }
   
   if (path === '/api/leaves' || path.startsWith('/api/leaves/')) {

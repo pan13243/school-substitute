@@ -70,6 +70,12 @@ const API = {
     });
     return await r.json();
   },
+  async clearSchedule() {
+    const r = await fetch('/api/schedule', {
+      method:'DELETE', headers:{'x-admin-pwd':adminPwd}
+    });
+    return await r.json();
+  },
   async getLeaves() {
     try {
       const r = await fetch('/api/leaves');
@@ -1029,7 +1035,6 @@ function renderImportPage(area) {
 
 function renderDataStatus() {
   const td = scheduleData || {};
-  const tt = td.timetable || {};
   const cls = td.classes  || [];
   const teas = td.allTeachers || [];
   const hasData = cls.length > 0;
@@ -1041,7 +1046,20 @@ function renderDataStatus() {
     <div class="stat-mini"><span class="sn">${teas.length}</span><span class="sl">教师</span></div>
     <div class="stat-mini"><span class="sn">${cls.length*30}</span><span class="sl">总课时</span></div>
   </div>
+  <button class="btn btn-danger btn-sm" style="margin-top:12px" onclick="clearScheduleData()">🗑️ 清空课表</button>
   ` : `<div class="status-warn">⚠️ 尚未导入课表</div>`;
+}
+
+async function clearScheduleData() {
+  if (!confirm('确定清空课表数据？请假记录不受影响。')) return;
+  const r = await API.clearSchedule();
+  if (r.success) {
+    scheduleData = null;
+    toast('课表已清空', 'success');
+    renderImportPage($('main-content'));
+  } else {
+    toast('清空失败：' + r.error, 'error');
+  }
 }
 
 async function handleJsonImport(file) {
