@@ -172,15 +172,18 @@ async function handleScheduleImport(request, env) {
   const teacherSet = new Set(existing.allTeachers || []);
   const ta = existing.teacherAssignment || {};
   
-  // 处理总课表
+  // 处理总课表（注意：单元格可能含双教师，用 \n 或空格分隔）
   if (timetable) {
     for (const [day, cm] of Object.entries(timetable)) {
       for (const [cls, periods] of Object.entries(cm)) {
         classSet.add(cls);
         if (!ta[cls]) ta[cls] = {};
         for (const s of periods) {
-          if (s.teacher) teacherSet.add(s.teacher);
-          if (s.subject && s.teacher) ta[cls][s.subject] = s.teacher;
+          // 拆分双教师（按换行或中英文逗号分隔）
+          const teachers = String(s.teacher || '').split(/[\n,，;；\s]+/).map(t => t.trim()).filter(t => t);
+          teachers.forEach(t => teacherSet.add(t));
+          // teacherAssignment 只存第一个教师（同班同科的主教师）
+          if (s.subject && teachers.length > 0) ta[cls][s.subject] = teachers[0];
         }
       }
     }

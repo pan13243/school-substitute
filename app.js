@@ -1283,17 +1283,22 @@ function parseOriginalTimetableV2(ws) {
         const subjectRowData = rows[subjectRow] || [];
         const teacherRowData = rows[teacherRow] || [];
         const subject = String(subjectRowData[col] || '').trim();
-        const teacher = String(teacherRowData[col] || '').trim();
+        const teacherRaw = String(teacherRowData[col] || '').trim();
         
         if (subject && subject !== 'null' && subject !== 'undefined') {
+          // 拆分双教师（按换行/逗号/分号/空格）
+          const teacherList = teacherRaw.split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
+          const teacher = teacherList[0] || '';
+          
           timetable[day][cls].push({
             period,
             subject,
-            teacher: teacher || ''
+            teacher: teacher || '',
+            teachers: teacherList  // 保留完整列表备用
           });
           
+          teacherList.forEach(t => teachers.add(t));
           if (teacher) {
-            teachers.add(teacher);
             if (!teacherAssignment[cls]) teacherAssignment[cls] = {};
             teacherAssignment[cls][subject] = teacher;
           }
@@ -1360,7 +1365,9 @@ function parseStandardTimetable(ws) {
   
   for (let i = headerRow + 1; i < rows.length; i++) {
     const r = rows[i] || [];
-    const teacher = String(r[iTeacher] || '').trim();
+    const teacherRaw = String(r[iTeacher] || '').trim();
+    const teacherList = teacherRaw.split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
+    const teacher = teacherList[0] || '';
     const day = normDay(String(r[iDay] || '').trim());
     const period = parseInt(String(r[iPeriod] || '').replace(/[^\d]/g,'')) || 0;
     const cls = String(r[iClass] || '').trim();
@@ -1369,11 +1376,11 @@ function parseStandardTimetable(ws) {
     if (!day || !cls || !period || !subject) continue;
     
     classes.add(cls);
-    if (teacher) teachers.add(teacher);
+    teacherList.forEach(t => teachers.add(t));
     
     if (!timetable[day]) timetable[day] = {};
     if (!timetable[day][cls]) timetable[day][cls] = [];
-    timetable[day][cls].push({ period, subject, teacher });
+    timetable[day][cls].push({ period, subject, teacher, teachers: teacherList });
     
     if (teacher) {
       if (!teacherAssignment[cls]) teacherAssignment[cls] = {};
