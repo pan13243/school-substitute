@@ -476,7 +476,15 @@ function renderTTClass() {
     // 尝试精确匹配 + 归一化匹配
     for (const key in assignments) {
       if (key === cn || normalize(key) === targetKey) {
-        return assignments[key];
+        let asn = assignments[key];
+        // 运行时补上：如果是拼接教师名，按空白/逗号/分号拆分转单周/双周
+        if (asn && asn.teacher && typeof asn.teacher === 'string') {
+          const parts = asn.teacher.split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
+          if (parts.length >= 2) {
+            asn = { singleWeek: parts[0], doubleWeek: parts[1], week: '单周/双周' };
+          }
+        }
+        return asn;
       }
     }
     if (day === '星期一' && period === 7) {
@@ -1475,7 +1483,7 @@ function parseAfterSchoolWorkbook(wb) {
         if (v.singleWeek) teachers.push(v.singleWeek);
         if (v.doubleWeek) teachers.push(v.doubleWeek);
       } else {
-        teachers = String(v).split(/\r?\n/).map(t => t.trim()).filter(t => t);
+        teachers = String(v).split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
       }
       if (teachers.length === 1) {
         newAssign[cls] = { teacher: teachers[0], week: '通用' };
@@ -1579,8 +1587,9 @@ function parseAfterSchoolSheet(ws, sheetName) {
       if (parts.length === 1) {
         slot.assignments[c.name] = { teacher: parts[0], week: '通用' };
       } else if (parts.length === 2) {
+        // 记住：上一个名字 = 单周、下一个名字 = 双周
         slot.assignments[c.name] = { singleWeek: parts[0], doubleWeek: parts[1], week: '单周/双周' };
-      } else {
+      } else if (parts.length > 2) {
         slot.assignments[c.name] = { teacher: parts[0], week: '通用' };
       }
     }
