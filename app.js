@@ -479,7 +479,7 @@ function renderTTClass() {
         let asn = assignments[key];
         // 运行时补上：如果是拼接教师名，按空白/逗号/分号拆分转单周/双周
         if (asn && asn.teacher && typeof asn.teacher === 'string') {
-          const parts = asn.teacher.split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
+          const parts = asn.teacher.split(/[\n\r,，;；\s　]+/).map(t => t.trim()).filter(t => t);
           if (parts.length >= 2) {
             asn = { singleWeek: parts[0], doubleWeek: parts[1], week: '单周/双周' };
           }
@@ -1294,8 +1294,8 @@ function parseOriginalTimetableV2(ws) {
         const teacherRaw = String(teacherRowData[col] || '').trim();
         
         if (subject && subject !== 'null' && subject !== 'undefined') {
-          // 拆分双教师（按换行/逗号/分号/空格）
-          const teacherList = teacherRaw.split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
+          // 拆分双教师（按换行/逗号/分号/全角半角空格）
+          const teacherList = teacherRaw.split(/[\n\r,，;；\s　]+/).map(t => t.trim()).filter(t => t);
           const teacher = teacherList[0] || '';
           
           timetable[day][cls].push({
@@ -1374,7 +1374,7 @@ function parseStandardTimetable(ws) {
   for (let i = headerRow + 1; i < rows.length; i++) {
     const r = rows[i] || [];
     const teacherRaw = String(r[iTeacher] || '').trim();
-    const teacherList = teacherRaw.split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
+    const teacherList = teacherRaw.split(/[\n\r,，;；\s　]+/).map(t => t.trim()).filter(t => t);
     const teacher = teacherList[0] || '';
     const day = normDay(String(r[iDay] || '').trim());
     const period = parseInt(String(r[iPeriod] || '').replace(/[^\d]/g,'')) || 0;
@@ -1483,7 +1483,7 @@ function parseAfterSchoolWorkbook(wb) {
         if (v.singleWeek) teachers.push(v.singleWeek);
         if (v.doubleWeek) teachers.push(v.doubleWeek);
       } else {
-        teachers = String(v).split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
+        teachers = String(v).split(/[\n\r,，;；\s　]+/).map(t => t.trim()).filter(t => t);
       }
       if (teachers.length === 1) {
         newAssign[cls] = { teacher: teachers[0], week: '通用' };
@@ -1583,7 +1583,7 @@ function parseAfterSchoolSheet(ws, sheetName) {
       v = String(v || '').trim();
       if (!v || v === '[object Object]') continue;
       // 拆分双教师（按换行/中英文逗号/分号/任意空白字符）
-      const parts = v.split(/[\n\r,，;；\s]+/).map(t => t.trim()).filter(t => t);
+      const parts = v.split(/[\n\r,，;；\s　]+/).map(t => t.trim()).filter(t => t);
       if (parts.length === 1) {
         slot.assignments[c.name] = { teacher: parts[0], week: '通用' };
       } else if (parts.length === 2) {
