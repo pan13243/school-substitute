@@ -446,7 +446,8 @@ function renderTTClass() {
   // 调试信息
   console.log('[renderTTClass] afterSchoolService:', afterschool);
   console.log('[renderTTClass] slots:', afterschool.slots?.length);
-  console.log('[renderTTClass] first slot:', afterschool.slots?.[0]);
+  console.log('[renderTTClass] first slot:', JSON.stringify(afterschool.slots?.[0], null, 2));
+  console.log('[renderTTClass] selected class:', cn);
 
   const days = ['星期一','星期二','星期三','星期四','星期五'];
   const timeMap = {
@@ -459,7 +460,11 @@ function renderTTClass() {
   // 获取课后服务的班级数据
   const getAfterSchoolSlot = (day, period) => {
     const slots = afterschool.slots || [];
-    return slots.find(s => s.day === day && s.period === period);
+    const found = slots.find(s => s.day === day && s.period === period);
+    if (day === '星期一' && period === 7) {
+      console.log(`[getAfterSchoolSlot] ${day} 第${period}节:`, found);
+    }
+    return found;
   };
 
   // 获取课后服务教师（显示单周/双周）
