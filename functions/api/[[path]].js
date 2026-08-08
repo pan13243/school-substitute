@@ -263,6 +263,15 @@ async function handleSubstitutesDelete(request, env) {
   return json({ success: true });
 }
 
+async function handleSubstitutesSave(request, env) {
+  if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
+  const body = await request.json().catch(() => ({}));
+  const { data } = body;
+  if (!Array.isArray(data)) return json({ success: false, error: '数据格式错误' }, 400);
+  await putKV(env, 'substitutes', data);
+  return json({ success: true, message: '保存成功', count: data.length });
+}
+
 // ============ 工具函数 ============
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -315,8 +324,15 @@ export async function onRequest(context) {
   
   if (path === '/api/substitutes') {
     if (method === 'GET') return handleSubstitutesGet(env);
-    if (method === 'POST') return handleSubstitutesGenerate(request, env);
     if (method === 'DELETE') return handleSubstitutesDelete(request, env);
+  }
+  
+  if (path === '/api/substitutes/generate') {
+    if (method === 'POST') return handleSubstitutesGenerate(request, env);
+  }
+  
+  if (path === '/api/substitutes/save') {
+    if (method === 'POST') return handleSubstitutesSave(request, env);
   }
   
   return json({ success: false, error: 'API 路由未找到: ' + path }, 404);

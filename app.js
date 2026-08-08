@@ -107,6 +107,13 @@ const API = {
     });
     return await r.json();
   },
+  async saveSubstitutes(data) {
+    const r = await fetch('/api/substitutes/save', {
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd},
+      body: JSON.stringify({ data })
+    });
+    return await r.json();
+  },
 };
 
 // ══════════════════════════════════════════════════════
@@ -206,6 +213,9 @@ async function loadTeacherList() {
 function renderAppShell() {
   const role = isAdmin ? 'admin' : 'teacher';
   const roleLabel = isAdmin ? '🔐 管理员' : '👤 教师';
+  // 计算待处理请假数量（已批准但未安排代课的）
+  const pendingSubs = leaveRecords.filter(l => l.status === 'approved').length;
+  const subBadge = (isAdmin && pendingSubs > 0) ? `<span class="nav-badge">${pendingSubs}</span>` : '';
   return `
   <div class="app-shell">
     <!-- 顶栏 -->
@@ -230,7 +240,7 @@ function renderAppShell() {
           <button class="nav-btn" data-page="home"    onclick="switchPage('home')">🏠 首页</button>
           <button class="nav-btn" data-page="tt"      onclick="switchPage('tt')">📅 课表查询</button>
           <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记</button>
-          <button class="nav-btn" data-page="sub"     onclick="switchPage('sub')">✅ 代课安排</button>
+          <button class="nav-btn" data-page="sub"     onclick="switchPage('sub')">✅ 代课安排${subBadge}</button>
           ${isAdmin ? `
           <div class="sidebar-section-title" style="margin-top:16px">⚙️ 管理员</div>
           <button class="nav-btn" data-page="import"  onclick="switchPage('import')">📤 导入课表</button>
@@ -729,54 +739,143 @@ async function clearAllLeaves() {
 // ══════════════════════════════════════════════════════
 //  代课安排页
 // ══════════════════════════════════════════════════════
+let previewSubstitutes = []; // 预览状态的代课安排
+
 function renderSubPage(area) {
+  const approvedLeaves = leaveRecords.filter(l => l.status === 'approved');
+  const pendingCount = approvedLeaves.length;
+  
   area.innerHTML = `
   <div class="page">
     <h2 class="page-title">✅ 代课安排</h2>
 
     ${isAdmin ? `
     <div class="action-bar">
+      ${pendingCount > 0 ? `<span class="pending-badge">${pendingCount} 条请假待安排</span>` : ''}
       <button class="btn btn-primary" onclick="doGenerateSubstitutes()">⚡ 自动生成代课安排</button>
-      <button class="btn btn-secondary" onclick="exportSubExcel()">📥 导出Excel</button>
+      ${previewSubstitutes.length > 0 ? `
+        <button class="btn btn-success" onclick="confirmSubstitutes()">✅ 确认方案</button>
+        <button class="btn btn-secondary" onclick="cancelPreview()">❌ 取消预览</button>
+      ` : `<button class="btn btn-secondary" onclick="exportSubExcel()" ${substituteRecords.length === 0 ? 'disabled' : ''}>📥 导出Excel</button>`}
     </div>` : ''}
 
-    ${substituteRecords.length > 0 ? `
-    <div class="card">
-      <div class="card-header">
-        <h3>代课记录 (${substituteRecords.length})</h3>
-        <div class="filter-row">
-          <input type="text" id="sub-filter" class="form-input" placeholder="搜索教师/班级..."
-                 oninput="filterSubTable(this.value)">
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table" id="sub-table">
-          <thead><tr>
-            <th>请假教师</th><th>代课教师</th><th>班级</th><th>科目</th>
-            <th>日期</th><th>星期</th><th>节次</th>
-            <th>安排方式</th>
-          </tr></thead>
-          <tbody id="sub-tbody">
-            ${substituteRecords.map(s => `
-            <tr class="sub-row">
-              <td>${esc(s.leaveTeacher||'')}</td>
-              <td class="sub-tea">${esc(s.substituteTeacher||'—')}</td>
-              <td>${esc(s.className||'')}</td>
-              <td>${esc(s.subject||'—')}</td>
-              <td>${fmtDate(s.leaveDate||'')}</td>
-              <td>${esc(s.dayOfWeek||'')}</td>
-              <td>第${s.period||''}节</td>
-              <td>${esc(s.reason||'')}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>` : `
+    ${previewSubstitutes.length > 0 ? renderPreviewTable() : renderSubTable()}
+  </div>`;
+}
+
+function renderPreviewTable() {
+  return `
+  <div class="card preview-card">
+    <div class="card-header">
+      <h3>📋 代课方案预览（请检查确认）</h3>
+      <span class="preview-hint">可点击修改代课教师</span>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table preview-table">
+        <thead><tr>
+          <th>请假教师</th><th>代课教师</th><th>班级</th><th>科目</th>
+          <th>日期</th><th>星期</th><th>节次</th><th>操作</th>
+        </tr></thead>
+        <tbody>
+          ${previewSubstitutes.map((s, idx) => `
+          <tr class="preview-row ${s.isConflict ? 'conflict' : ''}">
+            <td>${esc(s.leaveTeacher||'')}</td>
+            <td>
+              <select class="form-select sub-select" onchange="updatePreviewSub(${idx}, this.value)">
+                ${getSubstituteOptions(s.substituteTeacher)}
+              </select>
+            </td>
+            <td>${esc(s.className||'')}</td>
+            <td>${esc(s.subject||'—')}</td>
+            <td>${fmtDate(s.leaveDate||'')}</td>
+            <td>${esc(s.dayOfWeek||'')}</td>
+            <td>第${s.period||''}节</td>
+            <td><button class="btn btn-sm btn-danger" onclick="removePreviewItem(${idx})">删除</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function getSubstituteOptions(currentTeacher) {
+  const teachers = scheduleData?.allTeachers || [];
+  return teachers.map(t => `<option value="${esc(t)}" ${t === currentTeacher ? 'selected' : ''}>${esc(t)}</option>`).join('');
+}
+
+function updatePreviewSub(idx, newTeacher) {
+  previewSubstitutes[idx].substituteTeacher = newTeacher;
+}
+
+function removePreviewItem(idx) {
+  previewSubstitutes.splice(idx, 1);
+  renderSubPage($('main-content'));
+}
+
+function cancelPreview() {
+  previewSubstitutes = [];
+  renderSubPage($('main-content'));
+  toast('已取消预览', 'info');
+}
+
+async function confirmSubstitutes() {
+  if (previewSubstitutes.length === 0) {
+    toast('没有可确认的方案', 'warning');
+    return;
+  }
+  // 保存到正式记录
+  substituteRecords = [...previewSubstitutes];
+  previewSubstitutes = [];
+  // 调用API保存
+  const r = await API.saveSubstitutes(substituteRecords);
+  if (r.success) {
+    toast('代课方案已确认并保存', 'success');
+    renderSubPage($('main-content'));
+  } else {
+    toast('保存失败：' + r.error, 'error');
+  }
+}
+
+function renderSubTable() {
+  if (substituteRecords.length === 0) {
+    return `
     <div class="empty-state">
       <div class="empty-icon">📋</div>
       <h3>暂无代课记录</h3>
       <p>${isAdmin ? '请先登记请假，再点击"自动生成代课安排"' : '请等候管理员安排代课'}</p>
-    </div>`}
+    </div>`;
+  }
+  return `
+  <div class="card">
+    <div class="card-header">
+      <h3>代课记录 (${substituteRecords.length})</h3>
+      <div class="filter-row">
+        <input type="text" id="sub-filter" class="form-input" placeholder="搜索教师/班级..."
+               oninput="filterSubTable(this.value)">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="sub-table">
+        <thead><tr>
+          <th>请假教师</th><th>代课教师</th><th>班级</th><th>科目</th>
+          <th>日期</th><th>星期</th><th>节次</th>
+          <th>安排方式</th>
+        </tr></thead>
+        <tbody id="sub-tbody">
+          ${substituteRecords.map(s => `
+          <tr class="sub-row">
+            <td>${esc(s.leaveTeacher||'')}</td>
+            <td class="sub-tea">${esc(s.substituteTeacher||'—')}</td>
+            <td>${esc(s.className||'')}</td>
+            <td>${esc(s.subject||'—')}</td>
+            <td>${fmtDate(s.leaveDate||'')}</td>
+            <td>${esc(s.dayOfWeek||'')}</td>
+            <td>第${s.period||''}节</td>
+            <td>${esc(s.reason||'')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
   </div>`;
 }
 
@@ -784,8 +883,9 @@ async function doGenerateSubstitutes() {
   if (!scheduleData || !scheduleData.timetable) {
     toast('请先导入课表','warning'); return;
   }
-  if (leaveRecords.length === 0) {
-    toast('暂无请假记录','warning'); return;
+  const approvedLeaves = leaveRecords.filter(l => l.status === 'approved');
+  if (approvedLeaves.length === 0) {
+    toast('暂无已批准的请假记录','warning'); return;
   }
   const loading = showLoading('正在分析代课方案...');
   try {
@@ -793,8 +893,9 @@ async function doGenerateSubstitutes() {
     loading.remove();
     if (r.success) {
       if (r.data && r.data.length > 0) {
-        substituteRecords = r.data;
-        toast(`生成完成！安排 ${r.summary?.arranged||0} 条，失败 ${r.summary?.failed||0} 条`, r.summary?.failed > 0 ? 'warning' : 'success');
+        previewSubstitutes = r.data; // 进入预览模式
+        toast(`生成完成！请检查预览方案，确认后再导出`, 'success');
+        renderSubPage($('main-content'));
       } else {
         toast('未能生成代课安排：'+r.error,'warning');
       }
