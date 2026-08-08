@@ -1410,12 +1410,44 @@ function parseAfterSchoolWorkbook(wb) {
     const single = parseAfterSchoolSheet(wb.Sheets['单周'], '单周');
     const double = parseAfterSchoolSheet(wb.Sheets['双周'], '双周');
     if (single && double) {
-      for (const slot of single.slots) for (const k in slot.assignments) slot.assignments[k] = { single: slot.assignments[k], week: '单周' };
-      for (const slot of double.slots) for (const k in slot.assignments) slot.assignments[k] = { single: slot.assignments[k], week: '双周' };
+      // 合并单周/双周数据到统一的 slots 数组
+      const mergedSlots = [];
+      // 按 day+period 配对
+      const slotKey = s => `${s.day}_${s.period}`;
+      const singleMap = {};
+      const doubleMap = {};
+      for (const s of single.slots) singleMap[slotKey(s)] = s;
+      for (const s of double.slots) doubleMap[slotKey(s)] = s;
+      const allKeys = new Set([...Object.keys(singleMap), ...Object.keys(doubleMap)]);
+      for (const key of allKeys) {
+        const s = singleMap[key] || doubleMap[key];
+        const d = doubleMap[key];
+        const newAssign = {};
+        for (const cls in (s?.assignments || {})) {
+          const asnS = s.assignments[cls];
+          const asnD = d?.assignments?.[cls];
+          // 提取教师名字
+          const tS = typeof asnS === 'object' ? (asnS.teacher || asnS.singleWeek) : asnS;
+          const tD = typeof asnD === 'object' ? (asnD.teacher || asnD.singleWeek) : asnD;
+          if (tS && tD && tS !== tD) {
+            newAssign[cls] = { singleWeek: tS, doubleWeek: tD, week: '单周/双周' };
+          } else if (tS) {
+            newAssign[cls] = { teacher: tS, week: '通用' };
+          }
+        }
+        mergedSlots.push({
+          day: s.day,
+          time: s.time,
+          project: s.project,
+          period: s.period,
+          sheet: '单周/双周',
+          assignments: newAssign
+        });
+      }
       return {
         source: 'separate-sheets',
         days: single.days,
-        slots: [...single.slots, ...double.slots],
+        slots: mergedSlots,
         classes: single.classes,
         single, double
       };
