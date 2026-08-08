@@ -26,10 +26,36 @@ if (supabaseUrl && supabaseKey) {
 
 // ── 内存存储 ───────────────────────────────────────────
 export const mem = {
-  config:     null,
-  leaves:     [],
+  config:      null,
+  leaves:      [],
   substitutes: []
 };
+
+// ── 文件持久化（FORCE_LOCAL 模式） ─────────────────
+const DATA_FILE = path.join(__dirname, '..', 'mem_data.json');
+
+function saveData() {
+  if (process.env.FORCE_LOCAL !== '1') return;
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({
+      leaves:      mem.leaves,
+      substitutes: mem.substitutes
+    }, null, 2), 'utf8');
+  } catch(e) { console.error('[DATA] 保存失败:', e.message); }
+}
+
+function loadData() {
+  if (process.env.FORCE_LOCAL !== '1') return;
+  if (!fs.existsSync(DATA_FILE)) return;
+  try {
+    const d = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    if (d.leaves)      mem.leaves      = d.leaves;
+    if (d.substitutes) mem.substitutes = d.substitutes;
+    console.log(`[DATA] 已恢复 ${mem.leaves.length} 条请假 / ${mem.substitutes.length} 条代课记录`);
+  } catch(e) { console.error('[DATA] 恢复失败:', e.message); }
+}
+
+export { saveData, loadData };
 
 // ── 启动时自动加载课表 ────────────────────────────────
 export async function initScheduleData(env) {
@@ -57,6 +83,8 @@ export async function initScheduleData(env) {
   } else {
     console.log('[DATA] 未找到 parsed_data.json，将在导入后加载');
   }
+  // 恢复请假/代课记录（文件持久化）
+  loadData();
 }
 
 // ── 管理员密码校验 ────────────────────────────────────
@@ -71,4 +99,3 @@ export function json(data, status = 200) {
 }
 export function err(msg, status = 400) { return json({ success: false, error: msg }, status); }
 
-export { supabase };

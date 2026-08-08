@@ -2,7 +2,7 @@
  * /api/leaves — Express Router
  */
 import { Router } from 'express';
-import { mem } from '../api/supabase-client.js';
+import { mem, saveData } from '../api/supabase-client.js';
 
 const router = Router();
 
@@ -30,6 +30,7 @@ router.post('/', (req, res) => {
     createdAt: new Date().toISOString()
   };
   mem.leaves.push(rec);
+  saveData();
   res.status(201).json({ success: true, data: rec });
 });
 
@@ -42,6 +43,7 @@ router.put('/:id', (req, res) => {
   const idx = mem.leaves.findIndex(l => l.id === req.params.id);
   if (idx === -1) return res.status(404).json({ success: false, error: '记录不存在' });
   mem.leaves[idx] = { ...mem.leaves[idx], status, updatedAt: new Date().toISOString() };
+  saveData();
   res.json({ success: true, data: mem.leaves[idx] });
 });
 
@@ -49,6 +51,7 @@ router.put('/:id', (req, res) => {
 router.delete('/', (req, res) => {
   if (!checkAdmin(req)) return res.status(401).json({ success: false, error: '管理员密码错误' });
   mem.leaves = [];
+  saveData();
   res.json({ success: true });
 });
 

@@ -2,7 +2,7 @@
  * /api/substitutes — Express Router
  */
 import { Router } from 'express';
-import { mem } from '../api/supabase-client.js';
+import { mem, saveData } from '../api/supabase-client.js';
 import { buildTeacherAssignment, generateSubstitutes } from '../api/algorithm.js';
 
 const router = Router();
@@ -37,6 +37,7 @@ router.post('/generate', (req, res) => {
   const existingIds = new Set(mem.substitutes.map(s => s.id));
   const newOnes = results.filter(r => !existingIds.has(r.id));
   mem.substitutes.push(...newOnes);
+  saveData();
 
   res.json({ success: true, results: newOnes, summary,
     message: `代课安排完成：成功 ${summary.arranged} 条，失败 ${summary.failed} 条` });
@@ -57,6 +58,7 @@ router.post('/', (req, res) => {
     createdAt: new Date().toISOString()
   };
   mem.substitutes.push(rec);
+  saveData();
   res.status(201).json({ success: true, data: rec });
 });
 
@@ -64,6 +66,7 @@ router.post('/', (req, res) => {
 router.delete('/', (req, res) => {
   if (!checkAdmin(req)) return res.status(401).json({ success: false, error: '管理员密码错误' });
   mem.substitutes = [];
+  saveData();
   res.json({ success: true });
 });
 
