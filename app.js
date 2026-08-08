@@ -1181,7 +1181,9 @@ async function handleAfterSchoolImport(file) {
   try {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array' });
+    console.log('[AfterSchoolImport] SheetNames:', wb.SheetNames);
     const data = parseAfterSchoolWorkbook(wb);
+    console.log('[AfterSchoolImport] parsed slots:', data?.slots?.length);
     loading.remove();
     if (!data) { toast('未识别到课后服务数据','error'); return; }
     const merged = {
@@ -1404,6 +1406,7 @@ function parseStandardTimetable(ws) {
  * 列结构：[星期, 时间段, 空, 项目, 21 班教师...]
  */
 function parseAfterSchoolWorkbook(wb) {
+  console.log('[parseAfterSchoolWorkbook] All sheets:', wb.SheetNames);
   // 优先用「单周」/「双周」两个独立 Sheet（最准确的数据源）
   const hasSeparateSheets = wb.SheetNames.includes('单周') && wb.SheetNames.includes('双周');
   if (hasSeparateSheets) {
