@@ -53,26 +53,44 @@ function getTeacherMainSubject(teacher, className, teacherAssignment) {
   return subjects[0] || null;
 }
 
+// 获取教师任教的最高优先级科目（跨所有班级），用于判断是否为副科老师
+function getTeacherTopSubject(teacher, teacherAssignment) {
+  const allSubjects = [];
+  for (const cls in teacherAssignment) {
+    const clsSubjects = teacherAssignment[cls] || {};
+    for (const [subj, t] of Object.entries(clsSubjects)) {
+      if (t === teacher) allSubjects.push(subj);
+    }
+  }
+  if (allSubjects.some(s => MAIN_SUBJECTS.includes(s))) return allSubjects.find(s => MAIN_SUBJECTS.includes(s));
+  if (allSubjects.some(s => SECONDARY_EARLY.includes(s))) return allSubjects.find(s => SECONDARY_EARLY.includes(s));
+  if (allSubjects.some(s => SECONDARY_LATE.includes(s))) return allSubjects.find(s => SECONDARY_LATE.includes(s));
+  return allSubjects[0] || null;
+}
+
 function priorityWeight(teacher, subject, className, teacherAssignment) {
-  // 获取该教师在该班的主科（用于判断优先级）
-  const teacherMainSubj = getTeacherMainSubject(teacher, className, teacherAssignment);
   const isSameClass = teacherInClass(teacher, className, teacherAssignment);
-  
-  // 1级：同班同科（语文/数学）
-  const sameClassSameSubject = teacherAssignment?.[className]?.[subject];
-  if (sameClassSameSubject === teacher && MAIN_SUBJECTS.includes(subject)) return 1;
-  
-  // 2级：同班英语老师
-  if (isSameClass && teacherMainSubj && SECONDARY_EARLY.includes(teacherMainSubj)) return 2;
-  
-  // 3级：同班道法/科学老师
-  if (isSameClass && teacherMainSubj && SECONDARY_LATE.includes(teacherMainSubj)) return 3;
-  
-  // 4级：同班其他副科老师（或同班无主科的老师）
-  if (isSameClass) return 4;
-  
-  // 5级：其他班的老师（任何科目）
-  return 5;
+
+  if (isSameClass) {
+    // 1级：同班主科互换（语文↔数学）
+    if (MAIN_SUBJECTS.includes(subject)) {
+      const partner = MAIN_SUBJECTS.find(s => s !== subject); // 语文→数学, 数学→语文
+      if (teacherAssignment?.[className]?.[partner] === teacher) return 1;
+    }
+    // 2级：同班英语老师
+    const tMain = getTeacherMainSubject(teacher, className, teacherAssignment);
+    if (tMain && SECONDARY_EARLY.includes(tMain)) return 2;
+    // 3级：同班道法/科学老师
+    if (tMain && SECONDARY_LATE.includes(tMain)) return 3;
+    // 4级：同班其他副科老师
+    return 4;
+  }
+
+  // 5级：其他班的副科老师（主科/英语/道法/科学不跨班代课）
+  const topSubj = getTeacherTopSubject(teacher, teacherAssignment);
+  if (topSubj && SIDE_SUBJECTS.includes(topSubj)) return 5;
+  // 其他班的主科/英语/道法科学老师不参与跨班代课
+  return 99;
 }
 
 function buildTeacherSchedule(timetable) {
@@ -103,6 +121,7 @@ function findSubstitute({ leaveTeacher, className, subject, day, period, teacher
     const subCount = existingSubs.filter(s => s.substituteTeacher === t && s.dayOfWeek === day).length;
     if (subCount >= 2) continue;
     const weight = priorityWeight(t, subject, className, teacherAssignment);
+    if (weight >= 99) continue; // 排除其他班的主科/英语/道法科学老师
     candidates.push({ teacher: t, weight, workload: daySlots.length });
   }
   candidates.sort((a, b) => a.weight - b.weight || a.workload - b.workload);
