@@ -79,7 +79,7 @@ const API = {
   async addLeave(leave) {
     const r = await fetch('/api/leaves', {
       method:'POST', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd},
-      body: JSON.stringify({ leave })
+      body: JSON.stringify(leave)
     });
     return await r.json();
   },
