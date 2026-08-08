@@ -471,6 +471,11 @@ function renderTTClass() {
   const getAfterSchoolTeacher = (day, period) => {
     const slot = getAfterSchoolSlot(day, period);
     if (!slot) return null;
+    // 调试：打印所有 assignments 的 key
+    if (day === '星期一' && period === 7) {
+      console.log(`[getAfterSchoolTeacher] slot.assignments keys:`, Object.keys(slot.assignments || {}));
+      console.log(`[getAfterSchoolTeacher] looking for class: "${cn}"`);
+    }
     const asn = slot.assignments?.[cn];
     if (!asn) return null;
     return asn;
