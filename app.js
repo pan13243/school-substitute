@@ -222,6 +222,17 @@ function renderAppShell() {
   // 计算待处理请假数量（已批准但未安排代课的）
   const pendingSubs = leaveRecords.filter(l => l.status === 'approved').length;
   const subBadge = (isAdmin && pendingSubs > 0) ? `<span class="nav-badge">${pendingSubs}</span>` : '';
+  // 手机端页面标题映射
+  const pageTitles = {
+    home: '系统概览',
+    tt: '课表查询',
+    leave: '请假登记',
+    sub: '代课安排',
+    import: '导入课表',
+    settings: '通知设置'
+  };
+  const currentTitle = pageTitles[currentPage] || '代课调课系统';
+  const showBackBtn = currentPage !== 'home';
   return `
   <div class="app-shell">
     <!-- 顶栏 -->
@@ -237,6 +248,13 @@ function renderAppShell() {
         <button class="btn btn-sm" onclick="handleLogout()">退出</button>
       </div>
     </header>
+
+    <!-- 手机端顶部导航栏 -->
+    <div class="mobile-header" style="display:none;">
+      ${showBackBtn ? `<button class="mobile-back-btn" onclick="switchPage('home')">← 返回</button>` : ''}
+      <span class="mobile-title">${currentTitle}</span>
+      <span class="mobile-spacer"></span>
+    </div>
 
     <div class="app-body">
       <!-- 侧边栏 -->
