@@ -197,11 +197,11 @@ async function handleLeavesGet(env) {
 
 async function handleLeavesPost(request, env) {
   const body = await request.json().catch(() => ({}));
-  const { teacherName, leaveDate, dayOfWeek, reason } = body;
+  const { teacherName, leaveDate, dayOfWeek, period, reason } = body;
   if (!teacherName || !leaveDate) return json({ success: false, error: '缺少教师或日期' }, 400);
   const leaves = await getKV(env, 'leaves') || [];
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const leave = { id, teacherName, leaveDate, dayOfWeek: normalizeDay(dayOfWeek), reason: reason || '', status: 'pending', createdAt: new Date().toISOString() };
+  const leave = { id, teacherName, leaveDate, dayOfWeek: normalizeDay(dayOfWeek), period, reason: reason || '', status: 'pending', createdAt: new Date().toISOString() };
   leaves.push(leave);
   await putKV(env, 'leaves', leaves);
   return json({ success: true, data: leave });
