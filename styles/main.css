@@ -260,10 +260,46 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
   .stat-card { min-width: 80px; padding: 12px; }
   .stat-num { font-size: 22px; }
 }
+/* ── 手机端顶部导航栏 ─────────────────────────────── */
+.mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--gray-200);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.mobile-back-btn {
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mobile-back-btn:hover { color: var(--blue-dark); }
+.mobile-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-900);
+  flex: 1;
+  text-align: center;
+}
+.mobile-spacer { width: 60px; }
+
 @media (max-width: 600px) {
   .sidebar { display: none; }
   .content { padding: 12px; }
   .quick-actions { grid-template-columns: repeat(2, 1fr); }
+  .mobile-header { display: flex; }
+  .topbar { display: none; } /* 手机端隐藏桌面顶栏 */
 }
 
 /* ── 滚动条美化 ───────────────────────────────────── */
