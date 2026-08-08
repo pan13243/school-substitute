@@ -86,9 +86,25 @@ export function generateSubstitutes(timetable, teacherAssignment, leaves, target
   const dayMap = getDayMapping(targetDate);
 
   for (const leave of leaves) {
-    if (leave.status !== 'pending') continue;
-    const leaveDay = normalizeDay(leave.leaveDate);
-    const realDate  = dayMap[leaveDay] || leave.leaveDate;
+    if (leave.status !== 'pending' && leave.status !== 'approved') continue;
+    // 从日期推算当天是星期几（留候 fillDayOfWeek填填过的优先使用）
+    let leaveDay = '';
+    if (leave.dayOfWeek) {
+      leaveDay = normalizeDay(leave.dayOfWeek);
+    }
+    // 如果拿不到 dayOfWeek，从日期推
+    if (!leaveDay || leaveDay === leave.leaveDate) {
+      try {
+        const d = new Date(leave.leaveDate);
+        if (!isNaN(d)) {
+          const days = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+          leaveDay = days[d.getDay()];
+        }
+      } catch {}
+    }
+    if (!leaveDay) continue;
+    const realDate = leave.leaveDate;
+    const dateIso  = leave.leaveDate;
 
     for (const [slotKey, slotInfo] of Object.entries(teacherSchedule[leave.teacherName] || {})) {
       if (!slotKey.startsWith(leaveDay + '_')) continue;

@@ -44,6 +44,8 @@ function now() {
 function p2(n) { return String(n).padStart(2,'0'); }
 function wday(d) { return ['周日','周一','周二','周三','周四','周五','周六'][new Date(d).getDay()]; }
 function wdayCn(d) { return wday(d).replace('周',''); }
+// 转换为完整形式'星期一'以匹配系统数据
+function wdayFull(d) { const map = {'周日':'星期日','周一':'星期一','周二':'星期二','周三':'星期三','周四':'星期四','周五':'星期五','周六':'星期六'}; return map[wday(d)] || wday(d); }
 
 function fmtDate(d) {
   if (!d) return '-';
@@ -576,7 +578,7 @@ async function submitLeave(e) {
   const obj = {
     teacherName: fd.get('teacherName'),
     leaveDate:   fd.get('leaveDate'),
-    dayOfWeek:   fd.get('dayOfWeek'),
+    dayOfWeek:   wdayFull(fd.get('leaveDate')),  // 始终以日期为准，自动转为完整'星期一'
     period:      parseInt(fd.get('period')),
     reason:      fd.get('reason'),
     status:      isAdmin ? 'approved' : 'pending',
@@ -881,6 +883,13 @@ function parseTimetableWorkbook(wb) {
   if (!ws) return null;
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
   if (!rows.length) return null;
+  // 调试：显示前 3 行内容到页面顶部
+  const dbg = document.createElement('div');
+  dbg.id = 'parse-debug';
+  dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:yellow;color:black;padding:8px;z-index:99999;font-size:11px;max-height:180px;overflow:auto;font-family:monospace';
+  dbg.textContent = 'PARSING... sheets=' + JSON.stringify(wb.SheetNames) + ' rows=' + rows.length + ' first3=' + JSON.stringify(rows.slice(0,3));
+  document.body.appendChild(dbg);
+  setTimeout(() => { const e = document.getElementById('parse-debug'); if (e) e.remove(); }, 8000);
   let headerRow = 0;
   for (let i = 0; i < Math.min(3, rows.length); i++) {
     const r = rows[i] || [];
@@ -890,12 +899,21 @@ function parseTimetableWorkbook(wb) {
   }
   const header = (rows[headerRow] || []).map(c => String(c||'').trim());
   const findCol = re => { for (let i=0; i<header.length; i++) if (re.test(header[i])) return i; return -1; };
-  const iTeacher = findCol(/^教师姓名|^姓名/);
-  const iDay     = findCol(/星期/);
-  const iPeriod  = findCol(/节次|第.*节/);
-  const iClass   = findCol(/班级/);
-  const iSubject = findCol(/课程|科目/);
-  if (iDay<0 || iClass<0 || iPeriod<0 || iSubject<0) return null;
+  // 列识别：6 列表头 [教师姓名, 星期, 节次, 班级, 课程, 教师] -- 增 fallback
+  let iTeacher = findCol(/教师姓名|姓名/);
+  let iDay     = findCol(/星期/);
+  let iPeriod  = findCol(/节次|第.*节/);
+  let iClass   = findCol(/班级/);
+  let iSubject = findCol(/课程|科目/);
+  // fallback: 如果未识别到表头，直接按 6 列推断位置
+  if (iDay<0 && header.length === 6 && /^教师姓名|姓名$/.test(header[0])) {
+    iTeacher = 0; iDay = 1; iPeriod = 2; iClass = 3; iSubject = 4;
+  }
+  console.log('[parse] header:', header, 'iTeacher:', iTeacher, 'iDay:', iDay, 'iPeriod:', iPeriod, 'iClass:', iClass, 'iSubject:', iSubject);
+  if (iDay<0 || iClass<0 || iPeriod<0 || iSubject<0) {
+    console.log('[parse] 列识别失败:', { header, iTeacher, iDay, iPeriod, iClass, iSubject });
+    return null;
+  }
 
   const timetable = {};
   const classes = new Set();

@@ -23,7 +23,7 @@ router.post('/generate', (req, res) => {
   if (!mem.config?.timetable)
     return res.status(400).json({ success: false, error: '课表未导入' });
 
-  const leaves = (mem.leaves || []).filter(l => l.status === 'pending');
+  const leaves = (mem.leaves || []).filter(l => l.status === 'approved' || l.status === 'pending');
   if (leaves.length === 0)
     return res.json({ success: true, results: [], summary: { total: 0, arranged: 0, failed: 0 }, message: '暂无待处理请假' });
 
