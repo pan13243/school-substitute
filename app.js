@@ -837,6 +837,36 @@ async function confirmSubstitutes() {
 }
 
 function renderSubTable() {
+  // 优先显示已批准但未安排代课的请假
+  const approvedLeaves = leaveRecords.filter(l => l.status === 'approved');
+  
+  if (approvedLeaves.length > 0) {
+    return `
+    <div class="card">
+      <div class="card-header">
+        <h3>⏳ 待安排代课的请假 (${approvedLeaves.length})</h3>
+        <span class="preview-hint">点击上方"自动生成代课安排"生成方案</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th>请假教师</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th>
+          </tr></thead>
+          <tbody>
+            ${approvedLeaves.map(l => `
+            <tr>
+              <td>${esc(l.teacherName)}</td>
+              <td>${fmtDate(l.leaveDate)}</td>
+              <td>${esc(l.dayOfWeek)}</td>
+              <td>第${l.period}节</td>
+              <td>${esc(l.reason||'—')}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+  
   if (substituteRecords.length === 0) {
     return `
     <div class="empty-state">
