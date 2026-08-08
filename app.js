@@ -1418,10 +1418,18 @@ function parseStandardTimetable(ws) {
 function parseAfterSchoolWorkbook(wb) {
   console.log('[parseAfterSchoolWorkbook] All sheets:', wb.SheetNames);
   // 优先用「单周」/「双周」两个独立 Sheet（最准确的数据源）
-  const hasSeparateSheets = wb.SheetNames.includes('单周') && wb.SheetNames.includes('双周');
+  // 优先精确匹配 Sheet 名称，其次在 Sheet1 中按「单周」「双周」文件区分
+  const sheetNames = wb.SheetNames;
+  let singleSheet = sheetNames.find(n => /单周/.test(n) && !/双周/.test(n));
+  let doubleSheet = sheetNames.find(n => /双周/.test(n) && !/单周/.test(n));
+  // fallback：直接在 Sheet1 中解析（文件本身已区分单/双周）
+  if (!singleSheet) singleSheet = 'Sheet1';
+  if (!doubleSheet) doubleSheet = 'Sheet1';
+  const hasSeparateSheets = singleSheet && doubleSheet;
+  console.log('[parseAfterSchoolWorkbook] 单周 sheet:', singleSheet, '/ 双周 sheet:', doubleSheet);
   if (hasSeparateSheets) {
-    const single = parseAfterSchoolSheet(wb.Sheets['单周'], '单周');
-    const double = parseAfterSchoolSheet(wb.Sheets['双周'], '双周');
+    const single = parseAfterSchoolSheet(wb.Sheets[singleSheet], '单周');
+    const double = parseAfterSchoolSheet(wb.Sheets[doubleSheet], '双周');
     if (single && double) {
       // 合并单周/双周数据到统一的 slots 数组
       const mergedSlots = [];
