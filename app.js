@@ -390,9 +390,14 @@ function renderHomePage(area) {
   const myLeaves = currentTeacher ? leaveRecords.filter(l => l.teacherName === currentTeacher) : [];
   const mySubstitutes = currentTeacher ? substituteRecords.filter(s => s.leaveTeacher === currentTeacher || s.substituteTeacher === currentTeacher) : [];
 
+  // 教师端显示欢迎语，管理员端显示系统概览
+  const pageTitle = (!isAdmin && currentTeacher) 
+    ? `👋 欢迎，${esc(currentTeacher)}老师` 
+    : '📊 系统概览';
+  
   area.innerHTML = `
   <div class="page">
-    <h2 class="page-title">📊 系统概览</h2>
+    <h2 class="page-title">${pageTitle}</h2>
 
     <div class="stats-row">
       <div class="stat-card">
