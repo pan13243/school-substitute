@@ -1243,7 +1243,17 @@ function renderImportPage(area) {
     </div>
 
     <div class="card">
-      <h3>📁 方式三：导入 JSON 数据</h3>
+      <h3>📅 方式三：上传校历表 Excel</h3>
+      <p class="text-muted">上传校历表，系统自动识别每一周是<b>单周</b>还是<b>双周</b>（以及假期）。导入后，代课安排会按单/双周匹配对应教师。</p>
+      <div class="form-group">
+        <input type="file" id="import-calendar" accept=".xlsx,.xls" class="form-file"
+               onchange="handleCalendarImport(this.files[0])">
+      </div>
+      <div id="calendar-status" style="margin-top:8px;font-size:12px;color:#666;"></div>
+    </div>
+
+    <div class="card">
+      <h3>📁 方式四：导入 JSON 数据</h3>
       <p class="text-muted">将 <code>parsed_data.json</code> 文件上传。</p>
       <div class="form-group">
         <input type="file" id="import-json" accept=".json" class="form-file"
@@ -1252,7 +1262,7 @@ function renderImportPage(area) {
     </div>
 
     <div class="card">
-      <h3>📝 方式四：手动粘贴JSON数据</h3>
+      <h3>📝 方式五：手动粘贴JSON数据</h3>
       <p class="text-muted">从 parsed_data.json 文件中复制内容，粘贴到下方：</p>
       <textarea id="import-textarea" class="form-textarea" rows="8"
                 placeholder="粘贴 parsed_data.json 的内容..."></textarea>
@@ -1270,7 +1280,10 @@ function renderDataStatus() {
   const td = scheduleData || {};
   const cls = td.classes  || [];
   const teas = td.allTeachers || [];
-  const hasData = cls.length > 0;
+  const cal = td.calendar || null;
+  const hasData = cls.length > 0 || !!cal;
+  const calInfo = cal ? `
+    <div class="stat-mini" style="width:100%"><span class="sl" style="font-size:12px;line-height:1.6">📅 校历：${esc(cal.term || '')}<br>${cal.startDate} ~ ${cal.endDate}<br>${cal.stats?.weeks || cal.weeks?.length || 0} 周（单 ${cal.weeks?.filter?.(w=>w.parity==='single').length ?? '-'} / 双 ${cal.weeks?.filter?.(w=>w.parity==='double').length ?? '-'}），假日 ${cal.stats?.holidays ?? '-'} 天</span></div>` : '';
 
   return hasData ? `
   <div class="status-ok">✅ 已导入</div>
@@ -1279,6 +1292,7 @@ function renderDataStatus() {
     <div class="stat-mini"><span class="sn">${teas.length}</span><span class="sl">教师</span></div>
     <div class="stat-mini"><span class="sn">${cls.length*30}</span><span class="sl">总课时</span></div>
   </div>
+  ${calInfo}
   <button class="btn btn-danger btn-sm" style="margin-top:12px" onclick="clearScheduleData()">🗑️ 清空课表</button>
   ` : `<div class="status-warn">⚠️ 尚未导入课表</div>`;
 }
@@ -1372,6 +1386,137 @@ async function handleAfterSchoolImport(weekType, file) {
   } catch(e) {
     loading.remove();
     toast(`${weekType === 'single' ? '单周' : '双周'}表解析失败：`+e.message,'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  校历表解析（支持同结构新校历表复用）
+//  校历表结构：
+//    row0: 标题（学期名）
+//    row1: 开始日期 如 "3/1/26"
+//    row2: 表头 [月份, 周次, 星期日..星期六, 每周事务, 值周领导, 负责人, 值周教师, 值周班级]
+//    row3+: 每周一行；col0=月份(三/四/...)，col1=周次(1..N)，col2-8=周日~周六日期
+//          日期格式："1" 或 "12\n植树节" 或 "4\n清明 休"；含"休"=放假
+//          跨月周拆成两行：第一行带周次（上月部分），第二行是新月份行（无周次，并入同一周）
+// ══════════════════════════════════════════════════════
+function parseCalendarWorkbook(wb) {
+  const sn = wb.SheetNames[0];
+  const ws = wb.Sheets[sn];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+
+  // 1. 找表头行（含"周次"+ 含"星期日"）
+  let headerRow = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i] || [];
+    if (String(r[1] || '').includes('周次') && String(r[2] || '').includes('星期日')) { headerRow = i; break; }
+  }
+  if (headerRow === -1) {
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i] || [];
+      if (String(r[1] || '').includes('周次')) { headerRow = i; break; }
+    }
+  }
+  if (headerRow === -1) throw new Error('未找到校历表头（需含"周次"列）');
+
+  // 2. 解析开始日期行（表头上一行 col0）：如 "3/1/26"
+  let startYear = new Date().getFullYear();
+  const dateRow = rows[headerRow - 1] || [];
+  const dm = String(dateRow[0] || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (dm) {
+    const y = parseInt(dm[3]);
+    startYear = y < 100 ? 2000 + y : y;
+  }
+
+  // 3. 学期标题
+  const term = String(rows[0]?.[0] || '校历表').trim();
+
+  const CN_MONTH = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'十一':11,'十二':12 };
+  const WEEKDAYS = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+
+  const weeks = [];
+  const dayMap = {};
+  let currentWeek = null;
+  let currentMonth = 0;
+  let currentYear = startYear;
+  let prevMonthNum = 0;
+
+  for (let i = headerRow + 1; i < rows.length; i++) {
+    const r = rows[i] || [];
+    if (r.length < 3) continue;
+    // 备注行跳过
+    if (String(r[0] || '').includes('备注')) continue;
+
+    // col0: 月份（"三"/"四"...，跨月行也会出现）
+    const monthStr = String(r[0] || '').trim();
+    if (monthStr && CN_MONTH[monthStr]) {
+      const mm = CN_MONTH[monthStr];
+      if (prevMonthNum && mm < prevMonthNum) currentYear++; // 跨年（秋季学期 12→1 月）
+      currentMonth = mm;
+      prevMonthNum = mm;
+    }
+
+    // col1: 周次（数字）→ 新的一周；空 → 跨月行，并入当前周
+    const weekStr = String(r[1] || '').trim();
+    if (weekStr && /^\d+$/.test(weekStr)) {
+      const weekNum = parseInt(weekStr);
+      currentWeek = { weekNum, parity: weekNum % 2 === 1 ? 'single' : 'double', days: [] };
+      weeks.push(currentWeek);
+    }
+    if (!currentWeek) continue;
+
+    // col2-8: 周日~周六
+    for (let c = 2; c <= 8; c++) {
+      const cell = String(r[c] || '').trim();
+      if (!cell) continue;
+      const m2 = cell.match(/(\d{1,2})/);
+      if (!m2) continue;
+      const day = parseInt(m2[1]);
+      if (!currentMonth) continue;
+      const date = new Date(currentYear, currentMonth - 1, day);
+      if (isNaN(date.getTime())) continue;
+      const dateStr = date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
+      // 防重复（跨月行同一日期可能出现两次）
+      if (dayMap[dateStr]) continue;
+      const isHoliday = cell.includes('休');
+      const dayInfo = { date: dateStr, weekday: WEEKDAYS[date.getDay()], isHoliday, weekNum: currentWeek.weekNum, parity: currentWeek.parity };
+      currentWeek.days.push(dayInfo);
+      dayMap[dateStr] = dayInfo;
+    }
+  }
+
+  weeks.forEach(w => w.days.sort((a, b) => a.date < b.date ? -1 : 1));
+  const allDays = Object.values(dayMap).sort((a, b) => a.date < b.date ? -1 : 1);
+
+  return {
+    source: sn,
+    term,
+    startDate: allDays.length ? allDays[0].date : null,
+    endDate: allDays.length ? allDays[allDays.length - 1].date : null,
+    weeks,
+    dayMap,
+    stats: { weeks: weeks.length, days: allDays.length, holidays: allDays.filter(d => d.isHoliday).length }
+  };
+}
+
+async function handleCalendarImport(file) {
+  if (!file) return;
+  const loading = showLoading('正在解析校历表...');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const calendar = parseCalendarWorkbook(wb);
+    console.log('[CalendarImport] parsed:', calendar.stats, 'term:', calendar.term, calendar.startDate, '~', calendar.endDate);
+    loading.remove();
+
+    const holidayWeeks = calendar.weeks.filter(w => w.days.every(d => d.isHoliday));
+    const ok = confirm(`校历表解析成功：\n学期：${calendar.term}\n日期范围：${calendar.startDate} ~ ${calendar.endDate}\n共 ${calendar.stats.weeks} 周（单周 ${calendar.weeks.filter(w=>w.parity==='single').length} / 双周 ${calendar.weeks.filter(w=>w.parity==='double').length}）\n共 ${calendar.stats.days} 天，其中假日 ${calendar.stats.holidays} 天\n\n确认导入？`);
+    if (!ok) return;
+
+    await doImport({ calendar });
+  } catch(e) {
+    loading.remove();
+    console.error('[CalendarImport] error:', e);
+    toast('校历表解析失败：' + e.message, 'error');
   }
 }
 
@@ -1880,15 +2025,16 @@ async function handleTextImport() {
 }
 
 async function doImport(data) {
-  if (!data.timetable || !data.classes) {
-    toast('数据格式不正确，缺少 timetable 或 classes','error'); return;
+  if (!data.timetable && !data.classes && !data.calendar) {
+    toast('数据格式不正确，缺少 timetable/classes/calendar','error'); return;
   }
-  const loading = showLoading('正在导入课表...');
+  const loading = showLoading('正在导入...');
   try {
     const r = await API.importSchedule(data);
     loading.remove();
     if (r.success) {
-      scheduleData = data;
+      // 合并导入（校历/课后服务只更新对应字段，保留已有课表）
+      scheduleData = Object.assign({}, scheduleData, data);
       toast(r.message || '导入成功！','success');
       renderImportPage($('main-content'));
     } else {
@@ -1987,15 +2133,17 @@ async function initApp() {
       timetable: schR.data,
       teacherAssignment: schR.teacherAssignment || {},
       afterSchoolService: schR.afterSchoolService || {},
+      calendar: schR.calendar || null,
       classes: schR.classes || [],
       allTeachers: schR.allTeachers || []
     };
-  } else if (schR.afterSchoolService) {
-    // 只有课后服务数据
+  } else if (schR.afterSchoolService || schR.calendar) {
+    // 只有课后服务/校历数据
     scheduleData = {
       timetable: {},
       teacherAssignment: {},
       afterSchoolService: schR.afterSchoolService || {},
+      calendar: schR.calendar || null,
       classes: [],
       allTeachers: []
     };
