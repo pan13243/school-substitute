@@ -2457,8 +2457,8 @@ async function doImport(data) {
     const r = await API.importSchedule(data);
     loading.remove();
     if (r.success) {
-      // 合并导入（校历/课后服务只更新对应字段，保留已有课表）
-      scheduleData = Object.assign({}, scheduleData, data);
+      // ✅ 从后端重新加载完整数据（确保合并后的数据一致）
+      await loadScheduleData();
       // 新学期导入新课表时，自动清空教师登录缓存，确保教师列表同步更新
       localStorage.removeItem('teachers_cache');
       toast(r.message || '导入成功！','success');
