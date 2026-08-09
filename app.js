@@ -47,6 +47,24 @@ function wdayCn(d) { return wday(d).replace('周',''); }
 // 转换为完整形式'星期一'以匹配系统数据
 function wdayFull(d) { const map = {'周日':'星期日','周一':'星期一','周二':'星期二','周三':'星期三','周四':'星期四','周五':'星期五','周六':'星期六'}; return map[wday(d)] || wday(d); }
 
+// 从时间段获取节次（用于课后服务）
+const AFTER_SCHOOL_PERIOD_MAP = {
+  '13:00': 11, '13：00': 11,
+  '15:40': 7, '15：40': 7,
+  '16:25': 8, '16：25': 8,
+  '17:10': 9, '17：10': 9,
+  '19:30': 10, '19：30': 10
+};
+function getPeriod(timeRange) {
+  if (!timeRange) return 0;
+  const m = String(timeRange).match(/(\d{1,2})[:：]\d{2}/);
+  if (m) {
+    const key = m[0];
+    return AFTER_SCHOOL_PERIOD_MAP[key] || 0;
+  }
+  return 0;
+}
+
 // 手机端返回栏（每个页面顶部显示）
 function mobileBackBar(title) {
   if (currentPage === 'home' || currentPage === 'login') return '';
