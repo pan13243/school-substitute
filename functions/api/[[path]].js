@@ -535,6 +535,107 @@ async function handleSubstituteDeleteOne(request, env) {
   return json({ success: true, message: '删除成功', remaining: subs.length });
 }
 
+// ============ 教师隐私密码管理 ============
+const TEACHER_PWD_KV_KEY = 'teacher_privacy_passwords';
+
+// 获取教师隐私密码
+async function handleTeacherPwdGet(request, env) {
+  const url = new URL(request.url);
+  const teacherName = url.searchParams.get('teacher');
+  
+  const passwords = await getKV(env, TEACHER_PWD_KV_KEY) || {};
+  
+  // 如果指定了教师名，返回该教师的密码（需要验证身份）
+  if (teacherName) {
+    // 教师可以查看自己的密码，管理员可以查看所有
+    const isAdmin = authAdmin(request.headers);
+    const currentTeacher = request.headers.get('x-teacher-name');
+    
+    if (!isAdmin && currentTeacher !== teacherName) {
+      return json({ success: false, error: '无权查看' }, 403);
+    }
+    
+    return json({ 
+      success: true, 
+      hasPassword: !!passwords[teacherName],
+      teacherName 
+    });
+  }
+  
+  // 管理员可以获取所有设置了密码的教师列表
+  if (!authAdmin(request.headers)) {
+    return json({ success: false, error: '管理员密码错误' }, 401);
+  }
+  
+  const teachersWithPwd = Object.entries(passwords)
+    .filter(([_, pwd]) => pwd)
+    .map(([name, _]) => name);
+  
+  return json({ 
+    success: true, 
+    teachersWithPassword: teachersWithPwd,
+    count: teachersWithPwd.length 
+  });
+}
+
+// 设置/更新教师隐私密码
+async function handleTeacherPwdPost(request, env) {
+  const body = await request.json().catch(() => ({}));
+  const { teacherName, password, oldPassword } = body;
+  
+  if (!teacherName) {
+    return json({ success: false, error: '缺少教师姓名' }, 400);
+  }
+  
+  const passwords = await getKV(env, TEACHER_PWD_KV_KEY) || {};
+  
+  // 如果已设置密码，需要验证原密码（或管理员权限）
+  if (passwords[teacherName] && passwords[teacherName] !== oldPassword) {
+    if (!authAdmin(request.headers)) {
+      return json({ success: false, error: '原密码错误' }, 403);
+    }
+  }
+  
+  // 更新密码（空字符串表示删除）
+  if (password === '' || password === null || password === undefined) {
+    delete passwords[teacherName];
+  } else {
+    passwords[teacherName] = password;
+  }
+  
+  await putKV(env, TEACHER_PWD_KV_KEY, passwords);
+  
+  return json({ 
+    success: true, 
+    message: password ? '密码已设置' : '密码已取消',
+    hasPassword: !!passwords[teacherName]
+  });
+}
+
+// 管理员重置教师隐私密码
+async function handleTeacherPwdReset(request, env) {
+  if (!authAdmin(request.headers)) {
+    return json({ success: false, error: '管理员密码错误' }, 401);
+  }
+  
+  const body = await request.json().catch(() => ({}));
+  const { teacherName } = body;
+  
+  if (!teacherName) {
+    return json({ success: false, error: '缺少教师姓名' }, 400);
+  }
+  
+  const passwords = await getKV(env, TEACHER_PWD_KV_KEY) || {};
+  delete passwords[teacherName];
+  await putKV(env, TEACHER_PWD_KV_KEY, passwords);
+  
+  return json({ 
+    success: true, 
+    message: `已重置 ${teacherName} 的隐私密码`,
+    teacherName 
+  });
+}
+
 // ============ 工具函数 ============
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -601,6 +702,13 @@ export async function onRequest(context) {
   
   if (path === '/api/substitutes/delete-one') {
     if (method === 'POST') return handleSubstituteDeleteOne(request, env);
+  }
+  
+  // 教师隐私密码管理
+  if (path === '/api/teacher/pwd') {
+    if (method === 'GET') return handleTeacherPwdGet(request, env);
+    if (method === 'POST') return handleTeacherPwdPost(request, env);
+    if (method === 'DELETE') return handleTeacherPwdReset(request, env);
   }
   
   // 调试接口：查看数据状态

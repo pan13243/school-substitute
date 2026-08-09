@@ -56,38 +56,92 @@ function mobileBackBar(title) {
   </div>`;
 }
 
-// 教师隐私密码管理
-const TEACHER_PWD_KEY = 'teacher_privacy_pwd_';
+// 教师隐私密码管理（后端存储）
+// 缓存密码状态
+let teacherPwdCache = {};
 
-// 获取教师隐私密码
-function getTeacherPrivacyPwd(teacherName) {
-  return localStorage.getItem(TEACHER_PWD_KEY + teacherName);
-}
-
-// 设置教师隐私密码
-function setTeacherPrivacyPwd(teacherName, pwd) {
-  if (pwd) {
-    localStorage.setItem(TEACHER_PWD_KEY + teacherName, pwd);
-  } else {
-    localStorage.removeItem(TEACHER_PWD_KEY + teacherName);
-  }
+// 获取教师隐私密码状态
+async function getTeacherPrivacyPwdStatus(teacherName) {
+  try {
+    const r = await fetch(`/api/teacher/pwd?teacher=${encodeURIComponent(teacherName)}`);
+    const data = await r.json();
+    if (data.success) {
+      teacherPwdCache[teacherName] = data.hasPassword;
+      return data.hasPassword;
+    }
+  } catch (e) {}
+  return teacherPwdCache[teacherName] || false;
 }
 
 // 检查教师是否设置了隐私密码
-function hasTeacherPrivacyPwd(teacherName) {
-  return !!getTeacherPrivacyPwd(teacherName);
+async function hasTeacherPrivacyPwd(teacherName) {
+  return await getTeacherPrivacyPwdStatus(teacherName);
 }
 
-// 验证教师隐私密码
-function verifyTeacherPrivacyPwd(teacherName, inputPwd) {
-  const savedPwd = getTeacherPrivacyPwd(teacherName);
-  return !savedPwd || savedPwd === inputPwd;
+// 验证教师隐私密码（通过后端验证）
+async function verifyTeacherPrivacyPwd(teacherName, inputPwd) {
+  try {
+    const r = await fetch('/api/teacher/pwd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teacherName, password: inputPwd })
+    });
+    const data = await r.json();
+    return data.success;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 设置教师隐私密码
+async function setTeacherPrivacyPwd(teacherName, newPwd, oldPwd = '') {
+  try {
+    const r = await fetch('/api/teacher/pwd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teacherName, password: newPwd, oldPassword: oldPwd })
+    });
+    const data = await r.json();
+    if (data.success) {
+      teacherPwdCache[teacherName] = data.hasPassword;
+    }
+    return data;
+  } catch (e) {
+    return { success: false, error: '网络错误' };
+  }
+}
+
+// 管理员重置教师隐私密码
+async function resetTeacherPrivacyPwd(teacherName) {
+  try {
+    const r = await fetch('/api/teacher/pwd', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd },
+      body: JSON.stringify({ teacherName })
+    });
+    return await r.json();
+  } catch (e) {
+    return { success: false, error: '网络错误' };
+  }
+}
+
+// 获取所有设置了隐私密码的教师（管理员用）
+async function getTeachersWithPrivacyPwd() {
+  try {
+    const r = await fetch('/api/teacher/pwd', {
+      headers: { 'x-admin-pwd': adminPwd }
+    });
+    return await r.json();
+  } catch (e) {
+    return { success: false, teachersWithPassword: [] };
+  }
 }
 
 // 显示隐私密码验证弹窗
-function showPrivacyVerifyModal(teacherName, onSuccess, title) {
-  // 如果没有设置密码，直接通过
-  if (!hasTeacherPrivacyPwd(teacherName)) {
+async function showPrivacyVerifyModal(teacherName, onSuccess, title) {
+  // 检查是否设置了密码
+  const hasPwd = await hasTeacherPrivacyPwd(teacherName);
+  if (!hasPwd) {
     onSuccess();
     return;
   }
@@ -104,7 +158,7 @@ function showPrivacyVerifyModal(teacherName, onSuccess, title) {
         <input type="password" id="privacy-pwd-input" class="form-input" placeholder="请输入您的隐私密码" 
                style="width:100%; padding:12px; border:2px solid #E5E7EB; border-radius:8px; font-size:14px;"
                onkeydown="if(event.key==='Enter')document.getElementById('privacy-verify-btn').click()">
-        <p style="margin:8px 0 0; color:#9CA3AF; font-size:12px;">提示：未设置密码请直接点击确认</p>
+        <p style="margin:8px 0 0; color:#9CA3AF; font-size:12px;">忘记密码请联系管理员重置</p>
       </div>
       <div style="padding:12px 20px; border-top:1px solid #E5E7EB; display:flex; gap:8px; justify-content:flex-end;">
         <button onclick="this.closest('.modal-overlay').remove()" style="padding:8px 16px; background:#F3F4F6; color:#374151; border:none; border-radius:6px; cursor:pointer;">取消</button>
@@ -119,9 +173,10 @@ function showPrivacyVerifyModal(teacherName, onSuccess, title) {
   setTimeout(() => $('privacy-pwd-input')?.focus(), 100);
   
   // 绑定确认按钮
-  $('privacy-verify-btn').onclick = () => {
+  $('privacy-verify-btn').onclick = async () => {
     const inputPwd = $('privacy-pwd-input').value.trim();
-    if (verifyTeacherPrivacyPwd(teacherName, inputPwd)) {
+    const verified = await verifyTeacherPrivacyPwd(teacherName, inputPwd);
+    if (verified) {
       modal.remove();
       onSuccess();
     } else {
@@ -131,11 +186,11 @@ function showPrivacyVerifyModal(teacherName, onSuccess, title) {
 }
 
 // 显示设置隐私密码弹窗
-function showSetPrivacyPwdModal() {
+async function showSetPrivacyPwdModal() {
   const currentTeacher = sessionStorage.getItem('teacherName');
   if (!currentTeacher) return;
   
-  const hasPwd = hasTeacherPrivacyPwd(currentTeacher);
+  const hasPwd = await hasTeacherPrivacyPwd(currentTeacher);
   
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
@@ -160,16 +215,10 @@ function showSetPrivacyPwdModal() {
   document.body.appendChild(modal);
   
   // 绑定保存按钮
-  $('privacy-save-btn').onclick = () => {
+  $('privacy-save-btn').onclick = async () => {
     const oldPwd = $('privacy-old-pwd')?.value.trim() || '';
     const newPwd = $('privacy-new-pwd').value.trim();
     const confirmPwd = $('privacy-confirm-pwd').value.trim();
-    
-    // 验证原密码
-    if (hasPwd && oldPwd && !verifyTeacherPrivacyPwd(currentTeacher, oldPwd)) {
-      toast('原密码错误', 'error');
-      return;
-    }
     
     // 验证新密码
     if (newPwd && newPwd !== confirmPwd) {
@@ -178,18 +227,22 @@ function showSetPrivacyPwdModal() {
     }
     
     // 保存密码
-    setTeacherPrivacyPwd(currentTeacher, newPwd);
-    modal.remove();
-    toast(newPwd ? '隐私密码已设置' : '隐私密码已取消', 'success');
+    const result = await setTeacherPrivacyPwd(currentTeacher, newPwd, oldPwd);
+    if (result.success) {
+      modal.remove();
+      toast(result.message, 'success');
+    } else {
+      toast(result.error || '保存失败', 'error');
+    }
   };
 }
 
 // 教师端：显示自己的请假记录（只读弹窗）
-function showMyLeaves() {
+async function showMyLeaves() {
   const currentTeacher = sessionStorage.getItem('teacherName');
   if (!currentTeacher) return;
   
-  showPrivacyVerifyModal(currentTeacher, () => {
+  await showPrivacyVerifyModal(currentTeacher, () => {
     const myLeaves = leaveRecords.filter(l => l.teacherName === currentTeacher);
     
     const content = myLeaves.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无请假记录</p>' :
@@ -202,11 +255,11 @@ function showMyLeaves() {
 }
 
 // 教师端：显示自己的代课安排（只读弹窗）
-function showMySubstitutes() {
+async function showMySubstitutes() {
   const currentTeacher = sessionStorage.getItem('teacherName');
   if (!currentTeacher) return;
   
-  showPrivacyVerifyModal(currentTeacher, () => {
+  await showPrivacyVerifyModal(currentTeacher, () => {
     // 我请假的由别人代课，或我帮别人代课
     const mySubstitutes = substituteRecords.filter(s => 
       s.leaveTeacher === currentTeacher || s.substituteTeacher === currentTeacher
@@ -2384,11 +2437,29 @@ function renderSettingsPage(area) {
       <button class="btn btn-primary" onclick="saveNotifyCfg()">保存</button>
     </div>
 
+    ${isAdmin ? `
+    <div class="card">
+      <h3>🔐 教师隐私密码管理</h3>
+      <p class="text-muted">查看和重置教师的隐私密码。教师忘记密码时可在此重置。</p>
+      <div id="teacher-pwd-list" style="margin:12px 0;">
+        <p style="color:#6B7280; font-size:13px;">加载中...</p>
+      </div>
+      <div class="form-group" style="margin-top:12px;">
+        <label>重置指定教师的密码</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="reset-teacher-name" class="form-input" placeholder="输入教师姓名" style="flex:1;">
+          <button class="btn btn-warning" onclick="adminResetTeacherPwd()">重置</button>
+        </div>
+      </div>
+      <button class="btn btn-secondary" onclick="loadTeacherPwdList()">刷新列表</button>
+    </div>
+    <script>loadTeacherPwdList();</script>` : ''}
+
     <div class="card">
       <h3>ℹ️ 关于本系统</h3>
       <p>施秉县双井镇中心小学 · 代课调课系统 v1.0</p>
       <p class="text-muted">基于云端数据库，支持多端同步。不依赖主机电脑，随时随地访问。</p>
-      <p class="text-muted">默认管理员密码：<code>admin888</code>（首次使用请修改 server.js 中的 ADMIN_HASH）</p>
+      <p class="text-muted">默认管理员密码：<code>admin888</code></p>
     </div>
   </div>`;
 }
@@ -2413,6 +2484,65 @@ async function testWxNotify() {
     else toast('发送失败：'+r.status,'error');
   } catch(e) {
     toast('网络错误','error');
+  }
+}
+
+// 管理员：加载设置了隐私密码的教师列表
+async function loadTeacherPwdList() {
+  const container = $('teacher-pwd-list');
+  if (!container) return;
+  
+  container.innerHTML = '<p style="color:#6B7280; font-size:13px;">加载中...</p>';
+  
+  const result = await getTeachersWithPrivacyPwd();
+  if (!result.success) {
+    container.innerHTML = '<p style="color:#EF4444; font-size:13px;">加载失败：' + esc(result.error || '未知错误') + '</p>';
+    return;
+  }
+  
+  const teachers = result.teachersWithPassword || [];
+  if (teachers.length === 0) {
+    container.innerHTML = '<p style="color:#6B7280; font-size:13px;">暂无教师设置隐私密码</p>';
+    return;
+  }
+  
+  container.innerHTML = `
+    <table class="data-table" style="font-size:13px;">
+      <thead><tr><th>教师姓名</th><th>操作</th></tr></thead>
+      <tbody>
+        ${teachers.map(t => `
+          <tr>
+            <td>${esc(t)}</td>
+            <td><button class="btn btn-sm btn-warning" onclick="adminResetTeacherPwd('${esc(t)}')">重置密码</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <p style="color:#6B7280; font-size:12px; margin-top:8px;">共 ${teachers.length} 位教师设置了隐私密码</p>
+  `;
+}
+
+// 管理员：重置教师隐私密码
+async function adminResetTeacherPwd(teacherName) {
+  if (!teacherName) {
+    teacherName = $('reset-teacher-name')?.value?.trim();
+  }
+  if (!teacherName) {
+    toast('请输入教师姓名', 'warning');
+    return;
+  }
+  
+  if (!confirm(`确定要重置 ${teacherName} 的隐私密码吗？\n重置后该教师查看请假记录和代课安排将不需要密码。`)) {
+    return;
+  }
+  
+  const result = await resetTeacherPrivacyPwd(teacherName);
+  if (result.success) {
+    toast(result.message, 'success');
+    loadTeacherPwdList(); // 刷新列表
+    if ($('reset-teacher-name')) $('reset-teacher-name').value = '';
+  } else {
+    toast(result.error || '重置失败', 'error');
   }
 }
 
