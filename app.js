@@ -47,6 +47,15 @@ function wdayCn(d) { return wday(d).replace('周',''); }
 // 转换为完整形式'星期一'以匹配系统数据
 function wdayFull(d) { const map = {'周日':'星期日','周一':'星期一','周二':'星期二','周三':'星期三','周四':'星期四','周五':'星期五','周六':'星期六'}; return map[wday(d)] || wday(d); }
 
+// 手机端返回栏（每个页面顶部显示）
+function mobileBackBar(title) {
+  if (currentPage === 'home' || currentPage === 'login') return '';
+  return `<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding:8px 0; border-bottom:1px solid #E5E7EB;">
+    <button onclick="switchPage('home')" style="background:#EFF6FF; border:none; border-radius:6px; color:#3B82F6; font-size:13px; font-weight:500; cursor:pointer; padding:6px 12px; display:flex; align-items:center; gap:4px;">← 返回首页</button>
+    <span style="font-size:15px; font-weight:600; color:#374151;">${title}</span>
+  </div>`;
+}
+
 function fmtDate(d) {
   if (!d) return '-';
   const dt = new Date(d);
@@ -414,6 +423,7 @@ function renderTimetablePage(area) {
 
   area.innerHTML = `
   <div class="page">
+    ${mobileBackBar('课表查询')}
     <h2 class="page-title">📅 课表查询</h2>
 
     <div class="view-toggle">
@@ -609,6 +619,7 @@ function renderLeavePage(area) {
 
   area.innerHTML = `
   <div class="page">
+    ${mobileBackBar('请假登记')}
     <h2 class="page-title">🏖️ 请假登记</h2>
 
     <div class="card">
@@ -849,6 +860,7 @@ function renderSubPage(area) {
   
   area.innerHTML = `
   <div class="page">
+    ${mobileBackBar('代课安排')}
     <h2 class="page-title">✅ 代课安排</h2>
 
     ${isAdmin ? `
@@ -1085,6 +1097,7 @@ function exportSubExcel() {
 function renderImportPage(area) {
   area.innerHTML = `
   <div class="page">
+    ${mobileBackBar('导入课表')}
     <h2 class="page-title">📤 导入课表</h2>
 
     <div class="card">
@@ -1777,6 +1790,7 @@ function renderSettingsPage(area) {
   const cfg = JSON.parse(localStorage.getItem('notify_cfg') || '{}');
   area.innerHTML = `
   <div class="page">
+    ${mobileBackBar('通知设置')}
     <h2 class="page-title">🔔 通知设置</h2>
 
     <div class="card">
