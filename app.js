@@ -1026,10 +1026,16 @@ function renderTTMy() {
   // 收集课后服务
   const myAfterSchoolSlots = [];
   const assSlots = afterSchool.slots || [];
+  console.log('assSlots:', assSlots.length, 'first slot:', assSlots[0] ? Object.keys(assSlots[0]) : 'none');
   for (const slot of assSlots) {
     const period = getPeriod(slot.time);
+    console.log('slot:', slot.day, slot.time, 'period:', period, 'assignments type:', typeof slot.assignments, Array.isArray(slot.assignments));
     if (period >= 7 && slot.assignments) {
-      for (const assign of slot.assignments) {
+      // assignments 可能是数组或对象
+      const assignments = Array.isArray(slot.assignments) 
+        ? slot.assignments 
+        : Object.entries(slot.assignments).map(([className, data]) => ({ className, ...data }));
+      for (const assign of assignments) {
         // 单双周判断：当前日期或根据校历
         const weekType = assign.week || '通用';
         const teachers = assign.teacher ? assign.teacher.split(/[\n\r,，;；\s　]+/).filter(t => t) : [];
