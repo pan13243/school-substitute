@@ -927,12 +927,11 @@ function renderTTClass() {
   const getAfterSchoolSlot = (day, period) => {
     const slots = afterschool.slots || [];
     const target = normD(day);
-    // 尝试严格匹配，如果 period 为字符串，转换为数字
     let found = slots.find(s => normD(s.day) === target && Number(s.period) === Number(period));
-    if (day === '星期五' && period === 7) {
-      const friday7 = slots.filter(s => normD(s.day).includes('五') && Number(s.period) === 7);
-      console.log('[DBG-周五7节] friday7 slots=', JSON.stringify(friday7.map(s => ({day:s.day, period:s.period, time:s.time, assignments: Object.keys(s.assignments||{})}))));
-      console.log('[DBG-查询] cn=', cn, 'slots.length=', slots.length, 'target=', target);
+    // 只输出一次全部 slot 摘要
+    if (!window._asDbgPrinted && slots.length) {
+      window._asDbgPrinted = true;
+      console.log('[DBG-all-slots]', JSON.stringify(slots.map(s => ({day:s.day, period:s.period, time:s.time}))));
     }
     return found;
   };
