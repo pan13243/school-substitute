@@ -110,13 +110,17 @@ function buildTeacherSchedule(timetable) {
   return { teacherSchedule: ts, allClasses: [...allClasses] };
 }
 
-function findSubstitute({ leaveTeacher, className, subject, day, period, teacherSchedule, teacherAssignment, existingSubs = [] }) {
+function findSubstitute({ leaveTeacher, className, subject, day, period, teacherSchedule, teacherAssignment, existingSubs = [], absentTeachers = null, occupiedSlots = null }) {
   const slotKey = `${day}_${period}`;
   const candidates = [];
   for (const [t, schedule] of Object.entries(teacherSchedule)) {
     if (t === leaveTeacher) continue;
     if (ADMIN_TEACHERS.includes(t)) continue;
+    // 【请假排除】当天已有请假记录的教师不能安排代课
+    if (absentTeachers && absentTeachers.has(t)) continue;
+    // 【时段占用】该时段有正课或课后服务值班的教师不能安排
     if (schedule[slotKey]) continue;
+    if (occupiedSlots && occupiedSlots[slotKey] && occupiedSlots[slotKey].has(t)) continue;
     const daySlots = Object.keys(schedule).filter(k => k.startsWith(day + '_'));
     const subCount = existingSubs.filter(s => s.substituteTeacher === t && s.dayOfWeek === day).length;
     if (subCount >= 2) continue;
@@ -132,6 +136,53 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
   const { teacherSchedule, allClasses } = buildTeacherSchedule(timetable);
   const results = [];
   const existingSubs = [];
+
+  // 【请假排除】收集当天所有已请假教师（任何 pending/approved 状态）
+  const absentByDate = new Map();
+  for (const leave of leaves) {
+    if (leave.status !== 'pending' && leave.status !== 'approved') continue;
+    const d = leave.leaveDate || targetDate;
+    if (!absentByDate.has(d)) absentByDate.set(d, new Set());
+    absentByDate.get(d).add(leave.teacherName);
+  }
+  // 【占用表】课后服务值班占用：{ '星期一_8': Set(教师) }，按请假日期所在单/双周判断轮值
+  const occupiedCache = new Map();
+  function buildOccupiedSlots(dateStr) {
+    if (occupiedCache.has(dateStr)) return occupiedCache.get(dateStr);
+    const occ = {};
+    if (afterSchoolService?.slots) {
+      const calDay = calendar?.dayMap?.[dateStr];
+      const parity = calDay ? calDay.parity : null;
+      for (const slot of afterSchoolService.slots) {
+        if (!slot.period || slot.period < 7 || slot.period > 11) continue;
+        const d = normalizeDay(slot.day);
+        if (!d) continue;
+        const key = `${d}_${slot.period}`;
+        for (const asn of Object.values(slot.assignments || {})) {
+          const ts = [];
+          if (asn && typeof asn === 'object') {
+            if (asn.singleWeek && asn.doubleWeek) {
+              // 轮换制：结合校历判断当天谁值班；无校历则都占用（保守）
+              if (parity === 'single') ts.push(asn.singleWeek);
+              else if (parity === 'double') ts.push(asn.doubleWeek);
+              else ts.push(asn.singleWeek, asn.doubleWeek);
+            } else if (asn.teacher) ts.push(asn.teacher);
+            else if (asn.singleWeek) ts.push(asn.singleWeek);
+            else if (asn.doubleWeek) ts.push(asn.doubleWeek);
+          } else if (typeof asn === 'string' && asn && asn !== '[object Object]') {
+            ts.push(asn);
+          }
+          for (const t of ts) {
+            if (!t || t === '[object Object]') continue;
+            if (!occ[key]) occ[key] = new Set();
+            occ[key].add(t);
+          }
+        }
+      }
+    }
+    occupiedCache.set(dateStr, occ);
+    return occ;
+  }
 
   // 【修复】请假去重：同一教师同一日期同一节次只处理一次（避免重复请假生成多条代课）
   const seenLeaves = new Set();
@@ -170,7 +221,9 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
         period: slot.period,
         teacherSchedule,
         teacherAssignment,
-        existingSubs
+        existingSubs,
+        absentTeachers: absentByDate.get(leave.leaveDate || targetDate) || null,
+        occupiedSlots: buildOccupiedSlots(leave.leaveDate || targetDate)
       });
       const realDate = dayMap[leaveWeekday] || leave.leaveDate;
       if (substitute) {
@@ -231,7 +284,9 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
           period: slot.period,
           teacherSchedule,
           teacherAssignment,
-          existingSubs
+          existingSubs,
+          absentTeachers: absentByDate.get(leave.leaveDate || targetDate) || null,
+          occupiedSlots: buildOccupiedSlots(leave.leaveDate || targetDate)
         });
         const realDate = dayMap[leaveWeekday] || leave.leaveDate;
         if (substitute) {
