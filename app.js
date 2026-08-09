@@ -896,12 +896,23 @@ function renderTTClass() {
   if (!cn) { area.innerHTML = '<p class="text-muted">请选择班级</p>'; return; }
 
   const days = ['星期一','星期二','星期三','星期四','星期五'];
+  // 普通时间映射（周一~周四）
   const timeMap = {
     1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00',
     5:'14:00-14:40', 6:'14:50-15:30',
     7:'课后服务1', 8:'课后服务2', 9:'课后服务3',
     10:'晚自习', 11:'午休'
   };
+  // 星期五特殊时间映射（下午不同）
+  const fridayTimeMap = {
+    1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00',
+    5:'13:00-13:40', 6:'13:50-14:30',
+    7:'14:40-15:20', 8:'15:25-16:50'
+  };
+  // 获取某天的节次时间
+  const getTime = (day, p) => day === '星期五' ? (fridayTimeMap[p] || '—') : (timeMap[p] || '—');
+  // 某天的课后服务最大节次（周五只到第8节社团活动，无 9-11节）
+  const maxAfterSchoolPeriod = (day) => day === '星期五' ? 8 : 11;
 
   // 获取课后服务的班级数据
   const normDay = (s) => {
@@ -949,42 +960,74 @@ function renderTTClass() {
   };
 
   let html = `<div class="table-wrap"><table class="data-table tt-table">`;
-  html += `<thead><tr><th>节次</th><th>时间</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
+  html += `<thead><tr><th>节次</th>${days.map(d=>`<th>${d}<br><small>${d === '星期五' ? '时间' : '时间'}</small></th>`).join('')}</tr></thead><tbody>`;
 
   // 常规课程（1-6节）
   for (const p of [1,2,3,4,5,6]) {
-    html += `<tr><td>第${p}节</td><td class="time-cell">${timeMap[p]}</td>`;
+    html += `<tr><td>第${p}节</td>`;
     for (const d of days) {
       const slots = tt[d]?.[cn] || [];
       const slot = slots.find(s => s.period === p);
-      html += `<td class="${slot ? 'has-class' : 'empty-cell'}">
-        ${slot ? `<span class="subj">${esc(slot.subject)}</span><br><span class="tea">${esc(slot.teacher)}</span>` : '—'}
+      const t = getTime(d, p);
+      html += `<td>
+        <div class="time-cell">${t}</div>
+        <div class="${slot ? 'has-class' : 'empty-cell'}">
+          ${slot ? `<span class="subj">${esc(slot.subject)}</span><br><span class="tea">${esc(slot.teacher)}</span>` : '—'}
+        </div>
       </td>`;
     }
     html += `</tr>`;
   }
 
-  // 课后服务（7-11节）
-  const afterschoolPeriods = [7,8,9,10,11];
-  for (const p of afterschoolPeriods) {
-    html += `<tr class="afterschool-row"><td>第${p}节</td><td class="time-cell">${timeMap[p]}</td>`;
+  // 课后服务（每行只在该天有节次时渲染）
+  // 星期一~周四：7-11节；星期五：7-8节
+  const afterschoolPeriodsByDay = {};
+  for (const d of days) {
+    const max = maxAfterSchoolPeriod(d);
+    afterschoolPeriodsByDay[d] = [];
+    for (let p = 7; p <= max; p++) afterschoolPeriodsByDay[d].push(p);
+  }
+  // 合并所有出现过的课后服务节次
+  const allAfterSchoolPeriods = [...new Set(days.flatMap(d => afterschoolPeriodsByDay[d]))].sort((a,b)=>a-b);
+  // 名称
+  const afterSchoolName = { 7:'课后服务1', 8:'课后服务2', 9:'课后服务3', 10:'晚自习', 11:'午休' };
+
+  for (const p of allAfterSchoolPeriods) {
+    html += `<tr class="afterschool-row"><td>第${p}节</td>`;
     for (const d of days) {
+      // 该天没这节次显示空白
+      if (!afterschoolPeriodsByDay[d].includes(p)) {
+        html += `<td class="empty-cell afterschool-cell">—</td>`;
+        continue;
+      }
+      const t = getTime(d, p);
       const asn = getAfterSchoolTeacher(d, p);
+      // 星期五第8节特殊处理：只显示时间，不显示具体安排
+      if (d === '星期五' && p === 8) {
+        html += `<td class="afterschool-cell special-club">
+          <div class="time-cell">${t}</div>
+          <span class="subj">特色社团活动</span>
+        </td>`;
+        continue;
+      }
+      html += `<td>
+        <div class="time-cell">${t}</div>`;
       if (asn) {
         if (asn.week === '单周/双周') {
-          html += `<td class="has-class afterschool-cell">
+          html += `<div class="has-class afterschool-cell">
             <span class="subj">${esc(asn.singleWeek||'')}</span><span class="week-tag">单周</span><br>
             <span class="subj">${esc(asn.doubleWeek||'')}</span><span class="week-tag week-double">双周</span>
-          </td>`;
+          </div>`;
         } else {
-          html += `<td class="has-class afterschool-cell">
+          html += `<div class="has-class afterschool-cell">
             <span class="subj">${esc(asn.teacher||'')}</span>
             ${asn.week ? `<span class="week-tag">${esc(asn.week)}</span>` : ''}
-          </td>`;
+          </div>`;
         }
       } else {
-        html += `<td class="empty-cell afterschool-cell">—</td>`;
+        html += `<div class="empty-cell afterschool-cell">—</div>`;
       }
+      html += `</td>`;
     }
     html += `</tr>`;
   }
@@ -1004,9 +1047,13 @@ function renderTTMy() {
   const days = ['星期一','星期二','星期三','星期四','星期五'];
   const dayOrder = d => days.indexOf(d);
   
-  // 正课时间映射
+  // 正课时间映射（周一~周四）
   const timeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'14:00-14:40', 6:'14:50-15:30' };
-  // 课后服务时间映射
+  // 星期五特殊时间
+  const fridayTimeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'13:00-13:40', 6:'13:50-14:30', 7:'14:40-15:20', 8:'15:25-16:50' };
+  // 根据天和节次返回时间
+  const getTime = (day, p) => day === '星期五' ? (fridayTimeMap[p] || '—') : (timeMap[p] || '—');
+  // 课后服务时间映射（周一~周四）
   const afterSchoolTimeMap = { 7:'15:40-16:20', 8:'16:25-17:05', 9:'17:10-17:50', 10:'19:30-20:30', 11:'13:00-13:50' };
   // 课后服务名称
   const afterSchoolName = { 7:'课后服务1', 8:'课后服务2', 9:'课后服务3', 10:'晚自习', 11:'午休' };
@@ -1071,12 +1118,19 @@ function renderTTMy() {
     const weekTag = s.isAfterSchool && s.weekType !== '通用' 
       ? `<span class="week-tag ${s.weekType === '双周' ? 'week-double' : ''}" style="margin-left:4px;font-size:11px;">${s.weekType}</span>` 
       : '';
+    // 星期五第8节特殊处理：显示“特色社团活动”
+    let subjectLabel = esc(s.subject);
+    if (s.day === '星期五' && s.period === 8 && s.isAfterSchool) {
+      subjectLabel = '特色社团活动';
+    }
+    // 计算实际时间：优先用 slot.time，否则根据星期动态查
+    const actualTime = s.time || getTime(s.day, s.period);
     html += `<tr>
       <td>${esc(s.day)}</td>
       <td>第${s.period}节</td>
-      <td class="time-cell">${s.time || timeMap[s.period] || ''}</td>
+      <td class="time-cell">${actualTime}</td>
       <td>${esc(s.className)}</td>
-      <td>${esc(s.subject)}${weekTag}</td>
+      <td>${subjectLabel}${weekTag}</td>
     </tr>`;
   });
   html += `</tbody></table></div>`;
