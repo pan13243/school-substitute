@@ -56,6 +56,63 @@ function mobileBackBar(title) {
   </div>`;
 }
 
+// 教师端：显示自己的请假记录（只读弹窗）
+function showMyLeaves() {
+  const currentTeacher = sessionStorage.getItem('teacherName');
+  if (!currentTeacher) return;
+  const myLeaves = leaveRecords.filter(l => l.teacherName === currentTeacher);
+  
+  const content = myLeaves.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无请假记录</p>' :
+    `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
+    myLeaves.map(l => `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.dayOfWeek)}</td><td>第${l.period}节</td><td>${esc(l.reason||'—')}</td><td>${l.status==='approved'?'✅已批准':'⏳待审批'}</td></tr>`).join('') +
+    `</tbody></table>`;
+  
+  showModal('我的请假记录', content);
+}
+
+// 教师端：显示自己的代课安排（只读弹窗）
+function showMySubstitutes() {
+  const currentTeacher = sessionStorage.getItem('teacherName');
+  if (!currentTeacher) return;
+  
+  // 我请假的由别人代课，或我帮别人代课
+  const mySubstitutes = substituteRecords.filter(s => 
+    s.leaveTeacher === currentTeacher || s.substituteTeacher === currentTeacher
+  );
+  
+  const content = mySubstitutes.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无代课安排</p>' :
+    `<table class="data-table"><thead><tr><th>类型</th><th>日期</th><th>班级</th><th>科目</th><th>节次</th><th>对方教师</th></tr></thead><tbody>` +
+    mySubstitutes.map(s => {
+      const isMyLeave = s.leaveTeacher === currentTeacher;
+      const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
+      const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
+      return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'—')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'—')}</td></tr>`;
+    }).join('') +
+    `</tbody></table>`;
+  
+  showModal('我的代课安排', content);
+}
+
+// 通用弹窗
+function showModal(title, content) {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:500px; width:100%; max-height:80vh; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:16px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0; font-size:16px; font-weight:600;">${title}</h3>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
+      </div>
+      <div style="padding:20px; overflow-y:auto; max-height:60vh;">${content}</div>
+      <div style="padding:12px 20px; border-top:1px solid #E5E7EB; text-align:right;">
+        <button onclick="this.closest('.modal-overlay').remove()" style="padding:8px 16px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer;">关闭</button>
+      </div>
+    </div>
+  `;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+}
+
 function fmtDate(d) {
   if (!d) return '-';
   const dt = new Date(d);
@@ -319,6 +376,13 @@ function renderHomePage(area) {
   const teas = td.allTeachers || [];
   const pendingLeaves = leaveRecords.filter(l => l.status !== 'approved');
   const hasData = cls.length > 0;
+  
+  // 获取当前教师姓名（教师端）
+  const currentTeacher = sessionStorage.getItem('teacherName') || '';
+  
+  // 教师端：只显示自己的请假和代课
+  const myLeaves = currentTeacher ? leaveRecords.filter(l => l.teacherName === currentTeacher) : [];
+  const mySubstitutes = currentTeacher ? substituteRecords.filter(s => s.leaveTeacher === currentTeacher || s.substituteTeacher === currentTeacher) : [];
 
   area.innerHTML = `
   <div class="page">
@@ -335,19 +399,20 @@ function renderHomePage(area) {
         <div class="stat-num">${teas.length}</div>
         <div class="stat-label">教师</div>
       </div>
+      ${isAdmin ? `
       <div class="stat-card">
         <div class="stat-icon">📚</div>
         <div class="stat-num">${cls.length * 30}</div>
         <div class="stat-label">周总课时</div>
-      </div>
-      <div class="stat-card ${pendingLeaves.length > 0 ? 'stat-alert' : ''}">
+      </div>` : ''}
+      <div class="stat-card ${pendingLeaves.length > 0 && isAdmin ? 'stat-alert' : ''}" onclick="${isAdmin ? '' : 'showMyLeaves()'}" style="${isAdmin ? '' : 'cursor:pointer;'}">
         <div class="stat-icon">🏖️</div>
-        <div class="stat-num">${leaveRecords.length}</div>
+        <div class="stat-num">${isAdmin ? leaveRecords.length : myLeaves.length}</div>
         <div class="stat-label">请假记录</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" onclick="${isAdmin ? '' : 'showMySubstitutes()'}" style="${isAdmin ? '' : 'cursor:pointer;'}">
         <div class="stat-icon">✅</div>
-        <div class="stat-num">${substituteRecords.length}</div>
+        <div class="stat-num">${isAdmin ? substituteRecords.length : mySubstitutes.length}</div>
         <div class="stat-label">代课安排</div>
       </div>
     </div>
