@@ -208,9 +208,16 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
       dayMap[weekdays[i]] = d.toISOString().split('T')[0];
     }
     
+    // 【去重】记录该请假已生成的代课，避免同一节次重复
+    const generatedSlots = new Set();
+    
     const teacherSlots = teacherSchedule[leave.teacherName] || {};
     for (const [slotKey, slot] of Object.entries(teacherSlots)) {
       if (!slotKey.startsWith(leaveWeekday + '_')) continue;
+      // 检查该 slot 是否已生成过代课
+      const slotDedupeKey = `${leave.id}_${slot.period}_${slot.className}`;
+      if (generatedSlots.has(slotDedupeKey)) continue;
+      generatedSlots.add(slotDedupeKey);
       const substitute = findSubstitute({
         leaveTeacher: leave.teacherName,
         className: slot.className,
@@ -272,6 +279,10 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
         if (activeEntries.length === 0) continue; // 当天不是该教师轮值
         const [className] = activeEntries[0];
         const myAsn = activeEntries[0][1];
+        // 课后服务也去重
+        const aftDedupeKey = `${leave.id}_${slot.period}_${className}`;
+        if (generatedSlots.has(aftDedupeKey)) continue;
+        generatedSlots.add(aftDedupeKey);
         
         const subject = slot.project || (slot.period === 7 ? '课后服务1' : slot.period === 8 ? '课后服务2' : slot.period === 9 ? '课后服务3' : slot.period === 10 ? '晚自习' : '午休');
         const substitute = findSubstitute({
