@@ -372,6 +372,19 @@ async function handleLeavesPut(request, env) {
 
 async function handleLeavesDelete(request, env) {
   if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/').filter(Boolean);
+  // /api/leaves/{id} 按 ID 删除单条；/api/leaves 清空全部
+  if (pathParts.length >= 3) {
+    const id = decodeURIComponent(pathParts[pathParts.length - 1]);
+    const leaves = await getKV(env, 'leaves') || [];
+    const idx = leaves.findIndex(l => l.id === id);
+    if (idx === -1) return json({ success: false, error: '请假记录不存在' }, 404);
+    leaves.splice(idx, 1);
+    await putKV(env, 'leaves', leaves);
+    return json({ success: true, message: '删除成功', remaining: leaves.length });
+  }
+  // 无 ID：清空全部（保留原有行为）
   await putKV(env, 'leaves', []);
   return json({ success: true });
 }
