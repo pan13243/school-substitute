@@ -113,6 +113,136 @@ function showModal(title, content) {
   document.body.appendChild(modal);
 }
 
+// ══════════════════════════════════════════════════════
+//  拼音检索功能
+// ══════════════════════════════════════════════════════
+
+// 常用汉字拼音首字母映射
+const PINYIN_FIRST_LETTERS = {
+  '潘': 'P', '懂': 'D', '平': 'P', '龙': 'L', '燕': 'Y', '吴': 'W', '寿': 'S', '成': 'C',
+  '建': 'J', '华': 'H', '罗': 'L', '顺': 'S', '芝': 'Z', '田': 'T', '如': 'R', '香': 'X',
+  '张': 'Z', '书': 'S', '梅': 'M', '陈': 'C', '发': 'F', '国': 'G', '熊': 'X', '欢': 'H',
+  '明': 'M', '盘': 'P', '春': 'C', '足': 'Z', '廖': 'L', '志': 'Z', '强': 'Q', '百': 'B',
+  '达': 'D', '震': 'Z', '江': 'J', '玲': 'L', '佳': 'J', '腾': 'T', '姚': 'Y', '本': 'B',
+  '军': 'J', '菊': 'J', '金': 'J', '祥': 'X', '帆': 'F', '向': 'X', '桃': 'T',
+  '光': 'G', '辉': 'H', '邰': 'T', '昌': 'C', '礼': 'L', '何': 'H', '昭': 'Z', '能': 'N',
+  '再': 'Z', '君': 'J', '俊': 'J', '文': 'W', '凯': 'K', '青': 'Q',
+  '力': 'L', '芳': 'F', '杨': 'Y', '美': 'M', '孙': 'S', '焕': 'H', '英': 'Y',
+  '王': 'W', '秀': 'X', '显': 'X', '贵': 'G', '妃': 'F', '管': 'G', '舒': 'S',
+  '烨': 'Y', '宋': 'S', '宁': 'N', '子': 'Z', '珍': 'Z', '胜': 'S', '伦': 'L', '琴': 'Q',
+  '杰': 'J', '晓': 'X', '肖': 'X', '小': 'X', '开': 'K', '忠': 'Z', '荣': 'R',
+  '刘': 'L', '雷': 'L', '安': 'A', '元': 'Y', '唐': 'T',
+  '欣': 'X', '时': 'S', '伟': 'W', '屈': 'Q', '俐': 'L', '伶': 'L', '泽': 'Z', '彦': 'Y',
+  '胡': 'H', '跃': 'Y', '景': 'J', '方': 'F', '贤': 'X',
+  '凌': 'L', '云': 'Y', '洪': 'H', '斌': 'B', '咏': 'Y', '范': 'F', '琳': 'L',
+  '毅': 'Y', '帮': 'B', '鹏': 'P'
+};
+
+// 获取姓名的拼音首字母
+function getPinyinInitials(name) {
+  if (!name) return '';
+  return name.split('').map(c => PINYIN_FIRST_LETTERS[c] || c).join('');
+}
+
+// 教师搜索数据缓存
+let teacherSearchData = [];
+
+// 初始化教师搜索
+function initTeacherSearch(teachers) {
+  teacherSearchData = teachers.map(t => ({
+    name: t,
+    pinyin: getPinyinInitials(t),
+    pinyinLower: getPinyinInitials(t).toLowerCase()
+  }));
+  
+  const input = $('teacher-search-input');
+  const dropdown = $('teacher-search-dropdown');
+  if (!input || !dropdown) return;
+  
+  // 输入事件
+  input.addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    if (!query) {
+      dropdown.style.display = 'none';
+      return;
+    }
+    
+    // 匹配：姓名包含 或 拼音首字母包含
+    const matches = teacherSearchData.filter(t => 
+      t.name.includes(query) || 
+      t.pinyinLower.includes(query)
+    ).slice(0, 10);
+    
+    if (matches.length === 0) {
+      dropdown.innerHTML = '<div class="search-no-result">无匹配结果</div>';
+    } else {
+      dropdown.innerHTML = matches.map(t => 
+        `<div class="search-item" data-name="${esc(t.name)}" onclick="selectTeacher('${esc(t.name)}')">
+          <span class="search-name">${esc(t.name)}</span>
+          <span class="search-pinyin">${esc(t.pinyin)}</span>
+        </div>`
+      ).join('');
+    }
+    dropdown.style.display = 'block';
+  });
+  
+  // 点击外部关闭下拉
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.teacher-search-box')) {
+      dropdown.style.display = 'none';
+    }
+  });
+  
+  // 键盘导航
+  input.addEventListener('keydown', (e) => {
+    const items = dropdown.querySelectorAll('.search-item');
+    const active = dropdown.querySelector('.search-item.active');
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!active) {
+        items[0]?.classList.add('active');
+      } else {
+        active.classList.remove('active');
+        const next = active.nextElementSibling;
+        if (next) next.classList.add('active');
+        else items[0]?.classList.add('active');
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!active) {
+        items[items.length - 1]?.classList.add('active');
+      } else {
+        active.classList.remove('active');
+        const prev = active.previousElementSibling;
+        if (prev) prev.classList.add('active');
+        else items[items.length - 1]?.classList.add('active');
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (active) {
+        selectTeacher(active.dataset.name);
+      } else if (items.length === 1) {
+        selectTeacher(items[0].dataset.name);
+      }
+    }
+  });
+}
+
+// 选择教师
+function selectTeacher(name) {
+  const input = $('teacher-search-input');
+  const hidden = $('login-teacher-select');
+  const dropdown = $('teacher-search-dropdown');
+  
+  if (input) input.value = name;
+  if (hidden) hidden.value = name;
+  if (dropdown) dropdown.style.display = 'none';
+  
+  // 自动登录
+  handleTeacherLogin(name);
+}
+
 function fmtDate(d) {
   if (!d) return '-';
   const dt = new Date(d);
@@ -210,10 +340,12 @@ function renderLogin() {
       </div>
       <div id="login-form-area">
         <div id="teacher-login">
-          <p class="login-hint">请选择您的姓名</p>
-          <select id="login-teacher-select" class="form-select" onchange="handleTeacherLogin(this.value)">
-            <option value="">— 选择教师 —</option>
-          </select>
+          <p class="login-hint">请选择您的姓名（支持拼音首字母搜索）</p>
+          <div class="teacher-search-box">
+            <input type="text" id="teacher-search-input" class="form-input" placeholder="输入拼音首字母或姓名搜索..." autocomplete="off">
+            <div id="teacher-search-dropdown" class="search-dropdown" style="display:none;"></div>
+          </div>
+          <input type="hidden" id="login-teacher-select" value="">
         </div>
         <div id="admin-login" style="display:none">
           <p class="login-hint">请输入管理员密码</p>
@@ -263,29 +395,32 @@ function handleAdminLogin() {
 }
 
 async function loadTeacherList() {
-  const sel = $('login-teacher-select');
-  if (!sel) return;
   // 优先从 localStorage 缓存加载教师列表
+  let teachers = [];
   const cached = localStorage.getItem('teachers_cache');
   if (cached) {
-    const teachers = JSON.parse(cached);
-    teachers.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o); });
-    return;
-  }
-  const { data } = await API.getSchedule();
-  if (data && data.allTeachers) {
-    localStorage.setItem('teachers_cache', JSON.stringify(data.allTeachers));
-    data.allTeachers.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o); });
+    teachers = JSON.parse(cached);
   } else {
-    // 从parsed_data.json直接加载
-    try {
-      const r = await fetch('parsed_data.json');
-      const pd = await r.json();
-      if (pd.allTeachers) {
-        localStorage.setItem('teachers_cache', JSON.stringify(pd.allTeachers));
-        pd.allTeachers.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o); });
-      }
-    } catch {}
+    const { data } = await API.getSchedule();
+    if (data && data.allTeachers) {
+      teachers = data.allTeachers;
+      localStorage.setItem('teachers_cache', JSON.stringify(teachers));
+    } else {
+      // 从parsed_data.json直接加载
+      try {
+        const r = await fetch('parsed_data.json');
+        const pd = await r.json();
+        if (pd.allTeachers) {
+          teachers = pd.allTeachers;
+          localStorage.setItem('teachers_cache', JSON.stringify(teachers));
+        }
+      } catch {}
+    }
+  }
+  
+  // 初始化拼音搜索
+  if (teachers.length > 0) {
+    initTeacherSearch(teachers);
   }
 }
 

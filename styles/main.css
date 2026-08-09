@@ -307,3 +307,15 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+/* ½ÌÊ¦Æ´ÒôËÑË÷¿ò */
+.teacher-search-box { position: relative; width: 100%; }
+#teacher-search-input { width: 100%; padding: 12px 16px; font-size: 15px; border: 2px solid var(--gray-200); border-radius: var(--radius); transition: border-color .2s; }
+#teacher-search-input:focus { outline: none; border-color: var(--blue); }
+.search-dropdown { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow-md); max-height: 280px; overflow-y: auto; z-index: 100; }
+.search-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; cursor: pointer; border-bottom: 1px solid var(--gray-100); transition: background .15s; }
+.search-item:hover, .search-item.active { background: var(--blue-light); }
+.search-item:last-child { border-bottom: none; }
+.search-name { font-size: 15px; font-weight: 500; color: var(--gray-700); }
+.search-pinyin { font-size: 12px; color: var(--gray-500); background: var(--gray-100); padding: 2px 8px; border-radius: 4px; }
+.search-no-result { padding: 16px; text-align: center; color: var(--gray-500); font-size: 14px; }
