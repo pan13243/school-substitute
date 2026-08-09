@@ -159,8 +159,7 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
       dayMap[weekdays[i]] = d.toISOString().split('T')[0];
     }
     
-    const teacherSlots = teacherSchedule[leave.teacherName];
-    if (!teacherSlots) continue;
+    const teacherSlots = teacherSchedule[leave.teacherName] || {};
     for (const [slotKey, slot] of Object.entries(teacherSlots)) {
       if (!slotKey.startsWith(leaveWeekday + '_')) continue;
       const substitute = findSubstitute({
