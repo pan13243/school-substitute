@@ -363,6 +363,20 @@ async function handleSubstitutesSave(request, env) {
   return json({ success: true, message: '保存成功', count: data.length });
 }
 
+// 删除单条代课记录
+async function handleSubstituteDeleteOne(request, env) {
+  if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
+  const body = await request.json().catch(() => ({}));
+  const { id } = body;
+  if (!id) return json({ success: false, error: '缺少 id' }, 400);
+  const subs = await getKV(env, 'substitutes') || [];
+  const idx = subs.findIndex(s => s.id === id);
+  if (idx === -1) return json({ success: false, error: '记录不存在' }, 404);
+  subs.splice(idx, 1);
+  await putKV(env, 'substitutes', subs);
+  return json({ success: true, message: '删除成功', remaining: subs.length });
+}
+
 // ============ 工具函数 ============
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -425,6 +439,10 @@ export async function onRequest(context) {
   
   if (path === '/api/substitutes/save') {
     if (method === 'POST') return handleSubstitutesSave(request, env);
+  }
+  
+  if (path === '/api/substitutes/delete-one') {
+    if (method === 'POST') return handleSubstituteDeleteOne(request, env);
   }
   
   // 调试接口：查看数据状态
