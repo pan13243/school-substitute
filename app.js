@@ -1068,7 +1068,7 @@ function renderSubTable() {
         <thead><tr>
           <th>请假教师</th><th>代课教师</th><th>班级</th><th>科目</th>
           <th>代课日期</th><th>星期</th><th>节次</th>
-          <th>安排方式</th>
+          <th>安排方式</th><th>操作</th>
         </tr></thead>
         <tbody id="sub-tbody">
           ${substituteRecords.map(s => `
@@ -1081,6 +1081,9 @@ function renderSubTable() {
             <td>${esc(s.dayOfWeek||'')}</td>
             <td>第${s.period||''}节</td>
             <td>${esc(s.reason||'')}</td>
+            <td>
+              <button class="btn btn-sm btn-danger" onclick="deleteSubstituteRecord('${s.id}')" title="删除这条记录">🗑️ 删除</button>
+            </td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -1135,6 +1138,30 @@ function filterSubTable(q) {
   document.querySelectorAll('.sub-row').forEach(tr => {
     tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
+}
+
+// 删除单条代课记录（仅管理员）
+async function deleteSubstituteRecord(id) {
+  if (!isAdmin) { toast('仅管理员可删除','warning'); return; }
+  if (!confirm('确认删除这条代课记录？')) return;
+  try {
+    const r = await fetch('/api/substitutes/delete-one', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd },
+      body: JSON.stringify({ id })
+    });
+    const data = await r.json();
+    if (data.success) {
+      toast('删除成功','success');
+      // 本地刷新
+      substituteRecords = substituteRecords.filter(s => s.id !== id);
+      switchPage('sub');
+    } else {
+      toast(data.error || '删除失败','error');
+    }
+  } catch (e) {
+    toast('网络错误: ' + e.message,'error');
+  }
 }
 
 function exportSubExcel() {
