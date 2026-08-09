@@ -495,6 +495,13 @@ async function handleSubstitutesGenerate(request, env) {
     targetDate
   });
   
+  // 【调试】记录生成详情
+  console.log('[generateSubstitutes] pendingLeaves:', pendingLeaves.length, 'results:', results.length);
+  for (const r of results.slice(0, 10)) {
+    console.log('  -', r.leaveTeacher, r.leaveDate, '第'+r.period+'节', '→', r.substituteTeacher);
+  }
+  if (results.length > 10) console.log('  ... and', results.length - 10, 'more');
+  
   await putKV(env, 'substitutes', results);
   return json({ success: true, results, summary: { total: results.length, arranged: results.length, failed: 0 } });
 }
