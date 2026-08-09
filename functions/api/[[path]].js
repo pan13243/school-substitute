@@ -128,13 +128,23 @@ function findSubstitute({ leaveTeacher, className, subject, day, period, teacher
   return candidates[0]?.teacher || null;
 }
 
-function generateSubstitutes({ leaves, timetable, teacherAssignment, targetDate }) {
+function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchoolService, targetDate }) {
   const { teacherSchedule, allClasses } = buildTeacherSchedule(timetable);
   const results = [];
   const existingSubs = [];
 
+  // 【修复】请假去重：同一教师同一日期同一节次只处理一次（避免重复请假生成多条代课）
+  const seenLeaves = new Set();
+  const uniqueLeaves = [];
   for (const leave of leaves) {
     if (leave.status !== 'pending' && leave.status !== 'approved') continue;
+    const dedupeKey = `${leave.teacherName}|${leave.leaveDate}|${leave.period}`;
+    if (seenLeaves.has(dedupeKey)) continue;
+    seenLeaves.add(dedupeKey);
+    uniqueLeaves.push(leave);
+  }
+
+  for (const leave of uniqueLeaves) {
     const leaveWeekday = normalizeDay(leave.dayOfWeek) || normalizeDay(getWeekdayFromDate(leave.leaveDate));
     if (!leaveWeekday) continue;
     
@@ -181,6 +191,56 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, targetDate 
         if (!teacherSchedule[substitute]) teacherSchedule[substitute] = {};
         teacherSchedule[substitute][slotKey] = { ...slot };
         existingSubs.push({ substituteTeacher: substitute, dayOfWeek: leaveWeekday });
+      }
+    }
+
+    // 【新增】处理课后服务时段（7-11节：课后服务1/2/3 + 晚自习 + 午休）
+    if (afterSchoolService?.slots) {
+      const daySlots = afterSchoolService.slots.filter(s => normalizeDay(s.day) === leaveWeekday);
+      for (const slot of daySlots) {
+        // 只处理 7-11 节的课后服务
+        if (!slot.period || slot.period < 7 || slot.period > 11) continue;
+        // 查找该时段该教师负责的班级
+        const myAsn = slot.assignments?.[leave.teacherName] || 
+                      Object.entries(slot.assignments || {}).find(([k, v]) => 
+                        (v.teacher === leave.teacherName || v.singleWeek === leave.teacherName || v.doubleWeek === leave.teacherName)
+                      )?.[1];
+        if (!myAsn) continue;
+        const className = Object.keys(slot.assignments || {}).find(k => {
+          const v = slot.assignments[k];
+          return v.teacher === leave.teacherName || v.singleWeek === leave.teacherName || v.doubleWeek === leave.teacherName;
+        });
+        if (!className) continue;
+        
+        const subject = slot.project || (slot.period === 7 ? '课后服务1' : slot.period === 8 ? '课后服务2' : slot.period === 9 ? '课后服务3' : slot.period === 10 ? '晚自习' : '午休');
+        const substitute = findSubstitute({
+          leaveTeacher: leave.teacherName,
+          className,
+          subject,
+          day: leaveWeekday,
+          period: slot.period,
+          teacherSchedule,
+          teacherAssignment,
+          existingSubs
+        });
+        const realDate = dayMap[leaveWeekday] || leave.leaveDate;
+        if (substitute) {
+          results.push({
+            id: 'sub_aft_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            leaveId: leave.id,
+            leaveTeacher: leave.teacherName,
+            substituteTeacher: substitute,
+            className,
+            subject,
+            leaveDate: realDate,
+            dayOfWeek: leaveWeekday,
+            period: slot.period,
+            reason: leave.reason || '课后服务自动安排',
+            status: 'arranged',
+            createdAt: new Date().toISOString()
+          });
+          existingSubs.push({ substituteTeacher: substitute, dayOfWeek: leaveWeekday });
+        }
       }
     }
   }
@@ -341,6 +401,7 @@ async function handleSubstitutesGenerate(request, env) {
     leaves: pendingLeaves,
     timetable: cfg.timetable,
     teacherAssignment: cfg.teacherAssignment,
+    afterSchoolService: cfg.afterSchoolService,
     targetDate
   });
   
