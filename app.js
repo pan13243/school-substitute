@@ -249,11 +249,11 @@ function renderAppShell() {
       </div>
     </header>
 
-    <!-- 手机端顶部导航栏 -->
-    <div class="mobile-header">
-      ${showBackBtn ? `<button class="mobile-back-btn" onclick="switchPage('home')">← 返回</button>` : ''}
-      <span class="mobile-title">${currentTitle}</span>
-      <span class="mobile-spacer"></span>
+    <!-- 手机端顶部导航栏 (内联样式确保生效) -->
+    <div class="mobile-header" style="display:none; align-items:center; justify-content:space-between; padding:12px 16px; background:#fff; border-bottom:1px solid #E5E7EB; position:sticky; top:0; z-index:100;">
+      ${showBackBtn ? `<button onclick="switchPage('home')" style="background:none; border:none; color:#3B82F6; font-size:14px; font-weight:500; cursor:pointer; padding:4px 8px;">← 返回</button>` : '<span></span>'}
+      <span style="font-size:16px; font-weight:600; color:#111827; flex:1; text-align:center;">${currentTitle}</span>
+      <span style="width:60px;"></span>
     </div>
 
     <div class="app-body">
