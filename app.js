@@ -1135,15 +1135,31 @@ async function doGenerateSubstitutes() {
   if (approvedLeaves.length === 0) {
     toast('暂无已批准的请假记录','warning'); return;
   }
+  // 【防重复】清空旧预览
+  previewSubstitutes = [];
   const loading = showLoading('正在分析代课方案...');
   try {
     const r = await API.generateSubstitutes();
     loading.remove();
+    console.log('[doGenerateSubstitutes] API返回:', r.summary, 'results.length:', (r.data||r.results||[]).length);
     if (r.success) {
       const results = r.data || r.results || [];
-      if (results.length > 0) {
-        previewSubstitutes = results; // 进入预览模式
-        toast(`生成完成！请检查预览方案，确认后再导出`, 'success');
+      // 前端也去重
+      const seen = new Set();
+      const uniqueResults = [];
+      for (const s of results) {
+        const key = `${s.leaveId}_${s.period}_${s.className}`;
+        if (seen.has(key)) {
+          console.warn('[doGenerateSubstitutes] 跳过重复:', s.leaveTeacher, '第'+s.period+'节', s.className);
+          continue;
+        }
+        seen.add(key);
+        uniqueResults.push(s);
+      }
+      console.log('[doGenerateSubstitutes] 去重后:', uniqueResults.length, '条');
+      if (uniqueResults.length > 0) {
+        previewSubstitutes = uniqueResults; // 进入预览模式
+        toast(`生成完成！共 ${uniqueResults.length} 条代课安排，请检查确认`, 'success');
         renderSubPage($('main-content'));
       } else {
         toast('未能生成代课安排：'+(r.error||r.message||'无可用数据'),'warning');
