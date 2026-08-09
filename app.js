@@ -978,40 +978,85 @@ function renderTTClass() {
 function renderTTMy() {
   const td = scheduleData || {};
   const tt = td.timetable || {};
+  const afterSchool = td.afterSchoolService || {};
   const myName = sessionStorage.getItem('teacherName') || '';
   const area = $('tt-my-content');
   if (!area) return;
 
+  const days = ['星期一','星期二','星期三','星期四','星期五'];
+  const dayOrder = d => days.indexOf(d);
+  
+  // 正课时间映射
+  const timeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'14:00-14:40', 6:'14:50-15:30' };
+  // 课后服务时间映射
+  const afterSchoolTimeMap = { 7:'15:40-16:20', 8:'16:25-17:05', 9:'17:10-17:50', 10:'19:30-20:30', 11:'13:00-13:50' };
+  // 课后服务名称
+  const afterSchoolName = { 7:'课后服务1', 8:'课后服务2', 9:'课后服务3', 10:'晚自习', 11:'午休' };
+
+  // 收集正课
   const mySlots = [];
   for (const [day, classMap] of Object.entries(tt)) {
     for (const [cn, slots] of Object.entries(classMap)) {
       for (const s of slots) {
-        if (s.teacher === myName) mySlots.push({ day, className: cn, ...s });
+        if (s.teacher === myName) mySlots.push({ day, className: cn, ...s, isAfterSchool: false });
       }
     }
   }
 
-  if (mySlots.length === 0) {
+  // 收集课后服务
+  const myAfterSchoolSlots = [];
+  const assSlots = afterSchool.slots || [];
+  for (const slot of assSlots) {
+    const period = getPeriod(slot.time);
+    if (period >= 7 && slot.assignments) {
+      for (const assign of slot.assignments) {
+        // 单双周判断：当前日期或根据校历
+        const weekType = assign.week || '通用';
+        const teachers = assign.teacher ? assign.teacher.split(/[\n\r,，;；\s　]+/).filter(t => t) : [];
+        
+        for (const t of teachers) {
+          if (t === myName) {
+            myAfterSchoolSlots.push({
+              day: slot.day,
+              className: assign.className,
+              period: period,
+              subject: afterSchoolName[period] || slot.project || '课后服务',
+              time: afterSchoolTimeMap[period] || slot.time,
+              isAfterSchool: true,
+              weekType: weekType
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // 合并所有课程
+  const allSlots = [...mySlots, ...myAfterSchoolSlots];
+
+  if (allSlots.length === 0) {
     area.innerHTML = '<p class="text-muted">暂无您的课表记录</p>';
     return;
   }
 
-  const days = ['星期一','星期二','星期三','星期四','星期五'];
-  const timeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'14:00-14:40', 6:'14:50-15:30' };
+  // 按星期、节次排序
+  allSlots.sort((a,b) => dayOrder(a.day) - dayOrder(b.day) || a.period - b.period);
 
   let html = `<div class="table-wrap"><table class="data-table tt-table">`;
-  html += `<thead><tr><th>节次</th><th>时间</th><th>班级</th><th>科目</th></tr></thead><tbody>`;
+  html += `<thead><tr><th>星期</th><th>节次</th><th>时间</th><th>班级</th><th>科目</th></tr></thead><tbody>`;
 
-  const dayOrder = d => days.indexOf(d);
-  mySlots.sort((a,b) => dayOrder(a.day) - dayOrder(b.day) || a.period - b.period)
-    .forEach(s => {
-      html += `<tr>
-        <td>第${s.period}节</td>
-        <td class="time-cell">${timeMap[s.period]||''}</td>
-        <td>${esc(s.className)}</td>
-        <td>${esc(s.subject)}</td>
-      </tr>`;
-    });
+  allSlots.forEach(s => {
+    const weekTag = s.isAfterSchool && s.weekType !== '通用' 
+      ? `<span class="week-tag ${s.weekType === '双周' ? 'week-double' : ''}" style="margin-left:4px;font-size:11px;">${s.weekType}</span>` 
+      : '';
+    html += `<tr>
+      <td>${esc(s.day)}</td>
+      <td>第${s.period}节</td>
+      <td class="time-cell">${s.time || timeMap[s.period] || ''}</td>
+      <td>${esc(s.className)}</td>
+      <td>${esc(s.subject)}${weekTag}</td>
+    </tr>`;
+  });
   html += `</tbody></table></div>`;
   area.innerHTML = html;
 }
