@@ -128,7 +128,7 @@ function findSubstitute({ leaveTeacher, className, subject, day, period, teacher
   return candidates[0]?.teacher || null;
 }
 
-function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchoolService, targetDate }) {
+function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchoolService, calendar, targetDate }) {
   const { teacherSchedule, allClasses } = buildTeacherSchedule(timetable);
   const results = [];
   const existingSubs = [];
@@ -200,17 +200,28 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
       for (const slot of daySlots) {
         // 只处理 7-11 节的课后服务
         if (!slot.period || slot.period < 7 || slot.period > 11) continue;
+        // 【单双周判断】先确认请假教师当天是否轮值该时段
+        // 校历 dayMap 给出该日期的单/双周；若教师是轮换制（singleWeek+doubleWeek），
+        // 只在对应周上课；当天不是他/她轮值则跳过
+        const calDay = calendar?.dayMap?.[leaveDateStr];
+        const parity = calDay ? calDay.parity : null;
+
         // 查找该时段该教师负责的班级
-        const myAsn = slot.assignments?.[leave.teacherName] || 
-                      Object.entries(slot.assignments || {}).find(([k, v]) => 
-                        (v.teacher === leave.teacherName || v.singleWeek === leave.teacherName || v.doubleWeek === leave.teacherName)
-                      )?.[1];
-        if (!myAsn) continue;
-        const className = Object.keys(slot.assignments || {}).find(k => {
-          const v = slot.assignments[k];
-          return v.teacher === leave.teacherName || v.singleWeek === leave.teacherName || v.doubleWeek === leave.teacherName;
+        const classEntries = Object.entries(slot.assignments || {}).filter(([k, v]) =>
+          v.teacher === leave.teacherName || v.singleWeek === leave.teacherName || v.doubleWeek === leave.teacherName
+        );
+        if (classEntries.length === 0) continue;
+        // 过滤轮换制：有 singleWeek+doubleWeek 且校历能判断周次时，只保留轮值周
+        const activeEntries = classEntries.filter(([k, v]) => {
+          if (v.singleWeek && v.doubleWeek && parity) {
+            return (parity === 'single' && v.singleWeek === leave.teacherName) ||
+                   (parity === 'double' && v.doubleWeek === leave.teacherName);
+          }
+          return true; // 通用教师或无校历 → 视为每天轮值
         });
-        if (!className) continue;
+        if (activeEntries.length === 0) continue; // 当天不是该教师轮值
+        const [className] = activeEntries[0];
+        const myAsn = activeEntries[0][1];
         
         const subject = slot.project || (slot.period === 7 ? '课后服务1' : slot.period === 8 ? '课后服务2' : slot.period === 9 ? '课后服务3' : slot.period === 10 ? '晚自习' : '午休');
         const substitute = findSubstitute({
@@ -268,6 +279,7 @@ async function handleScheduleGet(env) {
     data: cfg.timetable || null,
     teacherAssignment: cfg.teacherAssignment || null,
     afterSchoolService: cfg.afterSchoolService || null,
+    calendar: cfg.calendar || null,
     classes: cfg.classes || [],
     allTeachers: cfg.allTeachers || []
   });
@@ -276,7 +288,7 @@ async function handleScheduleGet(env) {
 async function handleScheduleImport(request, env) {
   if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
   const body = await request.json().catch(() => ({}));
-  const { timetable, afterSchoolService, classes, allTeachers } = body;
+  const { timetable, afterSchoolService, classes, allTeachers, calendar } = body;
   
   // 获取现有配置（用于合并）
   const existing = await getKV(env, 'config') || {};
@@ -323,6 +335,7 @@ async function handleScheduleImport(request, env) {
     timetable: timetable || existing.timetable || {},
     teacherAssignment: ta,
     afterSchoolService: afterSchoolService || existing.afterSchoolService || {},
+    calendar: calendar || existing.calendar || null,
     classes: [...classSet].sort(),
     allTeachers: [...teacherSet].sort()
   };
@@ -415,6 +428,7 @@ async function handleSubstitutesGenerate(request, env) {
     timetable: cfg.timetable,
     teacherAssignment: cfg.teacherAssignment,
     afterSchoolService: cfg.afterSchoolService,
+    calendar: cfg.calendar,
     targetDate
   });
   
