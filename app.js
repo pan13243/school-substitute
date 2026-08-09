@@ -799,15 +799,33 @@ function toggleLeaveType(type) {
 // 根据课表获取教师某天的有课节次
 function getTeacherPeriods(teacherName, dayOfWeek) {
   const periods = [];
-  if (!scheduleData || !scheduleData.timetable) return periods;
+  if (!scheduleData) return periods;
   
-  const dayData = scheduleData.timetable[dayOfWeek];
-  if (!dayData) return periods;
+  // 1. 扫描正课表（1-6节）
+  const dayData = scheduleData.timetable?.[dayOfWeek];
+  if (dayData) {
+    for (const [className, slots] of Object.entries(dayData)) {
+      for (const slot of slots) {
+        if (slot.teacher === teacherName && slot.period) {
+          periods.push(parseInt(slot.period));
+        }
+      }
+    }
+  }
   
-  for (const [className, slots] of Object.entries(dayData)) {
-    for (const slot of slots) {
-      if (slot.teacher === teacherName && slot.period) {
+  // 2. 扫描课后服务表（7-11节：课后服务1/2/3 + 晚自习 + 午休）
+  const afterSlots = scheduleData.afterSchoolService?.slots || [];
+  for (const slot of afterSlots) {
+    if (normDay(slot.day) !== normDay(dayOfWeek)) continue;
+    if (!slot.period || slot.period < 7 || slot.period > 11) continue;
+    const assignments = slot.assignments || {};
+    for (const [cls, asn] of Object.entries(assignments)) {
+      // 跳过 “单周/双周”型赋中的未指定周
+      if (slot.period === 11 && asn.week && asn.week.includes('双周') === false) continue;
+      const isMine = asn.teacher === teacherName || asn.singleWeek === teacherName || asn.doubleWeek === teacherName;
+      if (isMine) {
         periods.push(parseInt(slot.period));
+        break;
       }
     }
   }
