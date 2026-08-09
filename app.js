@@ -939,10 +939,10 @@ async function approveLeave(id) {
 
 async function clearAllLeaves() {
   if (!confirm('确定清空所有请假记录？')) return;
-  await API.clearLeaves(); // 正确：清空请假记录
-  leaveRecords = [];
-  toast('已清空','success');
-  renderLeavePage($('main-content'));
+  const r = await API.clearLeaves(); // 正确：清空请假记录
+  if (!r.success) { toast('清空失败：' + (r.error || '未知错误'), 'error'); return; }
+  toast('已清空，页面即将刷新...','success');
+  setTimeout(() => location.reload(), 800); // 强制刷新确保所有页面数据同步
 }
 
 // ══════════════════════════════════════════════════════
