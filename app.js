@@ -161,6 +161,12 @@ const API = {
     });
     return await r.json();
   },
+  async clearLeaves() {
+    const r = await fetch('/api/leaves', {
+      method:'DELETE', headers:{'x-admin-pwd':adminPwd}
+    });
+    return await r.json();
+  },
   async getSubstitutes() {
     try {
       const r = await fetch('/api/substitutes');
@@ -933,7 +939,7 @@ async function approveLeave(id) {
 
 async function clearAllLeaves() {
   if (!confirm('确定清空所有请假记录？')) return;
-  await API.clearSubstitutes(); // Note: separate API needed, use direct fetch
+  await API.clearLeaves(); // 正确：清空请假记录
   leaveRecords = [];
   toast('已清空','success');
   renderLeavePage($('main-content'));
