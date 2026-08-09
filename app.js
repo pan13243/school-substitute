@@ -1958,7 +1958,72 @@ async function initApp() {
   leaveRecords = (leavesR.success ? leavesR.data : []) || [];
   substituteRecords = (subsR.success ? subsR.data : []) || [];
 
+  // 教师端：检查是否有新安排的代课任务，推送通知
+  const myName = sessionStorage.getItem('teacherName') || '';
+  if (!isAdmin && myName) {
+    checkAndNotifyNewSubstitutes(myName);
+  }
+
   switchPage('home');
+}
+
+// 检查并推送新安排的代课任务（教师端）
+function checkAndNotifyNewSubstitutes(teacherName) {
+  // 当前教师作为代课人的记录
+  const mySubs = substituteRecords.filter(s => s.substituteTeacher === teacherName);
+  if (mySubs.length === 0) return;
+
+  // 已通知过的 ID 列表（存 localStorage，避免重复推送）
+  const notifiedKey = 'notified_substitutes';
+  const notified = JSON.parse(localStorage.getItem(notifiedKey) || '[]');
+
+  // 筛选出新记录的代课任务（ID 未在 notified 中的）
+  const newSubs = mySubs.filter(s => !notified.includes(s.id));
+  if (newSubs.length === 0) return;
+
+  // 1. 浏览器内弹窗推送（醒目）
+  showSubstituteNotification(teacherName, newSubs);
+
+  // 2. 记录已通知的 ID
+  const newNotified = [...notified, ...newSubs.map(s => s.id)];
+  localStorage.setItem(notifiedKey, JSON.stringify(newNotified));
+
+  // 3. 如果配置了企业微信 Webhook，同时推送微信（可选）
+  const notifyCfg = JSON.parse(localStorage.getItem('notify_cfg') || '{}');
+  if (notifyCfg.wecom_webhook) {
+    newSubs.forEach(s => {
+      const msg = `【代课提醒】${teacherName}老师，您被安排代课：\n请假教师：${s.leaveTeacher}\n日期：${s.leaveDate}（${s.dayOfWeek||''}）\n班级：${s.className}\n科目：${s.subject||''}\n节次：第${s.period}节`;
+      fetch(notifyCfg.wecom_webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ msgtype: 'text', text: { content: msg } })
+      }).catch(e => console.warn('企业微信推送失败:', e));
+    });
+  }
+}
+
+// 浏览器内推送代课通知
+function showSubstituteNotification(teacherName, subs) {
+  const html = `
+    <div style="text-align:left;">
+      <p style="font-size:14px; color:#374151; margin:0 0 12px;">
+        <strong style="color:#F59E0B;">📌 您被安排了新的代课任务！</strong>
+      </p>
+      ${subs.map(s => `
+      <div style="background:#FEF3C7; border-left:3px solid #F59E0B; padding:10px 12px; margin-bottom:8px; border-radius:4px;">
+        <div style="font-size:13px; color:#1F2937;">
+          <div><strong>请假教师：</strong>${esc(s.leaveTeacher||'—')}</div>
+          <div><strong>日期：</strong>${esc(s.leaveDate)} ${esc(s.dayOfWeek||'')}</div>
+          <div><strong>班级：</strong>${esc(s.className||'—')}</div>
+          <div><strong>科目：</strong>${esc(s.subject||'—')}</div>
+          <div><strong>节次：</strong>第${s.period}节</div>
+        </div>
+      </div>
+      `).join('')}
+      <p style="font-size:12px; color:#6B7280; margin-top:12px;">共 ${subs.length} 条新代课任务</p>
+    </div>
+  `;
+  showModal('🔔 代课通知', html);
 }
 
 // ── 启动 ──────────────────────────────────────────────
