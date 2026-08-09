@@ -994,12 +994,14 @@ function renderTTClass() {
 }
 
 function renderTTMy() {
+  console.log('renderTTMy called');
   const td = scheduleData || {};
   const tt = td.timetable || {};
   const afterSchool = td.afterSchoolService || {};
   const myName = sessionStorage.getItem('teacherName') || '';
+  console.log('myName:', myName, 'timetable keys:', Object.keys(tt).length, 'afterSchool slots:', (afterSchool.slots || []).length);
   const area = $('tt-my-content');
-  if (!area) return;
+  if (!area) { console.log('area not found'); return; }
 
   const days = ['星期一','星期二','星期三','星期四','星期五'];
   const dayOrder = d => days.indexOf(d);
@@ -1051,6 +1053,7 @@ function renderTTMy() {
 
   // 合并所有课程
   const allSlots = [...mySlots, ...myAfterSchoolSlots];
+  console.log('mySlots:', mySlots.length, 'myAfterSchoolSlots:', myAfterSchoolSlots.length, 'total:', allSlots.length);
 
   if (allSlots.length === 0) {
     area.innerHTML = '<p class="text-muted">暂无您的课表记录</p>';
