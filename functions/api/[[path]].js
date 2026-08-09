@@ -122,8 +122,6 @@ function findSubstitute({ leaveTeacher, className, subject, day, period, teacher
     if (schedule[slotKey]) continue;
     if (occupiedSlots && occupiedSlots[slotKey] && occupiedSlots[slotKey].has(t)) continue;
     const daySlots = Object.keys(schedule).filter(k => k.startsWith(day + '_'));
-    const subCount = existingSubs.filter(s => s.substituteTeacher === t && s.dayOfWeek === day).length;
-    if (subCount >= 2) continue;
     const weight = priorityWeight(t, subject, className, teacherAssignment);
     if (weight >= 99) continue; // 排除其他班的主科/英语/道法科学老师
     candidates.push({ teacher: t, weight, workload: daySlots.length });
