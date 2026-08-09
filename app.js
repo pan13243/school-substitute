@@ -249,6 +249,10 @@ function handleTeacherLogin(teacherName) {
 function handleAdminLogin() {
   const pwd = $('login-pwd').value.trim();
   if (!pwd) return toast('请输入密码','warning');
+  // 验证管理员密码
+  if (pwd !== 'admin888') {
+    return toast('密码错误，请重新输入','error');
+  }
   adminPwd = pwd;
   isAdmin = true;
   sessionStorage.setItem('role','admin');
