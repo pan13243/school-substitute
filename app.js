@@ -928,6 +928,11 @@ function renderTTClass() {
     const slots = afterschool.slots || [];
     const target = normD(day);
     const found = slots.find(s => normD(s.day) === target && s.period === period);
+    if (day === '星期五' && !found) {
+      // 调试：找一下那一天所有 slot 的 day 和 period
+      const fridaySlots = slots.filter(s => normD(s.day).includes('五'));
+      console.log('[DBG] getAfterSchoolSlot: fridaySlots=', fridaySlots.map(s => ({day:s.day, period:s.period, type:typeof s.period, time:s.time})));
+    }
     return found;
   };
 
