@@ -56,18 +56,149 @@ function mobileBackBar(title) {
   </div>`;
 }
 
+// 教师隐私密码管理
+const TEACHER_PWD_KEY = 'teacher_privacy_pwd_';
+
+// 获取教师隐私密码
+function getTeacherPrivacyPwd(teacherName) {
+  return localStorage.getItem(TEACHER_PWD_KEY + teacherName);
+}
+
+// 设置教师隐私密码
+function setTeacherPrivacyPwd(teacherName, pwd) {
+  if (pwd) {
+    localStorage.setItem(TEACHER_PWD_KEY + teacherName, pwd);
+  } else {
+    localStorage.removeItem(TEACHER_PWD_KEY + teacherName);
+  }
+}
+
+// 检查教师是否设置了隐私密码
+function hasTeacherPrivacyPwd(teacherName) {
+  return !!getTeacherPrivacyPwd(teacherName);
+}
+
+// 验证教师隐私密码
+function verifyTeacherPrivacyPwd(teacherName, inputPwd) {
+  const savedPwd = getTeacherPrivacyPwd(teacherName);
+  return !savedPwd || savedPwd === inputPwd;
+}
+
+// 显示隐私密码验证弹窗
+function showPrivacyVerifyModal(teacherName, onSuccess, title) {
+  // 如果没有设置密码，直接通过
+  if (!hasTeacherPrivacyPwd(teacherName)) {
+    onSuccess();
+    return;
+  }
+  
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:20px; border-bottom:1px solid #E5E7EB;">
+        <h3 style="margin:0; font-size:16px; font-weight:600;">🔒 隐私验证</h3>
+        <p style="margin:8px 0 0; color:#6B7280; font-size:13px;">查看${title}需要验证密码</p>
+      </div>
+      <div style="padding:20px;">
+        <input type="password" id="privacy-pwd-input" class="form-input" placeholder="请输入您的隐私密码" 
+               style="width:100%; padding:12px; border:2px solid #E5E7EB; border-radius:8px; font-size:14px;"
+               onkeydown="if(event.key==='Enter')document.getElementById('privacy-verify-btn').click()">
+        <p style="margin:8px 0 0; color:#9CA3AF; font-size:12px;">提示：未设置密码请直接点击确认</p>
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #E5E7EB; display:flex; gap:8px; justify-content:flex-end;">
+        <button onclick="this.closest('.modal-overlay').remove()" style="padding:8px 16px; background:#F3F4F6; color:#374151; border:none; border-radius:6px; cursor:pointer;">取消</button>
+        <button id="privacy-verify-btn" style="padding:8px 16px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer;">确认</button>
+      </div>
+    </div>
+  `;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+  
+  // 聚焦输入框
+  setTimeout(() => $('privacy-pwd-input')?.focus(), 100);
+  
+  // 绑定确认按钮
+  $('privacy-verify-btn').onclick = () => {
+    const inputPwd = $('privacy-pwd-input').value.trim();
+    if (verifyTeacherPrivacyPwd(teacherName, inputPwd)) {
+      modal.remove();
+      onSuccess();
+    } else {
+      toast('密码错误', 'error');
+    }
+  };
+}
+
+// 显示设置隐私密码弹窗
+function showSetPrivacyPwdModal() {
+  const currentTeacher = sessionStorage.getItem('teacherName');
+  if (!currentTeacher) return;
+  
+  const hasPwd = hasTeacherPrivacyPwd(currentTeacher);
+  
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:20px; border-bottom:1px solid #E5E7EB;">
+        <h3 style="margin:0; font-size:16px; font-weight:600;">🔐 隐私密码设置</h3>
+        <p style="margin:8px 0 0; color:#6B7280; font-size:13px;">${hasPwd ? '修改或取消隐私密码' : '设置隐私密码后，查看请假记录和代课安排需要验证'}</p>
+      </div>
+      <div style="padding:20px;">
+        ${hasPwd ? `<div style="margin-bottom:12px;"><input type="password" id="privacy-old-pwd" class="form-input" placeholder="原密码（不修改请留空）" style="width:100%; padding:12px; border:2px solid #E5E7EB; border-radius:8px; font-size:14px;"></div>` : ''}
+        <div style="margin-bottom:12px;"><input type="password" id="privacy-new-pwd" class="form-input" placeholder="新密码（留空则取消密码）" style="width:100%; padding:12px; border:2px solid #E5E7EB; border-radius:8px; font-size:14px;"></div>
+        <input type="password" id="privacy-confirm-pwd" class="form-input" placeholder="确认新密码" style="width:100%; padding:12px; border:2px solid #E5E7EB; border-radius:8px; font-size:14px;">
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #E5E7EB; display:flex; gap:8px; justify-content:flex-end;">
+        <button onclick="this.closest('.modal-overlay').remove()" style="padding:8px 16px; background:#F3F4F6; color:#374151; border:none; border-radius:6px; cursor:pointer;">取消</button>
+        <button id="privacy-save-btn" style="padding:8px 16px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer;">保存</button>
+      </div>
+    </div>
+  `;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+  
+  // 绑定保存按钮
+  $('privacy-save-btn').onclick = () => {
+    const oldPwd = $('privacy-old-pwd')?.value.trim() || '';
+    const newPwd = $('privacy-new-pwd').value.trim();
+    const confirmPwd = $('privacy-confirm-pwd').value.trim();
+    
+    // 验证原密码
+    if (hasPwd && oldPwd && !verifyTeacherPrivacyPwd(currentTeacher, oldPwd)) {
+      toast('原密码错误', 'error');
+      return;
+    }
+    
+    // 验证新密码
+    if (newPwd && newPwd !== confirmPwd) {
+      toast('两次输入的新密码不一致', 'error');
+      return;
+    }
+    
+    // 保存密码
+    setTeacherPrivacyPwd(currentTeacher, newPwd);
+    modal.remove();
+    toast(newPwd ? '隐私密码已设置' : '隐私密码已取消', 'success');
+  };
+}
+
 // 教师端：显示自己的请假记录（只读弹窗）
 function showMyLeaves() {
   const currentTeacher = sessionStorage.getItem('teacherName');
   if (!currentTeacher) return;
-  const myLeaves = leaveRecords.filter(l => l.teacherName === currentTeacher);
   
-  const content = myLeaves.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无请假记录</p>' :
-    `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
-    myLeaves.map(l => `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.dayOfWeek)}</td><td>第${l.period}节</td><td>${esc(l.reason||'—')}</td><td>${l.status==='approved'?'✅已批准':'⏳待审批'}</td></tr>`).join('') +
-    `</tbody></table>`;
-  
-  showModal('我的请假记录', content);
+  showPrivacyVerifyModal(currentTeacher, () => {
+    const myLeaves = leaveRecords.filter(l => l.teacherName === currentTeacher);
+    
+    const content = myLeaves.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无请假记录</p>' :
+      `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
+      myLeaves.map(l => `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.dayOfWeek)}</td><td>第${l.period}节</td><td>${esc(l.reason||'—')}</td><td>${l.status==='approved'?'✅已批准':'⏳待审批'}</td></tr>`).join('') +
+      `</tbody></table>`;
+    
+    showModal('我的请假记录', content);
+  }, '请假记录');
 }
 
 // 教师端：显示自己的代课安排（只读弹窗）
@@ -75,22 +206,24 @@ function showMySubstitutes() {
   const currentTeacher = sessionStorage.getItem('teacherName');
   if (!currentTeacher) return;
   
-  // 我请假的由别人代课，或我帮别人代课
-  const mySubstitutes = substituteRecords.filter(s => 
-    s.leaveTeacher === currentTeacher || s.substituteTeacher === currentTeacher
-  );
-  
-  const content = mySubstitutes.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无代课安排</p>' :
-    `<table class="data-table"><thead><tr><th>类型</th><th>日期</th><th>班级</th><th>科目</th><th>节次</th><th>对方教师</th></tr></thead><tbody>` +
-    mySubstitutes.map(s => {
-      const isMyLeave = s.leaveTeacher === currentTeacher;
-      const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
-      const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
-      return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'—')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'—')}</td></tr>`;
-    }).join('') +
-    `</tbody></table>`;
-  
-  showModal('我的代课安排', content);
+  showPrivacyVerifyModal(currentTeacher, () => {
+    // 我请假的由别人代课，或我帮别人代课
+    const mySubstitutes = substituteRecords.filter(s => 
+      s.leaveTeacher === currentTeacher || s.substituteTeacher === currentTeacher
+    );
+    
+    const content = mySubstitutes.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无代课安排</p>' :
+      `<table class="data-table"><thead><tr><th>类型</th><th>日期</th><th>班级</th><th>科目</th><th>节次</th><th>对方教师</th></tr></thead><tbody>` +
+      mySubstitutes.map(s => {
+        const isMyLeave = s.leaveTeacher === currentTeacher;
+        const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
+        const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
+        return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'—')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'—')}</td></tr>`;
+      }).join('') +
+      `</tbody></table>`;
+    
+    showModal('我的代课安排', content);
+  }, '代课安排');
 }
 
 // 通用弹窗
@@ -591,6 +724,11 @@ function renderHomePage(area) {
         <span class="action-icon">📅</span>
         <span class="action-label">课表查询</span>
       </button>
+      ${!isAdmin ? `
+      <button class="action-card" onclick="showSetPrivacyPwdModal()">
+        <span class="action-icon">🔐</span>
+        <span class="action-label">隐私设置</span>
+      </button>` : ''}
     </div>` : ''}
 
     ${pendingLeaves.length > 0 && isAdmin ? `
