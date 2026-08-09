@@ -722,6 +722,13 @@ function renderLeavePage(area) {
               <select name="period" id="leave-period" class="form-select">
                 <option value="">— 选择节次 —</option>
                 ${[1,2,3,4,5,6].map(p => `<option value="${p}">第${p}节</option>`).join('')}
+                <optgroup label="课后服务">
+                  <option value="7">第7节 课后服务1</option>
+                  <option value="8">第8节 课后服务2</option>
+                  <option value="9">第9节 课后服务3</option>
+                  <option value="10">第10节 晚自习</option>
+                  <option value="11">第11节 午休</option>
+                </optgroup>
                 <option value="all">全天（按课表自动判断）</option>
               </select>
             </div>
