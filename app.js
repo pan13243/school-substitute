@@ -914,7 +914,7 @@ function renderTTClass() {
   const getTime = (day, p) => day === '星期五' ? (fridayTimeMap[p] || '—') : (timeMap[p] || '—');
   // 某天的课后服务最大节次（周五只到第8节社团活动，无 9-11节）
   const maxAfterSchoolPeriod = (day) => day === '星期五' ? 8 : 11;
-  // 课后服务时间映射（周一~周四）
+  // 课后服务时间映射（周一~周四，课后服务时间一致）
   const afterSchoolTimeMap = { 7:'15:40-16:20', 8:'16:25-17:05', 9:'17:10-17:50', 10:'19:30-20:30', 11:'13:00-13:50' };
   // 星期五课后服务时间映射（只有两节）
   const fridayAfterSchoolTimeMap = { 7:'14:40-15:20', 8:'15:25-16:50' };
@@ -1005,14 +1005,15 @@ function renderTTClass() {
   const afterSchoolName = { 7:'课后服务1', 8:'课后服务2', 9:'课后服务3', 10:'晚自习', 11:'午休' };
 
   for (const p of allAfterSchoolPeriods) {
-    html += `<tr class="afterschool-row"><td>第${p}节</td>`;
+    // 课后服务行节次列：节次名字 + 时间（周一~周四统一时间）
+    html += `<tr class="afterschool-row"><td class="period-cell">第${p}节<br><small class="period-time">${esc(afterSchoolTimeMap[p] || '')}</small></td>`;
     for (const d of days) {
       // 该天没这节次显示空白
       if (!afterschoolPeriodsByDay[d].includes(p)) {
         html += `<td class="empty-cell afterschool-cell">—</td>`;
         continue;
       }
-      const t = getAfterSchoolTime(d, p);
+      const t = getTime(d, p);
       const asn = getAfterSchoolTeacher(d, p);
       // 星期五第8节特殊处理：只显示时间，不显示具体安排
       if (d === '星期五' && p === 8) {

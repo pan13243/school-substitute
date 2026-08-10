@@ -195,6 +195,7 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
 
 /* 课后服务行 */
 .afterschool-row td { background: #FFF7ED !important; }
+.afterschool-row td.period-cell .period-time { display: block; font-size: 10px; color: #9A3412; margin-top: 2px; white-space: nowrap; }
 .afterschool-cell.has-class { background: #FFEDD5 !important; }
 .afterschool-cell.empty-cell { background: #FFF7ED !important; }
 .afterschool-cell .subj { color: #C2410C; font-size: 12px; }
