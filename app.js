@@ -1061,8 +1061,12 @@ function renderTTMy() {
   const getTime = (day, p) => day === '星期五' ? (fridayTimeMap[p] || '—') : (timeMap[p] || '—');
   // 课后服务时间映射（周一~周四）
   const afterSchoolTimeMap = { 7:'15:40-16:20', 8:'16:25-17:05', 9:'17:10-17:50', 10:'19:30-20:30', 11:'13:00-13:50' };
+  // 星期五课后服务时间映射（只有两节）
+  const fridayAfterSchoolTimeMap = { 7:'14:40-15:20', 8:'15:25-16:50' };
   // 课后服务名称
   const afterSchoolName = { 7:'课后服务1', 8:'课后服务2', 9:'课后服务3', 10:'晚自习', 11:'午休' };
+  // 课后服务时间取：根据星期取对应映射，没有再回退原 slot.time
+  const getAfterSchoolTime = (day, period, fallback) => day === '星期五' ? (fridayAfterSchoolTimeMap[period] || fallback || '—') : (afterSchoolTimeMap[period] || fallback || '—');
 
   // 收集正课
   const mySlots = [];
@@ -1085,22 +1089,26 @@ function renderTTMy() {
         ? slot.assignments 
         : Object.entries(slot.assignments).map(([className, data]) => ({ className, ...data }));
       for (const assign of assignments) {
-        // 单双周判断：当前日期或根据校历
-        const weekType = assign.week || '通用';
-        const teachers = assign.teacher ? assign.teacher.split(/[\n\r,，;；\s　]+/).filter(t => t) : [];
-        
-        for (const t of teachers) {
-          if (t === myName) {
-            myAfterSchoolSlots.push({
-              day: slot.day,
-              className: assign.className,
-              period: period,
-              subject: afterSchoolName[period] || slot.project || '课后服务',
-              time: afterSchoolTimeMap[period] || slot.time,
-              isAfterSchool: true,
-              weekType: weekType
-            });
-          }
+        // 双教师场景：存储为 { singleWeek, doubleWeek }；单教师场景：{ teacher }
+        // 这里把三种字段都拆成候选人名，避免单/双周老师的课在个人课表里丢失
+        const candidates = [];
+        if (assign.teacher) {
+          assign.teacher.split(/[\n\r,，;；\s　]+/).map(t => t.trim()).filter(t => t).forEach(t => candidates.push({ name: t, week: assign.week || '通用' }));
+        }
+        if (assign.singleWeek) candidates.push({ name: assign.singleWeek, week: '单周' });
+        if (assign.doubleWeek) candidates.push({ name: assign.doubleWeek, week: '双周' });
+
+        for (const c of candidates) {
+          if (c.name !== myName) continue;
+          myAfterSchoolSlots.push({
+            day: slot.day,
+            className: assign.className,
+            period: period,
+            subject: afterSchoolName[period] || slot.project || '课后服务',
+            time: getAfterSchoolTime(slot.day, period, slot.time),
+            isAfterSchool: true,
+            weekType: c.week
+          });
         }
       }
     }
