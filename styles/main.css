@@ -342,17 +342,17 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
 .btn-club-table:hover { background: #7C3AED; }
 #club-table-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 24px; }
 #club-table-modal.open { display: flex; }
-#club-table-modal > div { background: #fff; border-radius: 12px; max-width: 960px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
-#club-table-modal .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--gray-100); }
+#club-table-modal .modal-content { background: #fff; border-radius: 12px; max-width: 960px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+#club-table-modal .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--gray-100); flex: 0 0 auto; }
 #club-table-modal .modal-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--gray-700); }
 #club-table-modal .modal-close { background: none; border: none; font-size: 24px; line-height: 1; color: var(--gray-500); cursor: pointer; padding: 0 4px; }
 #club-table-modal .modal-close:hover { color: var(--red); }
-#club-table-modal .modal-body { padding: 16px 20px; overflow-y: auto; }
+#club-table-modal .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1 1 auto; }
 
-/* 手机端：社团活动弹窗改为全屏展示，表格设最小宽度防列被挤，超出部分横向滚动 */
+/* 手机端：社团活动弹窗改为全屏展示（仅 modal-content 设全屏，header/body 正常参与布局） */
 @media (max-width: 768px) {
   #club-table-modal { padding: 0; align-items: stretch; }
-  #club-table-modal > div {
+  #club-table-modal .modal-content {
     max-width: 100%;
     width: 100vw;
     max-height: 100vh;

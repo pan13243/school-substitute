@@ -1969,11 +1969,12 @@ function showClubTable() {
     return;
   }
   let html = `
-    <div class="modal-header">
-      <h3>🎯 全校社团活动安排表</h3>
-      <button class="modal-close" onclick="closeClubTable()">×</button>
-    </div>
-    <div class="modal-body">`;
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🎯 全校社团活动安排表</h3>
+        <button class="modal-close" onclick="closeClubTable()">×</button>
+      </div>
+      <div class="modal-body">`;
   for (const sh of data.sheets) {
     html += `<h4 style="margin:8px 0 4px;color:var(--gray-700);">📄 ${esc(sh.name)}</h4>`;
     if (!sh.rows || sh.rows.length === 0) { html += `<p class="text-muted">（此 Sheet 无内容）</p>`; continue; }
@@ -1983,7 +1984,8 @@ function showClubTable() {
     });
     html += `</tbody></table></div>`;
   }
-  html += `</div>`;
+  html += `      </div>
+    </div>`;
   modal.innerHTML = html;
   modal.classList.add('open');
   modal.style.display = 'flex';
