@@ -319,8 +319,15 @@ function showModal(title, content) {
   document.body.appendChild(modal);
 }
 
-// ══════════════════════════════════════════════════════
-//  拼音检索功能
+function showAllTeachers() {
+  const teas = scheduleData?.allTeachers || [];
+  if (!teas.length) {
+    toast('暂无教师数据', 'error');
+    return;
+  }
+  const list = teas.map(t => `<span style="display:inline-block; padding:8px 16px; margin:4px; background:#F3F4F6; border-radius:20px; font-size:14px;">${t}</span>`).join('');
+  showModal('👩‍🏫 教师名单 (' + teas.length + '人)', `<div style="line-height:2;">${list}</div>`);
+}
 // ══════════════════════════════════════════════════════
 
 // 常用汉字拼音首字母映射
@@ -750,7 +757,7 @@ function renderHomePage(area) {
         <div class="stat-num">${cls.length}</div>
         <div class="stat-label">班级</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" onclick="showAllTeachers()" style="cursor:pointer;">
         <div class="stat-icon">👩‍🏫</div>
         <div class="stat-num">${teas.length}</div>
         <div class="stat-label">教师</div>
