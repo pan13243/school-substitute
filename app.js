@@ -12,6 +12,7 @@ let adminPwd   = '';
 let currentPage = 'login';
 let scheduleData = null;   // { timetable, teacherAssignment, allTeachers, classes }
 let leaveRecords = [];
+let isSubmittingLeave = false;  // 提交请假全局锁
 let substituteRecords = [];
 
 // ══════════════════════════════════════════════════════
@@ -1334,10 +1335,12 @@ async function submitLeave(e) {
   e.preventDefault();
   const form = e.target;
   const submitBtn = form.querySelector('button[type="submit"]');
-  // 防重复点击：正在提交时直接拦截
-  if (submitBtn && submitBtn.disabled) {
+  // 防重复点击：全局锁 + 按钮锁双层保护
+  if (isSubmittingLeave || (submitBtn && submitBtn.disabled)) {
+    toast('正在提交中，请勿重复点击', 'warning');
     return;
   }
+  isSubmittingLeave = true;
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.dataset.origText = submitBtn.textContent;
@@ -1397,13 +1400,23 @@ async function submitLeave(e) {
     return;
   }
 
-  // 防重复：过滤掉已存在的请假记录（同一教师+同一日期+同一节次）
+  // 提交前先 reload 一次数据，以服务器为权威源进行去重
+  try {
+    const reload = await API.getLeaves();
+    if (reload.success && Array.isArray(reload.data)) {
+      leaveRecords = reload.data;
+    }
+  } catch (err) {
+    console.warn('reload leaves failed:', err);
+  }
+
+  // 客户端去重：过滤掉已存在的请假记录（同一教师+同一日期+同一节次+同一状态）
   const beforeFilter = leavesToAdd.length;
   const newLeaves = leavesToAdd.filter(obj => {
     return !leaveRecords.some(existing =>
       existing.teacherName === obj.teacherName &&
       existing.leaveDate === obj.leaveDate &&
-      existing.period === obj.period
+      String(existing.period ?? '') === String(obj.period ?? '')
     );
   });
   const skipCount = beforeFilter - newLeaves.length;
@@ -1414,29 +1427,40 @@ async function submitLeave(e) {
 
   // 批量提交
   let successCount = 0;
+  let dupCount = 0;
   for (const obj of newLeaves) {
     const r = await API.addLeave(obj);
     if (r.success) {
       leaveRecords.unshift({ id: r.data?.id || Date.now().toString(36), ...obj });
       successCount++;
+    } else if (r.duplicate || (r.error && r.error.includes('已存在'))) {
+      dupCount++;
     }
+  }
+  // 提交过程中又被别人添加的，全部重新 reload
+  if (dupCount > 0) {
+    try {
+      const reload = await API.getLeaves();
+      if (reload.success && Array.isArray(reload.data)) leaveRecords = reload.data;
+    } catch (err) {}
   }
 
   if (successCount > 0) {
-    const msg = skipCount > 0
-      ? `成功登记 ${successCount} 条请假（跳过 ${skipCount} 条重复）`
+    const msg = skipCount + dupCount > 0
+      ? `成功登记 ${successCount} 条请假（跳过 ${skipCount + dupCount} 条重复）`
       : `成功登记 ${successCount} 条请假记录`;
     toast(msg, 'success');
     form.reset();
     $('leave-wday').value = wday(now());
     renderLeavePage($('main-content'));
   } else {
-    toast('提交失败', 'error');
+    toast(skipCount + dupCount > 0 ? '所有请假记录均已存在，未重复提交' : '提交失败', 'error');
   }
   } catch (err) {
     console.error('submitLeave error:', err);
     toast('提交出错：' + (err.message || err), 'error');
   } finally {
+    isSubmittingLeave = false;
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = submitBtn.dataset.origText || '提交请假';

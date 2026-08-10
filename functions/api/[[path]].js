@@ -468,8 +468,18 @@ async function handleLeavesPost(request, env) {
   const { teacherName, leaveDate, dayOfWeek, period, reason } = body;
   if (!teacherName || !leaveDate) return json({ success: false, error: '缺少教师或日期' }, 400);
   const leaves = await getKV(env, 'leaves') || [];
+  // 服务端去重：同一教师+同一日期+同一节次已存在的记录不再重复添加
+  const normPeriod = period === undefined || period === null ? '' : String(period);
+  const dup = leaves.find(x =>
+    x.teacherName === teacherName &&
+    x.leaveDate === leaveDate &&
+    String(x.period ?? '') === normPeriod
+  );
+  if (dup) {
+    return json({ success: false, error: '该请假记录已存在，请勿重复提交', duplicate: true, data: dup }, 409);
+  }
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const leave = { id, teacherName, leaveDate, dayOfWeek: normalizeDay(dayOfWeek), period, reason: reason || '', status: 'pending', createdAt: new Date().toISOString() };
+  const leave = { id, teacherName, leaveDate, dayOfWeek: normalizeDay(dayOfWeek), period: normPeriod || null, reason: reason || '', status: 'pending', createdAt: new Date().toISOString() };
   leaves.push(leave);
   await putKV(env, 'leaves', leaves);
   return json({ success: true, data: leave });
