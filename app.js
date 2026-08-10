@@ -1884,8 +1884,13 @@ async function handleClubActivitiesImport(file) {
 function showClubTable() {
   const td = scheduleData || {};
   const data = td.clubActivities;
-  const modal = document.getElementById('club-table-modal');
-  if (!modal) return;
+  // 懒创建弹窗容器（initApp 会重写 body，静态节点会被冲掉，故此处动态补回）
+  let modal = document.getElementById('club-table-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'club-table-modal';
+    document.body.appendChild(modal);
+  }
   if (!data || !Array.isArray(data.sheets) || data.sheets.length === 0) {
     toast('尚未导入社团活动安排表，请先在"导入课表"页上传', 'warning');
     return;
