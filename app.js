@@ -2068,11 +2068,8 @@ async function mergeAndImportAfterSchool() {
       single, double
     };
     
+    // 只发送课后服务数据；总课表/校历等由后端沿用已有配置，避免误清空旧数据
     const importData = {
-      timetable: scheduleData?.timetable || {},
-      teacherAssignment: scheduleData?.teacherAssignment || {},
-      classes: scheduleData?.classes || [],
-      allTeachers: scheduleData?.allTeachers || [],
       afterSchoolService: merged
     };
     
@@ -2510,8 +2507,8 @@ async function handleTextImport() {
 }
 
 async function doImport(data) {
-  if (!data.timetable && !data.classes && !data.calendar) {
-    toast('数据格式不正确，缺少 timetable/classes/calendar','error'); return;
+  if (!data.timetable && !data.classes && !data.calendar && !data.afterSchoolService) {
+    toast('数据格式不正确，缺少 timetable/classes/calendar/afterSchoolService','error'); return;
   }
   const loading = showLoading('正在导入...');
   try {

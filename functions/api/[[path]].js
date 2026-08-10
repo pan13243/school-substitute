@@ -351,60 +351,99 @@ async function handleScheduleGet(env) {
 async function handleScheduleImport(request, env) {
   if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
   const body = await request.json().catch(() => ({}));
-  const { timetable, afterSchoolService, classes, allTeachers, calendar } = body;
-  
-  // 获取现有配置（用于合并）
+
+  // 用「字段是否存在于请求体」判断，区分「未提供」与「空值」
+  const hasTimetable = body.timetable !== undefined;
+  const hasAfter     = body.afterSchoolService !== undefined;
+  const hasCalendar  = body.calendar !== undefined;
+
   const existing = await getKV(env, 'config') || {};
-  
-  const classSet = new Set(existing.classes || []);
-  const teacherSet = new Set(existing.allTeachers || []);
-  const ta = existing.teacherAssignment || {};
-  
-  // 处理总课表（注意：单元格可能含双教师，用 \n 或空格分隔）
-  if (timetable) {
-    for (const [day, cm] of Object.entries(timetable)) {
+
+  const timetable          = hasTimetable ? body.timetable : (existing.timetable || {});
+  const afterSchoolService = hasAfter     ? body.afterSchoolService : (existing.afterSchoolService || {});
+  const calendar           = hasCalendar  ? body.calendar : (existing.calendar || null);
+
+  // 重建 teacherAssignment / classes / allTeachers
+  // 规则：若本次提供了总课表，则完全依据新总课表重新计算（实现「重新导入=整份刷新」，
+  //      离职教师/调整班级会被自动清除）；否则沿用已有配置，再叠加本次提供的其他数据。
+  const ta = {};
+  const classSet = new Set();
+  const teacherSet = new Set();
+
+  if (hasTimetable && timetable && Object.keys(timetable).length) {
+    // 从【新的】总课表重新计算（不携带旧数据，确保数据自动更新）
+    for (const [, cm] of Object.entries(timetable)) {
       for (const [cls, periods] of Object.entries(cm)) {
+        if (!cls) continue;
         classSet.add(cls);
         if (!ta[cls]) ta[cls] = {};
-        for (const s of periods) {
-          // 拆分双教师（按换行或中英文逗号分隔）
+        for (const s of (periods || [])) {
+          // 拆分双教师（按换行或中英文逗号/分号/空格分隔）
           const teachers = String(s.teacher || '').split(/[\n,，;；\s]+/).map(t => t.trim()).filter(t => t);
           teachers.forEach(t => teacherSet.add(t));
           // teacherAssignment 只存第一个教师（同班同科的主教师）
-          if (s.subject && teachers.length > 0) ta[cls][s.subject] = teachers[0];
+          if (s.subject && teachers.length) ta[cls][s.subject] = teachers[0];
         }
       }
     }
-  }
-  
-  // 处理课后服务表中的教师
-  if (afterSchoolService?.slots) {
-    for (const slot of afterSchoolService.slots) {
-      for (const cls in (slot.assignments || {})) {
-        classSet.add(cls);
-        const asn = slot.assignments[cls];
-        if (asn.teacher) teacherSet.add(asn.teacher);
-        if (asn.singleWeek) teacherSet.add(asn.singleWeek);
-        if (asn.doubleWeek) teacherSet.add(asn.doubleWeek);
+  } else {
+    // 本次未提供总课表：从【已有总课表全文】重建教师/班级（含双教师），
+    // 再叠加本次课后服务教师。注意：不直接继承 existing.allTeachers，
+    // 否则旧的课后服务教师（已不在新表中）无法被自动清除。
+    if (existing.timetable && Object.keys(existing.timetable).length) {
+      for (const [, cm] of Object.entries(existing.timetable)) {
+        for (const [cls, periods] of Object.entries(cm)) {
+          if (!cls) continue;
+          classSet.add(cls);
+          if (!ta[cls]) ta[cls] = {};
+          for (const s of (periods || [])) {
+            const teachers = String(s.teacher || '').split(/[\n,，;；\s]+/).map(t => t.trim()).filter(t => t);
+            teachers.forEach(t => teacherSet.add(t));
+            if (s.subject && teachers.length) ta[cls][s.subject] = teachers[0];
+          }
+        }
       }
+    } else {
+      for (const [c, subs] of Object.entries(existing.teacherAssignment || {})) {
+        if (!c) continue;
+        classSet.add(c);
+        ta[c] = { ...subs };
+        for (const t of Object.values(subs)) if (t) teacherSet.add(t);
+      }
+      (existing.classes || []).forEach(c => classSet.add(c));
     }
   }
-  
-  // 传入的 classes/allTeachers 也加入
-  if (classes) classes.forEach(c => classSet.add(c));
-  if (allTeachers) allTeachers.forEach(t => teacherSet.add(t));
-  
+
+  // 叠加课后服务表中的教师 / 班级
+  for (const slot of (afterSchoolService?.slots || [])) {
+    for (const cls in (slot.assignments || {})) {
+      classSet.add(cls);
+      const asn = slot.assignments[cls];
+      if (!asn || typeof asn !== 'object') {
+        if (asn) teacherSet.add(String(asn));
+        continue;
+      }
+      if (asn.teacher) teacherSet.add(asn.teacher);
+      if (asn.singleWeek) teacherSet.add(asn.singleWeek);
+      if (asn.doubleWeek) teacherSet.add(asn.doubleWeek);
+    }
+  }
+
+  // 允许请求体直接携带 classes / allTeachers 作为补充
+  if (Array.isArray(body.classes)) body.classes.forEach(c => classSet.add(c));
+  if (Array.isArray(body.allTeachers)) body.allTeachers.forEach(t => teacherSet.add(t));
+
   const cfg = {
-    timetable: timetable || existing.timetable || {},
+    timetable,
     teacherAssignment: ta,
-    afterSchoolService: afterSchoolService || existing.afterSchoolService || {},
-    calendar: calendar || existing.calendar || null,
+    afterSchoolService,
+    calendar,
     classes: [...classSet].sort(),
     allTeachers: [...teacherSet].sort()
   };
   await putKV(env, 'config', cfg);
-  
-  const total = Object.values(cfg.timetable).reduce((a, b) => a + Object.values(b).reduce((a2, b2) => a2 + b2.length, 0), 0);
+
+  const total = Object.values(cfg.timetable).reduce((a, b) => a + Object.values(b).reduce((a2, b2) => a2 + (b2?.length || 0), 0), 0);
   return json({ success: true, message: '导入成功', stats: { classes: cfg.classes.length, teachers: cfg.allTeachers.length, slots: total } });
 }
 
