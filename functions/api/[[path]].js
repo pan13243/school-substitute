@@ -783,6 +783,9 @@ export async function onRequest(context) {
       hasTimetable: !!cfg.timetable,
       timetableKeys: cfg.timetable ? Object.keys(cfg.timetable) : [],
       timetableSample: cfg.timetable ? Object.entries(cfg.timetable).slice(0,2).map(([k,v]) => ({day: k, classes: Object.keys(v).slice(0,2)})) : null,
+      allTeachersCount: (cfg.allTeachers || []).length,
+      allTeachersSample: (cfg.allTeachers || []).slice(0, 10),
+      classesCount: (cfg.classes || []).length,
       leavesCount: leaves.length,
       leavesStatus: leaves.reduce((acc, l) => { acc[l.status] = (acc[l.status]||0)+1; return acc; }, {}),
       substitutesCount: substitutes.length
