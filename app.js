@@ -1005,8 +1005,8 @@ function renderTTClass() {
   const afterSchoolName = { 7:'课后服务1', 8:'课后服务2', 9:'课后服务3', 10:'晚自习', 11:'午休' };
 
   for (const p of allAfterSchoolPeriods) {
-    // 课后服务行节次列：节次名字 + 时间（周一~周四统一时间）
-    html += `<tr class="afterschool-row"><td class="period-cell">第${p}节<br><small class="period-time">${esc(afterSchoolTimeMap[p] || '')}</small></td>`;
+    // 课后服务行节次列：仅节次名字（时间已合并到内容格“名字上方”）
+    html += `<tr class="afterschool-row"><td class="period-cell">第${p}节</td>`;
     for (const d of days) {
       // 该天没这节次显示空白
       if (!afterschoolPeriodsByDay[d].includes(p)) {
@@ -1023,8 +1023,12 @@ function renderTTClass() {
         </td>`;
         continue;
       }
+      // 内容格：名字上方显示「时间+项目名」（周五保持原样）
+      const timeLabel = d === '星期五'
+        ? t
+        : `${esc(afterSchoolTimeMap[p] || '')} ${esc(afterSchoolName[p] || '')}`.trim();
       html += `<td>
-        <div class="time-cell">${t}</div>`;
+        <div class="time-cell">${timeLabel}</div>`;
       if (asn) {
         if (asn.week === '单周/双周') {
           html += `<div class="has-class afterschool-cell">
