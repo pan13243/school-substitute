@@ -1474,13 +1474,6 @@ async function deleteLeave(id) {
   const headers = {};
   if (isAdmin) {
     headers['x-admin-pwd'] = adminPwd;
-  } else {
-    const teacherName = document.getElementById('leave-teacher')?.value || '';
-    if (!teacherName) {
-      toast('请先选择教师', 'error');
-      return;
-    }
-    headers['x-teacher-name'] = teacherName;
   }
   const r = await fetch(`/api/leaves/${id}`, { method:'DELETE', headers });
   const data = await r.json().catch(() => ({}));
