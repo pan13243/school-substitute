@@ -348,3 +348,21 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
 #club-table-modal .modal-close { background: none; border: none; font-size: 24px; line-height: 1; color: var(--gray-500); cursor: pointer; padding: 0 4px; }
 #club-table-modal .modal-close:hover { color: var(--red); }
 #club-table-modal .modal-body { padding: 16px 20px; overflow-y: auto; }
+
+/* 手机端：社团活动弹窗改为全屏展示，表格设最小宽度防列被挤，超出部分横向滚动 */
+@media (max-width: 768px) {
+  #club-table-modal { padding: 0; align-items: stretch; }
+  #club-table-modal > div {
+    max-width: 100%;
+    width: 100vw;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+  }
+  #club-table-modal .modal-header { padding: 12px 16px; }
+  #club-table-modal .modal-header h3 { font-size: 17px; }
+  #club-table-modal .modal-close { font-size: 28px; padding: 4px 10px; }
+  #club-table-modal .modal-body { padding: 10px 12px; }
+  #club-table-modal .data-table { font-size: 13px; min-width: 520px; }
+  #club-table-modal .data-table tbody td { padding: 8px 10px; }
+}
