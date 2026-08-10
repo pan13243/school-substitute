@@ -1441,7 +1441,8 @@ function renderSubPage(area) {
       ${previewSubstitutes.length > 0 ? `
         <button class="btn btn-success" onclick="confirmSubstitutes()">✅ 确认方案</button>
         <button class="btn btn-secondary" onclick="cancelPreview()">❌ 取消预览</button>
-      ` : `<button class="btn btn-secondary" onclick="exportSubExcel()" ${substituteRecords.length === 0 ? 'disabled' : ''}>📥 导出Excel</button>`}
+      ` : `<button class="btn btn-secondary" onclick="exportSubExcel()" ${substituteRecords.length === 0 ? 'disabled' : ''}>📥 导出Excel</button>
+      <button class="btn btn-secondary" onclick="exportSubKaoqin()" ${substituteRecords.length === 0 ? 'disabled' : ''}>📋 按考勤表导出</button>`}
     </div>` : ''}
 
     ${previewSubstitutes.length > 0 ? renderPreviewTable() : renderSubTable()}
@@ -1703,6 +1704,78 @@ function exportSubExcel() {
   XLSX.utils.book_append_sheet(wb, ws, '代课安排');
   XLSX.writeFile(wb, `代课安排_${now()}.xlsx`);
   toast('导出成功','success');
+}
+
+// 按「教师考勤统计表」模板格式导出（自动填可生成项，其余留空手填）
+function exportSubKaoqin() {
+  if (substituteRecords.length === 0) { toast('无记录可导出','warning'); return; }
+  // 统计每位请假教师每天的总节数（用于「节数」列）
+  const cntMap = {};
+  substituteRecords.forEach(s => {
+    const k = (s.leaveTeacher||'') + '|' + (s.leaveDate||'');
+    cntMap[k] = (cntMap[k] || 0) + 1;
+  });
+  const arr = (n, v) => Array.from({length:n}, () => v);
+  const parseDate = (d) => {
+    if (!d) return {y:'',m:'',dd:''};
+    const m = String(d).split(/[-/]/);
+    return { y: m[0]||'', m: m[1]||'', dd: m[2]||'' };
+  };
+  const rows = [];
+  rows[0] = arr(16,''); rows[0][0] = '施秉县双井镇小学、幼儿园教师考勤统计表';
+  rows[1] = arr(16,''); rows[1][0] = '（2025—2026学年度第二学期）';
+  rows[2] = arr(16,''); rows[2][0] = '  （2026年        月）';
+  rows[3] = arr(16,''); rows[3][9] = '登记人：';
+  rows[4] = arr(16,''); rows[4][0] = '学校（盖章）：施秉县双井镇中心小学'; rows[4][9] = '审核人：';
+  rows[5] = arr(16,'');
+  rows[5][0]='序号'; rows[5][1]='有假教师'; rows[5][2]='考勤备注';
+  rows[5][10]='前去代课教师'; rows[5][11]='代课情况'; rows[5][15]='备注';
+  rows[6] = arr(16,'');
+  rows[6][2]='请假时间'; rows[6][5]='星期'; rows[6][6]='事由'; rows[6][7]='假别';
+  rows[6][8]='迟到、早退、旷工'; rows[6][9]='天数';
+  rows[6][11]='班级'; rows[6][12]='节次'; rows[6][13]='科目'; rows[6][14]='节数';
+  rows[7] = arr(16,''); rows[7][2]='年'; rows[7][3]='月'; rows[7][4]='日';
+  let idx = 1;
+  substituteRecords.forEach(s => {
+    const dr = parseDate(s.leaveDate);
+    const k = (s.leaveTeacher||'') + '|' + (s.leaveDate||'');
+    const r = arr(16,'');
+    r[0]  = idx++;
+    r[1]  = s.leaveTeacher || '';
+    r[2]  = dr.y;  r[3] = dr.m;  r[4] = dr.dd;
+    r[5]  = s.dayOfWeek || '';
+    r[6]  = s.reason || '';
+    r[7]  = '';          // 假别：系统未存储，留空手填
+    r[8]  = '';          // 迟到早退旷工：留空手填
+    r[9]  = '';          // 天数：留空手填
+    r[10] = s.substituteTeacher || '';
+    r[11] = s.className || '';
+    r[12] = s.period || '';
+    r[13] = s.subject || '';
+    r[14] = cntMap[k] || 1;
+    r[15] = '';          // 备注：留空手填
+    rows.push(r);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:15}}, {s:{r:1,c:0},e:{r:1,c:15}}, {s:{r:2,c:0},e:{r:2,c:15}},
+    {s:{r:3,c:9},e:{r:3,c:15}}, {s:{r:4,c:0},e:{r:4,c:8}}, {s:{r:4,c:9},e:{r:4,c:15}},
+    {s:{r:6,c:2},e:{r:6,c:9}}, {s:{r:6,c:11},e:{r:6,c:14}},
+    {s:{r:7,c:2},e:{r:7,c:4}},
+    {s:{r:6,c:0},e:{r:8,c:0}}, {s:{r:6,c:1},e:{r:8,c:1}},
+    {s:{r:7,c:5},e:{r:8,c:5}}, {s:{r:7,c:6},e:{r:8,c:6}}, {s:{r:7,c:7},e:{r:8,c:7}},
+    {s:{r:7,c:8},e:{r:8,c:8}}, {s:{r:7,c:9},e:{r:8,c:9}},
+    {s:{r:6,c:10},e:{r:8,c:10}}, {s:{r:7,c:11},e:{r:8,c:11}}, {s:{r:7,c:12},e:{r:8,c:12}},
+    {s:{r:7,c:13},e:{r:8,c:13}}, {s:{r:7,c:14},e:{r:8,c:14}}, {s:{r:6,c:15},e:{r:8,c:15}}
+  ];
+  ws['!cols'] = [
+    {wch:6},{wch:12},{wch:6},{wch:5},{wch:5},{wch:8},{wch:12},{wch:8},{wch:12},{wch:6},
+    {wch:12},{wch:10},{wch:6},{wch:10},{wch:6},{wch:12}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '教师考勤统计表');
+  XLSX.writeFile(wb, `教师考勤统计表_${now()}.xlsx`);
+  toast('考勤表导出成功','success');
 }
 
 // ══════════════════════════════════════════════════════
