@@ -1269,7 +1269,7 @@ function renderLeavePage(area) {
               <td><span class="badge badge-${l.status==='approved'?'green':l.status==='rejected'?'red':'yellow'}">${l.status||'待审核'}</span></td>
               <td>
                 ${isAdmin ? `<button class="btn btn-sm btn-success" onclick="approveLeave('${l.id}')">批准</button>` : ''}
-                ${(isAdmin || l.status==='approved') ? `<button class="btn btn-sm btn-danger"  onclick="deleteLeave('${l.id}')">删除</button>` : ''}
+                ${(isAdmin || l.status!=='approved') ? `<button class="btn btn-sm btn-danger"  onclick="deleteLeave('${l.id}')">删除</button>` : ''}
               </td>
             </tr>`).join('')}
           </tbody>

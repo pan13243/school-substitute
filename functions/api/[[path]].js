@@ -512,13 +512,13 @@ async function handleLeavesDelete(request, env) {
     const idx = leaves.findIndex(l => l.id === id);
     if (idx === -1) return json({ success: false, error: '请假记录不存在' }, 404);
     const target = leaves[idx];
-    // 教师端：必须是本教师的已批准请假才能删
+    // 教师端：必须是本教师的非已批准请假才能删（pending/rejected 可删，approved 必须管理员）
     if (!isAdminReq) {
       if (!teacherNameHeader || target.teacherName !== teacherNameHeader) {
         return json({ success: false, error: '只能删除自己的请假记录' }, 403);
       }
-      if (target.status !== 'approved') {
-        return json({ success: false, error: '仅已批准的请假可删除' }, 403);
+      if (target.status === 'approved') {
+        return json({ success: false, error: '已批准的请假请让管理员删除' }, 403);
       }
     }
     leaves.splice(idx, 1);
