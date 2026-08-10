@@ -501,7 +501,8 @@ async function handleLeavesPut(request, env) {
 }
 
 async function handleLeavesDelete(request, env) {
-  if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
+  const isAdminReq = authAdmin(request.headers);
+  const teacherNameHeader = request.headers.get('x-teacher-name') || '';
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
   // /api/leaves/{id} 按 ID 删除单条；/api/leaves 清空全部
@@ -510,6 +511,16 @@ async function handleLeavesDelete(request, env) {
     const leaves = await getKV(env, 'leaves') || [];
     const idx = leaves.findIndex(l => l.id === id);
     if (idx === -1) return json({ success: false, error: '请假记录不存在' }, 404);
+    const target = leaves[idx];
+    // 教师端：必须是本教师的已批准请假才能删
+    if (!isAdminReq) {
+      if (!teacherNameHeader || target.teacherName !== teacherNameHeader) {
+        return json({ success: false, error: '只能删除自己的请假记录' }, 403);
+      }
+      if (target.status !== 'approved') {
+        return json({ success: false, error: '仅已批准的请假可删除' }, 403);
+      }
+    }
     leaves.splice(idx, 1);
     await putKV(env, 'leaves', leaves);
     return json({ success: true, message: '删除成功', remaining: leaves.length });

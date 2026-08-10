@@ -1257,7 +1257,7 @@ function renderLeavePage(area) {
       ${leaveRecords.length > 0 ? `
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th>${isAdmin?'<th>操作</th>':''}</tr></thead>
+          <thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
             ${leaveRecords.map(l => `
             <tr class="${l.status==='approved'?'row-approved':''}">
@@ -1267,10 +1267,10 @@ function renderLeavePage(area) {
               <td>${l.period ? '第'+l.period+'节' : '—'}</td>
               <td>${esc(l.reason||'—')}</td>
               <td><span class="badge badge-${l.status==='approved'?'green':l.status==='rejected'?'red':'yellow'}">${l.status||'待审核'}</span></td>
-              ${isAdmin ? `<td>
-                <button class="btn btn-sm btn-success" onclick="approveLeave('${l.id}')">批准</button>
-                <button class="btn btn-sm btn-danger"  onclick="deleteLeave('${l.id}')">删除</button>
-              </td>` : ''}
+              <td>
+                ${isAdmin ? `<button class="btn btn-sm btn-success" onclick="approveLeave('${l.id}')">批准</button>` : ''}
+                ${(isAdmin || l.status==='approved') ? `<button class="btn btn-sm btn-danger"  onclick="deleteLeave('${l.id}')">删除</button>` : ''}
+              </td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -1471,7 +1471,23 @@ async function submitLeave(e) {
 
 async function deleteLeave(id) {
   if (!confirm('确定删除？')) return;
-  await API.deleteLeave(id);
+  const headers = {};
+  if (isAdmin) {
+    headers['x-admin-pwd'] = adminPwd;
+  } else {
+    const teacherName = document.getElementById('leave-teacher')?.value || '';
+    if (!teacherName) {
+      toast('请先选择教师', 'error');
+      return;
+    }
+    headers['x-teacher-name'] = teacherName;
+  }
+  const r = await fetch(`/api/leaves/${id}`, { method:'DELETE', headers });
+  const data = await r.json().catch(() => ({}));
+  if (!data.success) {
+    toast(data.error || '删除失败', 'error');
+    return;
+  }
   leaveRecords = leaveRecords.filter(l => l.id !== id);
   toast('已删除','success');
   renderLeavePage($('main-content'));
