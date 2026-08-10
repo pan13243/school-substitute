@@ -1042,6 +1042,76 @@ function renderTTClass() {
   area.innerHTML = html;
 }
 
+// ══════════════════════════════════════════════════════
+//  我的社团活动弹窗（教师个人课表按钮触发，按当前教师筛选）
+// ══════════════════════════════════════════════════════
+function showMyClubActivities() {
+  const td = scheduleData || {};
+  const clubData = td.clubActivities || []; // 从 KV 读取社团活动数据
+  const myName = sessionStorage.getItem('teacherName') || '';
+
+  // 如果没有数据，显示提示
+  if (!clubData || clubData.length === 0) {
+    toast('社团活动安排表尚未导入，请联系管理员', 'warning');
+    return;
+  }
+
+  // 只显示当前登录教师指导的社团
+  const myClubs = clubData.filter(c => c.teacher && c.teacher.indexOf(myName) !== -1);
+  if (myClubs.length === 0) {
+    toast('您暂未指导社团活动', 'info');
+    return;
+  }
+
+  // 构建模态框
+  const modal = document.createElement('div');
+  modal.id = 'club-activity-modal';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-content club-modal">
+      <div class="modal-header">
+        <h3>🎯 我的社团活动（${esc(myName)}）</h3>
+        <button class="modal-close" onclick="closeClubModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-wrap">
+          <table class="data-table club-table">
+            <thead>
+              <tr>
+                <th>班级</th>
+                <th>活动名称</th>
+                <th>活动地点</th>
+                <th>指导教师</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${myClubs.map(item => `
+                <tr>
+                  <td>${esc(item.className || '—')}</td>
+                  <td>${esc(item.activityName || '—')}</td>
+                  <td>${esc(item.location || '—')}</td>
+                  <td>${esc(item.teacher || '—')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // 点击背景关闭
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeClubModal();
+  });
+}
+
+function closeClubModal() {
+  const modal = $('club-activity-modal');
+  if (modal) modal.remove();
+}
+
 function renderTTMy() {
   const td = scheduleData || {};
   const tt = td.timetable || {};
@@ -1049,6 +1119,11 @@ function renderTTMy() {
   const myName = sessionStorage.getItem('teacherName') || '';
   const area = $('tt-my-content');
   if (!area) return;
+
+  // 「我的社团活动」按钮（独立功能，不受课表有无影响）
+  const clubBtnHtml = `<div class="club-btn-wrap" style="margin-bottom:12px;">
+    <button class="btn btn-club-activity" onclick="showMyClubActivities()">🎯 我的社团活动</button>
+  </div>`;
 
   const days = ['星期一','星期二','星期三','星期四','星期五'];
   const dayOrder = d => days.indexOf(d);
@@ -1118,14 +1193,14 @@ function renderTTMy() {
   const allSlots = [...mySlots, ...myAfterSchoolSlots];
 
   if (allSlots.length === 0) {
-    area.innerHTML = '<p class="text-muted">暂无您的课表记录</p>';
+    area.innerHTML = clubBtnHtml + '<p class="text-muted" style="margin-top:12px;">暂无您的课表记录</p>';
     return;
   }
 
   // 按星期、节次排序
   allSlots.sort((a,b) => dayOrder(a.day) - dayOrder(b.day) || a.period - b.period);
 
-  let html = `<div class="table-wrap"><table class="data-table tt-table">`;
+  let html = clubBtnHtml + `<div class="table-wrap"><table class="data-table tt-table">`;
   html += `<thead><tr><th>星期</th><th>节次</th><th>时间</th><th>班级</th><th>科目</th></tr></thead><tbody>`;
 
   allSlots.forEach(s => {
@@ -1703,6 +1778,63 @@ function exportSubExcel() {
 // ══════════════════════════════════════════════════════
 //  导入课表页（管理员）
 // ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+//  社团活动安排表导入
+// ══════════════════════════════════════════════════════
+async function handleClubActivitiesImport(file) {
+  if (!file) return;
+  const status = document.getElementById('club-status');
+  if (status) status.textContent = '正在解析社团活动安排表...';
+  const loading = showLoading('正在解析社团活动安排表...');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const data = parseClubActivitiesWorkbook(wb);
+    loading.remove();
+    if (!data) { toast('未能识别社团活动表，请检查格式', 'error'); if (status) status.textContent = '解析失败'; return; }
+    if (status) status.textContent = `已识别 ${data.length} 条社团活动，正在导入...`;
+    await doImport({ clubActivities: data });
+  } catch (e) {
+    loading.remove();
+    toast('解析失败：' + e.message, 'error');
+    if (status) status.textContent = '解析失败：' + e.message;
+  }
+}
+
+function parseClubActivitiesWorkbook(wb) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  if (!ws) return null;
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  if (!rows.length) return null;
+  const colMap = detectClubColumns(Object.keys(rows[0]));
+  const result = [];
+  for (const r of rows) {
+    const item = {
+      className:    String(r[colMap.className]    || '').trim(),
+      activityName: String(r[colMap.activityName] || '').trim(),
+      location:     String(r[colMap.location]     || '').trim(),
+      teacher:      String(r[colMap.teacher]      || '').trim()
+    };
+    if (!item.className && !item.activityName && !item.teacher) continue;
+    result.push(item);
+  }
+  return result.length ? result : null;
+}
+
+function detectClubColumns(headers) {
+  const h = headers.map(x => String(x || '').toLowerCase());
+  const find = (...keys) => {
+    const i = h.findIndex(t => keys.some(k => t.includes(k)));
+    return i === -1 ? null : headers[i];
+  };
+  return {
+    className:    find('班级', 'class')     || headers[0],
+    activityName: find('活动', '社团', '项目') || headers[1],
+    location:     find('地点', '位置', '场所', '教室') || headers[2],
+    teacher:      find('教师', '指导', '负责', '老师') || headers[3]
+  };
+}
+
 function renderImportPage(area) {
   area.innerHTML = `
   <div class="page">
@@ -1759,6 +1891,16 @@ function renderImportPage(area) {
       <textarea id="import-textarea" class="form-textarea" rows="8"
                 placeholder="粘贴 parsed_data.json 的内容..."></textarea>
       <button class="btn btn-primary" onclick="handleTextImport()">导入数据</button>
+    </div>
+
+    <div class="card">
+      <h3>🎯 方式六：上传社团活动安排表 Excel</h3>
+      <p class="text-muted">上传全校社团活动安排表，教师可在个人课表点击「我的社团活动」查看自己指导的社团（按指导教师姓名匹配）。</p>
+      <div class="form-group">
+        <input type="file" id="import-club" accept=".xlsx,.xls" class="form-file"
+               onchange="handleClubActivitiesImport(this.files[0])">
+      </div>
+      <div id="club-status" style="margin-top:8px;font-size:12px;color:#666;"></div>
     </div>
 
     <div class="card">
@@ -2515,8 +2657,8 @@ async function handleTextImport() {
 }
 
 async function doImport(data) {
-  if (!data.timetable && !data.classes && !data.calendar && !data.afterSchoolService) {
-    toast('数据格式不正确，缺少 timetable/classes/calendar/afterSchoolService','error'); return;
+  if (!data.timetable && !data.classes && !data.calendar && !data.afterSchoolService && !data.clubActivities) {
+    toast('数据格式不正确，缺少 timetable/classes/calendar/afterSchoolService/clubActivities','error'); return;
   }
   const loading = showLoading('正在导入...');
   try {
@@ -2703,16 +2845,18 @@ async function initApp() {
       teacherAssignment: schR.teacherAssignment || {},
       afterSchoolService: schR.afterSchoolService || {},
       calendar: schR.calendar || null,
+      clubActivities: schR.clubActivities || [],
       classes: schR.classes || [],
       allTeachers: schR.allTeachers || []
     };
-  } else if (schR.afterSchoolService || schR.calendar) {
-    // 只有课后服务/校历数据
+  } else if (schR.afterSchoolService || schR.calendar || schR.clubActivities) {
+    // 只有课后服务/校历/社团活动数据
     scheduleData = {
       timetable: {},
       teacherAssignment: {},
       afterSchoolService: schR.afterSchoolService || {},
       calendar: schR.calendar || null,
+      clubActivities: schR.clubActivities || [],
       classes: [],
       allTeachers: []
     };
