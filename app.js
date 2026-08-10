@@ -1332,7 +1332,19 @@ function getTeacherPeriods(teacherName, dayOfWeek) {
 
 async function submitLeave(e) {
   e.preventDefault();
-  const fd  = new FormData(e.target);
+  const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  // 防重复点击：正在提交时直接拦截
+  if (submitBtn && submitBtn.disabled) {
+    return;
+  }
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.dataset.origText = submitBtn.textContent;
+    submitBtn.textContent = '提交中…';
+  }
+  try {
+  const fd  = new FormData(form);
   const leaveType = fd.get('leaveType');
   const teacherName = fd.get('teacherName');
   const reason = fd.get('reason');
@@ -1385,9 +1397,24 @@ async function submitLeave(e) {
     return;
   }
 
+  // 防重复：过滤掉已存在的请假记录（同一教师+同一日期+同一节次）
+  const beforeFilter = leavesToAdd.length;
+  const newLeaves = leavesToAdd.filter(obj => {
+    return !leaveRecords.some(existing =>
+      existing.teacherName === obj.teacherName &&
+      existing.leaveDate === obj.leaveDate &&
+      existing.period === obj.period
+    );
+  });
+  const skipCount = beforeFilter - newLeaves.length;
+  if (newLeaves.length === 0) {
+    toast(skipCount > 0 ? `本次 ${skipCount} 条请假均已登记，未重复提交` : '没有可请假的课程记录', 'warning');
+    return;
+  }
+
   // 批量提交
   let successCount = 0;
-  for (const obj of leavesToAdd) {
+  for (const obj of newLeaves) {
     const r = await API.addLeave(obj);
     if (r.success) {
       leaveRecords.unshift({ id: r.data?.id || Date.now().toString(36), ...obj });
@@ -1396,12 +1423,25 @@ async function submitLeave(e) {
   }
 
   if (successCount > 0) {
-    toast(`成功登记 ${successCount} 条请假记录`, 'success');
-    e.target.reset();
+    const msg = skipCount > 0
+      ? `成功登记 ${successCount} 条请假（跳过 ${skipCount} 条重复）`
+      : `成功登记 ${successCount} 条请假记录`;
+    toast(msg, 'success');
+    form.reset();
     $('leave-wday').value = wday(now());
     renderLeavePage($('main-content'));
   } else {
     toast('提交失败', 'error');
+  }
+  } catch (err) {
+    console.error('submitLeave error:', err);
+    toast('提交出错：' + (err.message || err), 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitBtn.dataset.origText || '提交请假';
+      delete submitBtn.dataset.origText;
+    }
   }
 }
 
