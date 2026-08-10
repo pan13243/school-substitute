@@ -336,3 +336,15 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
 .search-name { font-size: 15px; font-weight: 500; color: var(--gray-700); }
 .search-pinyin { font-size: 12px; color: var(--gray-500); background: var(--gray-100); padding: 2px 8px; border-radius: 4px; }
 .search-no-result { padding: 16px; text-align: center; color: var(--gray-500); font-size: 14px; }
+
+/* ── 社团活动按钮 + 弹窗 ─────────────────────────── */
+.btn-club-table { background: #8B5CF6; color: #fff; padding: 6px 14px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s; }
+.btn-club-table:hover { background: #7C3AED; }
+#club-table-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 24px; }
+#club-table-modal.open { display: flex; }
+#club-table-modal > div { background: #fff; border-radius: 12px; max-width: 960px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+#club-table-modal .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--gray-100); }
+#club-table-modal .modal-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--gray-700); }
+#club-table-modal .modal-close { background: none; border: none; font-size: 24px; line-height: 1; color: var(--gray-500); cursor: pointer; padding: 0 4px; }
+#club-table-modal .modal-close:hover { color: var(--red); }
+#club-table-modal .modal-body { padding: 16px 20px; overflow-y: auto; }

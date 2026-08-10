@@ -1050,6 +1050,11 @@ function renderTTMy() {
   const area = $('tt-my-content');
   if (!area) return;
 
+  // 顶部工具条：「社团活动」按钮
+  const toolbar = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+    <button class="btn btn-club-table" onclick="showClubTable()">🎯 社团活动</button>
+  </div>`;
+
   const days = ['星期一','星期二','星期三','星期四','星期五'];
   const dayOrder = d => days.indexOf(d);
   
@@ -1118,7 +1123,7 @@ function renderTTMy() {
   const allSlots = [...mySlots, ...myAfterSchoolSlots];
 
   if (allSlots.length === 0) {
-    area.innerHTML = '<p class="text-muted">暂无您的课表记录</p>';
+    area.innerHTML = toolbar + '<p class="text-muted">暂无您的课表记录</p>';
     return;
   }
 
@@ -1148,7 +1153,7 @@ function renderTTMy() {
     </tr>`;
   });
   html += `</tbody></table></div>`;
-  area.innerHTML = html;
+  area.innerHTML = toolbar + html;
 }
 
 // ══════════════════════════════════════════════════════
@@ -1762,6 +1767,16 @@ function renderImportPage(area) {
     </div>
 
     <div class="card">
+      <h3>🎯 方式六：上传社团活动安排表 Excel</h3>
+      <p class="text-muted">上传全校社团活动安排表（多 Sheet 整体保存），教师个人课表页的"社团活动"按钮会原样弹出本表。</p>
+      <div class="form-group">
+        <input type="file" id="import-club" accept=".xlsx,.xls" class="form-file"
+               onchange="handleClubActivitiesImport(this.files[0])">
+      </div>
+      <div id="club-status" style="margin-top:8px;font-size:12px;color:#666;"></div>
+    </div>
+
+    <div class="card">
       <h3>📋 当前数据状态</h3>
       ${renderDataStatus()}
     </div>
@@ -1773,7 +1788,8 @@ function renderDataStatus() {
   const cls = td.classes  || [];
   const teas = td.allTeachers || [];
   const cal = td.calendar || null;
-  const hasData = cls.length > 0 || !!cal;
+  const clubSheets = (td.clubActivities && td.clubActivities.sheets) ? td.clubActivities.sheets.length : 0;
+  const hasData = cls.length > 0 || !!cal || clubSheets > 0;
   const calInfo = cal ? `
     <div class="stat-mini" style="width:100%"><span class="sl" style="font-size:12px;line-height:1.6">📅 校历：${esc(cal.term || '')}<br>${cal.startDate} ~ ${cal.endDate}<br>${cal.stats?.weeks || cal.weeks?.length || 0} 周（单 ${cal.weeks?.filter?.(w=>w.parity==='single').length ?? '-'} / 双 ${cal.weeks?.filter?.(w=>w.parity==='double').length ?? '-'}），假日 ${cal.stats?.holidays ?? '-'} 天</span></div>` : '';
 
@@ -1783,6 +1799,7 @@ function renderDataStatus() {
     <div class="stat-mini"><span class="sn">${cls.length}</span><span class="sl">班级</span></div>
     <div class="stat-mini"><span class="sn">${teas.length}</span><span class="sl">教师</span></div>
     <div class="stat-mini"><span class="sn">${cls.length*30}</span><span class="sl">总课时</span></div>
+    ${clubSheets > 0 ? `<div class="stat-mini"><span class="sn">${clubSheets}</span><span class="sl">社团表</span></div>` : ''}
   </div>
   ${calInfo}
   <button class="btn btn-danger btn-sm" style="margin-top:12px" onclick="clearScheduleData()">🗑️ 清空课表</button>
@@ -1819,6 +1836,87 @@ async function handleJsonImport(file) {
 // 日期规范化：'周一'/'周二'/... → '星期一'/'星期二'/...
 const DAY_NORM = { '周一':'星期一','周二':'星期二','周三':'星期三','周四':'星期四','周五':'星期五','周六':'星期六','周日':'星期日' };
 function normDay(d) { return DAY_NORM[d] || d; }
+
+/**
+ * 社团活动安排表：整体存入 KV，点击按钮原样弹出，【不解析】
+ * 数据形状：{ sheets: [{ name, rows: [[...], [...]] }], uploadedAt }
+ */
+async function handleClubActivitiesImport(file) {
+  if (!file) return;
+  const status = document.getElementById('club-status');
+  if (status) status.textContent = '⏳ 正在读取 Excel...';
+  const loading = showLoading('正在读取社团活动安排表...');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const sheets = wb.SheetNames.map(name => {
+      const ws = wb.Sheets[name];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+      // 压缩尾部全空行
+      while (rows.length && rows[rows.length - 1].every(c => c === '' || c == null)) rows.pop();
+      return { name, rows };
+    });
+    if (sheets.length === 0) { throw new Error('Excel 中没有任何工作表'); }
+    const clubData = { sheets, uploadedAt: new Date().toISOString() };
+    const r = await API.importSchedule({ clubActivities: clubData });
+    loading.remove();
+    if (r.success) {
+      if (status) status.textContent = `✅ 已导入 ${sheets.length} 个 Sheet（${sheets.map(s => s.name).join(' / ')}）`;
+      toast(r.message || '社团活动表导入成功', 'success');
+      // 刷新本地缓存
+      if (scheduleData) {
+        scheduleData.clubActivities = clubData;
+      } else {
+        scheduleData = { timetable: {}, teacherAssignment: {}, afterSchoolService: {}, calendar: null, classes: [], allTeachers: [], clubActivities: clubData };
+      }
+      renderImportPage(document.getElementById('main-content'));
+    } else {
+      if (status) status.textContent = '❌ 导入失败：' + (r.error || '未知错误');
+      toast('导入失败：' + (r.error || ''), 'error');
+    }
+  } catch(e) {
+    loading.remove();
+    if (status) status.textContent = '❌ 读取失败：' + e.message;
+    toast('Excel 读取失败：' + e.message, 'error');
+  }
+}
+
+function showClubTable() {
+  const td = scheduleData || {};
+  const data = td.clubActivities;
+  const modal = document.getElementById('club-table-modal');
+  if (!modal) return;
+  if (!data || !Array.isArray(data.sheets) || data.sheets.length === 0) {
+    toast('尚未导入社团活动安排表，请先在"导入课表"页上传', 'warning');
+    return;
+  }
+  let html = `
+    <div class="modal-header">
+      <h3>🎯 全校社团活动安排表</h3>
+      <button class="modal-close" onclick="closeClubTable()">×</button>
+    </div>
+    <div class="modal-body">`;
+  for (const sh of data.sheets) {
+    html += `<h4 style="margin:8px 0 4px;color:var(--gray-700);">📄 ${esc(sh.name)}</h4>`;
+    if (!sh.rows || sh.rows.length === 0) { html += `<p class="text-muted">（此 Sheet 无内容）</p>`; continue; }
+    html += `<div class="table-wrap" style="margin-bottom:12px;"><table class="data-table"><tbody>`;
+    sh.rows.forEach(row => {
+      html += '<tr>' + row.map(cell => `<td>${esc(cell == null ? '' : String(cell))}</td>`).join('') + '</tr>';
+    });
+    html += `</tbody></table></div>`;
+  }
+  html += `</div>`;
+  modal.innerHTML = html;
+  modal.classList.add('open');
+  modal.style.display = 'flex';
+}
+
+function closeClubTable() {
+  const modal = document.getElementById('club-table-modal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.style.display = 'none';
+}
 
 async function handleExcelImport(file) {
   if (!file) return;
@@ -2515,8 +2613,8 @@ async function handleTextImport() {
 }
 
 async function doImport(data) {
-  if (!data.timetable && !data.classes && !data.calendar && !data.afterSchoolService) {
-    toast('数据格式不正确，缺少 timetable/classes/calendar/afterSchoolService','error'); return;
+  if (!data.timetable && !data.classes && !data.calendar && !data.afterSchoolService && !data.clubActivities) {
+    toast('数据格式不正确，缺少 timetable/classes/calendar/afterSchoolService/clubActivities','error'); return;
   }
   const loading = showLoading('正在导入...');
   try {
@@ -2704,7 +2802,8 @@ async function initApp() {
       afterSchoolService: schR.afterSchoolService || {},
       calendar: schR.calendar || null,
       classes: schR.classes || [],
-      allTeachers: schR.allTeachers || []
+      allTeachers: schR.allTeachers || [],
+      clubActivities: schR.clubActivities || null
     };
   } else if (schR.afterSchoolService || schR.calendar) {
     // 只有课后服务/校历数据
@@ -2714,7 +2813,8 @@ async function initApp() {
       afterSchoolService: schR.afterSchoolService || {},
       calendar: schR.calendar || null,
       classes: [],
-      allTeachers: []
+      allTeachers: [],
+      clubActivities: schR.clubActivities || null
     };
   } else {
     // 尝试直接读 parsed_data.json

@@ -344,7 +344,8 @@ async function handleScheduleGet(env) {
     afterSchoolService: cfg.afterSchoolService || null,
     calendar: cfg.calendar || null,
     classes: cfg.classes || [],
-    allTeachers: cfg.allTeachers || []
+    allTeachers: cfg.allTeachers || [],
+    clubActivities: cfg.clubActivities || null
   });
 }
 
@@ -356,12 +357,15 @@ async function handleScheduleImport(request, env) {
   const hasTimetable = body.timetable !== undefined;
   const hasAfter     = body.afterSchoolService !== undefined;
   const hasCalendar  = body.calendar !== undefined;
+  const hasClub      = body.clubActivities !== undefined;
 
   const existing = await getKV(env, 'config') || {};
 
   const timetable          = hasTimetable ? body.timetable : (existing.timetable || {});
   const afterSchoolService = hasAfter     ? body.afterSchoolService : (existing.afterSchoolService || {});
   const calendar           = hasCalendar  ? body.calendar : (existing.calendar || null);
+  // 社团活动表：按类别整份替换（重导 = 整份刷新）；未提供则沿用已有
+  const clubActivities     = hasClub      ? body.clubActivities : (existing.clubActivities || null);
 
   // 重建 teacherAssignment / classes / allTeachers
   // 规则：若本次提供了总课表，则完全依据新总课表重新计算（实现「重新导入=整份刷新」，
@@ -438,6 +442,7 @@ async function handleScheduleImport(request, env) {
     teacherAssignment: ta,
     afterSchoolService,
     calendar,
+    clubActivities,
     classes: [...classSet].sort(),
     allTeachers: [...teacherSet].sort()
   };
