@@ -1023,10 +1023,14 @@ function renderTTClass() {
         </td>`;
         continue;
       }
-      // 内容格：名字上方显示「时间+项目名」（周五保持原样）
-      const timeLabel = d === '星期五'
-        ? t
-        : `${esc(afterSchoolTimeMap[p] || '')} ${esc(afterSchoolName[p] || '')}`.trim();
+      // 内容格：名字上方显示「时间+项目名」
+      // 周五：只第7节在时间前加「课后服务1」，其余（周五原样）保持 t
+      let timeLabel;
+      if (d === '星期五') {
+        timeLabel = (p === 7) ? `${esc(afterSchoolName[7])} ${t}` : t;
+      } else {
+        timeLabel = `${esc(afterSchoolTimeMap[p] || '')} ${esc(afterSchoolName[p] || '')}`.trim();
+      }
       html += `<td>
         <div class="time-cell">${timeLabel}</div>`;
       if (asn) {
