@@ -1470,7 +1470,6 @@ async function submitLeave(e) {
 }
 
 async function deleteLeave(id) {
-  if (!confirm('确定删除？')) return;
   const headers = {};
   if (isAdmin) {
     headers['x-admin-pwd'] = adminPwd;
@@ -1482,7 +1481,7 @@ async function deleteLeave(id) {
     return;
   }
   leaveRecords = leaveRecords.filter(l => l.id !== id);
-  toast('已删除','success');
+  toast('已删除', 'success');
   renderLeavePage($('main-content'));
 }
 
