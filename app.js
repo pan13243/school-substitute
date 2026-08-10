@@ -1027,7 +1027,7 @@ function renderTTClass() {
       // 周五：只第7节在时间前加「课后服务1」，其余（周五原样）保持 t
       let timeLabel;
       if (d === '星期五') {
-        timeLabel = (p === 7) ? `${esc(afterSchoolName[7])} ${t}` : t;
+        timeLabel = (p === 7) ? `${t}${esc(afterSchoolName[7])}` : t;
       } else {
         timeLabel = `${esc(afterSchoolTimeMap[p] || '')} ${esc(afterSchoolName[p] || '')}`.trim();
       }
