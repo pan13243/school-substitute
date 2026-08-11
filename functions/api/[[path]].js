@@ -463,9 +463,13 @@ async function handleLeavesGet(env) {
   return json({ success: true, data: leaves });
 }
 
+// 请假假别：需要校长审批的（事假/病假 → 请假条+校长签字），其余直接推管理员
+const PRINCIPAL_REVIEW_TYPES = ['事假', '病假'];
+const ALL_LEAVE_TYPES = ['事假', '病假', '婚假', '丧假', '公假', '其他'];
+
 async function handleLeavesPost(request, env) {
   const body = await request.json().catch(() => ({}));
-  const { teacherName, leaveDate, dayOfWeek, period, reason } = body;
+  const { teacherName, leaveDate, dayOfWeek, period, reason, leaveType } = body;
   if (!teacherName || !leaveDate) return json({ success: false, error: '缺少教师或日期' }, 400);
   const leaves = await getKV(env, 'leaves') || [];
   // 服务端去重：同一教师+同一日期+同一节次已存在的记录不再重复添加
@@ -479,10 +483,111 @@ async function handleLeavesPost(request, env) {
     return json({ success: false, error: '该请假记录已存在，请勿重复提交', duplicate: true, data: dup }, 409);
   }
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const leave = { id, teacherName, leaveDate, dayOfWeek: normalizeDay(dayOfWeek), period: normPeriod || null, reason: reason || '', status: 'pending', createdAt: new Date().toISOString() };
+  const normType = ALL_LEAVE_TYPES.includes(leaveType) ? leaveType : '其他';
+  // 假别分流：事假/病假 → 待校长审批（pending_principal），其余 → 直接待管理员审批（pending）
+  const status = PRINCIPAL_REVIEW_TYPES.includes(normType) ? 'pending_principal' : 'pending';
+  const leave = { id, teacherName, leaveDate, dayOfWeek: normalizeDay(dayOfWeek), period: normPeriod || null, reason: reason || '', leaveType: normType, status, createdAt: new Date().toISOString() };
   leaves.push(leave);
   await putKV(env, 'leaves', leaves);
   return json({ success: true, data: leave });
+}
+
+// ============ 请假条（校长签字审批）============
+const PRINCIPAL_PWD = 'principal888'; // 校长审批密码（后续可改为 config 配置）
+
+function authPrincipal(headers) {
+  const p = headers.get('x-principal-pwd') || '';
+  return p === PRINCIPAL_PWD;
+}
+
+// 获取请假条列表：管理员/校长看全部；教师带 x-teacher-name 只看自己的
+async function handleLeaveSlipsGet(request, env) {
+  const slips = await getKV(env, 'leaveSlips') || [];
+  const isAdminReq = authAdmin(request.headers);
+  const isPrincipalReq = authPrincipal(request.headers);
+  const teacherNameHeader = request.headers.get('x-teacher-name') || '';
+  if (!isAdminReq && !isPrincipalReq && !teacherNameHeader) {
+    return json({ success: false, error: '无权限查看请假条' }, 401);
+  }
+  let data = slips;
+  if (!isAdminReq && !isPrincipalReq && teacherNameHeader) {
+    data = slips.filter(s => s.teacherName === teacherNameHeader);
+  }
+  return json({ success: true, data });
+}
+
+// 创建请假条（教师提交事假/病假时）
+async function handleLeaveSlipsPost(request, env) {
+  const body = await request.json().catch(() => ({}));
+  const { leaveIds, teacherName, reason, startDate, endDate, signature, teacherSignedAt } = body;
+  if (!teacherName || !reason) return json({ success: false, error: '缺少教师或事由' }, 400);
+  if (!signature) return json({ success: false, error: '缺少教师签字' }, 400);
+  if (!Array.isArray(leaveIds) || leaveIds.length === 0) {
+    return json({ success: false, error: '缺少关联请假记录' }, 400);
+  }
+  // 校验关联请假记录存在且属于该教师
+  const leaves = await getKV(env, 'leaves') || [];
+  const validLeaves = leaves.filter(l => leaveIds.includes(l.id));
+  if (validLeaves.length === 0) return json({ success: false, error: '关联请假记录不存在' }, 404);
+  const id = 'slip_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const slip = {
+    id,
+    leaveIds: validLeaves.map(l => l.id),
+    teacherName,
+    reason,
+    startDate: startDate || validLeaves[0].leaveDate,
+    endDate: endDate || validLeaves[validLeaves.length - 1].leaveDate,
+    teacherSignature: signature,
+    teacherSignedAt: teacherSignedAt || new Date().toISOString(),
+    status: 'pending', // pending → 待校长签字；approved → 校长同意；rejected → 校长拒绝
+    createdAt: new Date().toISOString()
+  };
+  const slips = await getKV(env, 'leaveSlips') || [];
+  slips.push(slip);
+  await putKV(env, 'leaveSlips', slips);
+  return json({ success: true, data: slip });
+}
+
+// 校长审批请假条：同意 → 关联请假记录置 approved；拒绝 → 置 rejected
+async function handleLeaveSlipsPut(request, env) {
+  if (!authPrincipal(request.headers)) return json({ success: false, error: '校长密码错误' }, 401);
+  const url = new URL(request.url);
+  const id = url.pathname.split('/').pop();
+  const body = await request.json().catch(() => ({}));
+  const { action, signature, principalName } = body; // action: 'approve' | 'reject'
+  if (!['approve', 'reject'].includes(action)) return json({ success: false, error: '参数错误' }, 400);
+  if (action === 'approve' && !signature) return json({ success: false, error: '缺少校长签字' }, 400);
+  const slips = await getKV(env, 'leaveSlips') || [];
+  const idx = slips.findIndex(s => s.id === id);
+  if (idx === -1) return json({ success: false, error: '请假条不存在' }, 404);
+  const slip = slips[idx];
+  if (slip.status !== 'pending') return json({ success: false, error: '该请假条已处理' }, 409);
+  
+  if (action === 'approve') {
+    slip.status = 'approved';
+    slip.principalSignature = signature;
+    slip.principalName = principalName || '校长';
+    slip.principalSignedAt = new Date().toISOString();
+  } else {
+    slip.status = 'rejected';
+    slip.principalName = principalName || '校长';
+    slip.principalSignedAt = new Date().toISOString();
+  }
+  slip.updatedAt = new Date().toISOString();
+  
+  // 同步关联请假记录状态
+  const leaves = await getKV(env, 'leaves') || [];
+  let changed = 0;
+  for (const l of leaves) {
+    if (slip.leaveIds.includes(l.id)) {
+      l.status = action === 'approve' ? 'approved' : 'rejected';
+      l.updatedAt = new Date().toISOString();
+      changed++;
+    }
+  }
+  if (changed > 0) await putKV(env, 'leaves', leaves);
+  await putKV(env, 'leaveSlips', slips);
+  return json({ success: true, data: slip, changedLeaves: changed });
 }
 
 async function handleLeavesPut(request, env) {
@@ -493,7 +598,13 @@ async function handleLeavesPut(request, env) {
   const leaves = await getKV(env, 'leaves') || [];
   const idx = leaves.findIndex(l => l.id === id);
   if (idx === -1) return json({ success: false, error: '请假不存在' }, 404);
-  if (body.status) leaves[idx].status = body.status;
+  if (body.status) {
+    // 事假/病假：校长未签字前（pending_principal），管理员不能直接批准
+    if (body.status === 'approved' && leaves[idx].status === 'pending_principal') {
+      return json({ success: false, error: '事假/病假需先经校长签字审批' }, 403);
+    }
+    leaves[idx].status = body.status;
+  }
   if (body.reason) leaves[idx].reason = body.reason;
   leaves[idx].updatedAt = new Date().toISOString();
   await putKV(env, 'leaves', leaves);
@@ -520,6 +631,18 @@ async function handleLeavesDelete(request, env) {
     }
     leaves.splice(idx, 1);
     await putKV(env, 'leaves', leaves);
+    // 同步清理关联的请假条（若该请假条不再关联任何剩余请假记录）
+    const slips = await getKV(env, 'leaveSlips') || [];
+    const remainingLeaves = leaves;
+    let slipsChanged = false;
+    for (let i = slips.length - 1; i >= 0; i--) {
+      const s = slips[i];
+      if (s.leaveIds.includes(id) && !s.leaveIds.some(lid => remainingLeaves.some(rl => rl.id === lid))) {
+        slips.splice(i, 1);
+        slipsChanged = true;
+      }
+    }
+    if (slipsChanged) await putKV(env, 'leaveSlips', slips);
     return json({ success: true, message: '删除成功', remaining: leaves.length });
   }
   // 无 ID：清空全部（保留原有行为）
@@ -706,7 +829,7 @@ function json(data, status = 200) {
       'Content-Type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-admin-pwd, x-admin-password'
+      'Access-Control-Allow-Headers': 'Content-Type, x-admin-pwd, x-admin-password, x-principal-pwd, x-teacher-name'
     }
   });
 }
@@ -730,7 +853,7 @@ export async function onRequest(context) {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, x-admin-pwd, x-admin-password'
+        'Access-Control-Allow-Headers': 'Content-Type, x-admin-pwd, x-admin-password, x-principal-pwd, x-teacher-name'
       }
     });
   }
@@ -747,6 +870,13 @@ export async function onRequest(context) {
     if (method === 'POST') return handleLeavesPost(request, env);
     if (method === 'PUT' && path !== '/api/leaves') return handleLeavesPut(request, env);
     if (method === 'DELETE') return handleLeavesDelete(request, env);
+  }
+  
+  // 请假条（校长签字审批）
+  if (path === '/api/leave-slips' || path.startsWith('/api/leave-slips/')) {
+    if (method === 'GET') return handleLeaveSlipsGet(request, env);
+    if (method === 'POST') return handleLeaveSlipsPost(request, env);
+    if (method === 'PUT' && path !== '/api/leave-slips') return handleLeaveSlipsPut(request, env);
   }
   
   if (path === '/api/substitutes') {

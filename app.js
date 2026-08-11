@@ -12,7 +12,11 @@ let adminPwd   = '';
 let currentPage = 'login';
 let scheduleData = null;   // { timetable, teacherAssignment, allTeachers, classes }
 let leaveRecords = [];
+let slipRecords = []; // 请假条（校长签字审批）
 let isSubmittingLeave = false;  // 提交请假全局锁
+// 需校长审批的假别（事假/病假 → 请假条+校长手写签字）
+const PRINCIPAL_REVIEW_TYPES = ['事假', '病假'];
+const PRINCIPAL_PWD = 'principal888'; // 校长审批密码（与后端一致）
 let substituteRecords = [];
 
 // ══════════════════════════════════════════════════════
@@ -266,8 +270,11 @@ async function showMyLeaves() {
     const myLeaves = leaveRecords.filter(l => l.teacherName === currentTeacher);
     
     const content = myLeaves.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无请假记录</p>' :
-      `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
-      myLeaves.map(l => `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.dayOfWeek)}</td><td>第${l.period}节</td><td>${esc(l.reason||'—')}</td><td>${l.status==='approved'?'✅已批准':'⏳待审批'}</td></tr>`).join('') +
+      `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>节次</th><th>假别</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
+      myLeaves.map(l => {
+        const st = l.status==='approved' ? '✅已批准' : (l.status==='pending_principal' ? '⏳待校长签字' : (l.status==='rejected' ? '❌已拒绝' : '⏳待审批'));
+        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.dayOfWeek)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'—')}</td><td>${esc(l.reason||'—')}</td><td>${st}</td></tr>`;
+      }).join('') +
       `</tbody></table>`;
     
     showModal('我的请假记录', content);
@@ -317,6 +324,159 @@ function showModal(title, content) {
   `;
   modal.className = 'modal-overlay';
   document.body.appendChild(modal);
+}
+
+// ══════════════════════════════════════════════════════
+//  请假条 + 手写签字板（Canvas）
+// ══════════════════════════════════════════════════════
+
+// 初始化一个手写签字板，返回 { getDataUrl, clear, isEmpty }
+function initSignaturePad(canvas) {
+  const ctx = canvas.getContext('2d');
+  // 高分辨率适配：按 CSS 尺寸设置实际像素，保证签字清晰
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#1F2937';
+  
+  let drawing = false;
+  let hasInk = false;
+  let lastX = 0, lastY = 0;
+  
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+    }
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  
+  function start(e) {
+    e.preventDefault();
+    const p = getPos(e);
+    drawing = true;
+    hasInk = true;
+    lastX = p.x; lastY = p.y;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function move(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  }
+  function stop() { drawing = false; }
+  
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', stop);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', stop);
+  
+  return {
+    getDataUrl: () => hasInk ? canvas.toDataURL('image/png') : '',
+    clear: () => {
+      ctx.setTransform(1, 0, 0, 1, 1, 1);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(dpr, dpr);
+      hasInk = false;
+    },
+    isEmpty: () => !hasInk
+  };
+}
+
+// 教师提交请假条弹窗（事假/病假）
+function showLeaveSlipModal({ leaveIds, teacherName, reason, startDate, endDate }) {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:560px; width:100%; max-height:88vh; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:16px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0; font-size:16px; font-weight:600;">📄 请假条（事假/病假需校长审批）</h3>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
+      </div>
+      <div style="padding:20px; overflow-y:auto; max-height:70vh;">
+        <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group" style="grid-column:1/-1">
+            <label>教师姓名</label>
+            <input type="text" id="slip-teacher" value="${esc(teacherName)}" readonly class="form-input" style="background:#F3F4F6;">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>请假事由 *</label>
+            <input type="text" id="slip-reason" value="${esc(reason||'')}" class="form-input" placeholder="请填写请假事由">
+          </div>
+          <div class="form-group">
+            <label>开始日期 *</label>
+            <input type="date" id="slip-start" value="${esc(startDate||'')}" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>结束日期 *</label>
+            <input type="date" id="slip-end" value="${esc(endDate||'')}" class="form-input">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>本人签字 *（请用鼠标/手指在框内签名）</label>
+            <div style="border:2px dashed #CBD5E1; border-radius:8px; overflow:hidden; background:#FAFAFA;">
+              <canvas id="slip-canvas" style="width:100%; height:140px; display:block; touch-action:none; cursor:crosshair;"></canvas>
+            </div>
+            <button type="button" id="slip-clear" class="btn btn-sm" style="margin-top:8px;">✖ 清空重签</button>
+          </div>
+        </div>
+        <p id="slip-msg" style="color:#DC2626; font-size:13px; min-height:18px; margin:8px 0 0;"></p>
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #E5E7EB; text-align:right;">
+        <button onclick="this.closest('.modal-overlay').remove()" style="padding:8px 16px; background:#9CA3AF; color:#fff; border:none; border-radius:6px; cursor:pointer; margin-right:8px;">暂不提交</button>
+        <button id="slip-submit" style="padding:8px 20px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">✍️ 提交请假条</button>
+      </div>
+    </div>
+  `;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+  
+  const canvas = modal.querySelector('#slip-canvas');
+  const pad = initSignaturePad(canvas);
+  modal.querySelector('#slip-clear').onclick = () => pad.clear();
+  
+  modal.querySelector('#slip-submit').onclick = async () => {
+    const reasonV = modal.querySelector('#slip-reason').value.trim();
+    const startV = modal.querySelector('#slip-start').value;
+    const endV = modal.querySelector('#slip-end').value;
+    const sig = pad.getDataUrl();
+    if (!reasonV) { modal.querySelector('#slip-msg').textContent = '请填写请假事由'; return; }
+    if (!startV || !endV) { modal.querySelector('#slip-msg').textContent = '请选择开始和结束日期'; return; }
+    if (pad.isEmpty()) { modal.querySelector('#slip-msg').textContent = '请先签名'; return; }
+    const btn = modal.querySelector('#slip-submit');
+    btn.disabled = true; btn.textContent = '提交中…';
+    try {
+      const r = await fetch('/api/leave-slips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leaveIds, teacherName, reason: reasonV, startDate: startV, endDate: endV, signature: sig })
+      });
+      const j = await r.json();
+      if (j.success) {
+        modal.remove();
+        toast('✅ 请假条已提交，等待校长审批', 'success');
+      } else {
+        modal.querySelector('#slip-msg').textContent = j.error || '提交失败';
+        btn.disabled = false; btn.textContent = '✍️ 提交请假条';
+      }
+    } catch (err) {
+      modal.querySelector('#slip-msg').textContent = '网络错误：' + (err.message || err);
+      btn.disabled = false; btn.textContent = '✍️ 提交请假条';
+    }
+  };
 }
 
 function showAllTeachers() {
@@ -516,6 +676,16 @@ const API = {
       return await r.json();
     } catch { return { success:false, data:[] }; }
   },
+  async getLeaveSlips() {
+    try {
+      // 教师端带姓名可看自己的请假条；管理员/校长看全部（校长页单独校验密码）
+      const headers = {};
+      const myName = sessionStorage.getItem('teacherName') || '';
+      if (myName && !isAdmin) headers['x-teacher-name'] = myName;
+      const r = await fetch('/api/leave-slips', { headers });
+      return await r.json();
+    } catch { return { success:false, data:[] }; }
+  },
   async generateSubstitutes() {
     const r = await fetch('/api/substitutes/generate', {
       method:'POST', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd}
@@ -646,12 +816,16 @@ function renderAppShell() {
   // 计算待处理请假数量（已批准但未安排代课的）
   const pendingSubs = leaveRecords.filter(l => l.status === 'approved').length;
   const subBadge = (isAdmin && pendingSubs > 0) ? `<span class="nav-badge">${pendingSubs}</span>` : '';
+  // 待校长审批的请假条数量
+  const pendingSlips = (slipRecords || []).filter(s => s.status === 'pending').length;
+  const principalBadge = pendingSlips > 0 ? `<span class="nav-badge" style="background:#F59E0B;">${pendingSlips}</span>` : '';
   // 手机端页面标题映射
   const pageTitles = {
     home: '系统概览',
     tt: '课表查询',
     leave: '请假登记',
     sub: '代课记录',
+    principal: '校长审批',
     import: '导入课表',
     settings: '通知设置'
   };
@@ -689,6 +863,7 @@ function renderAppShell() {
           <button class="nav-btn" data-page="tt"      onclick="switchPage('tt')">📅 课表查询</button>
           <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记</button>
           <button class="nav-btn" data-page="sub"     onclick="switchPage('sub')">✅ 代课记录${subBadge}</button>
+          <button class="nav-btn" data-page="principal" onclick="switchPage('principal')">✍️ 校长审批${principalBadge}</button>
           ${isAdmin ? `
           <div class="sidebar-section-title" style="margin-top:16px">⚙️ 管理员</div>
           <button class="nav-btn" data-page="import"  onclick="switchPage('import')">📤 导入课表</button>
@@ -714,6 +889,7 @@ function switchPage(page) {
   else if (page === 'tt')      renderTimetablePage(area);
   else if (page === 'leave')   renderLeavePage(area);
   else if (page === 'sub')     renderSubPage(area);
+  else if (page === 'principal') renderPrincipalPage(area);
   else if (page === 'import')  renderImportPage(area);
   else if (page === 'settings') renderSettingsPage(area);
 }
@@ -732,7 +908,7 @@ function renderHomePage(area) {
   const tt = td.timetable || {};
   const cls = td.classes  || [];
   const teas = td.allTeachers || [];
-  const pendingLeaves = leaveRecords.filter(l => l.status !== 'approved');
+  const pendingLeaves = leaveRecords.filter(l => isAdmin ? (l.status === 'pending') : (l.status !== 'approved'));
   const hasData = cls.length > 0;
   
   // 获取当前教师姓名（教师端）
@@ -1238,6 +1414,18 @@ function renderLeavePage(area) {
               <option value="range">连续多天（全天）</option>
             </select>
           </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>假别 *</label>
+            <select name="leaveKind" id="leave-kind" class="form-select">
+              <option value="事假">事假（需校长签字审批）</option>
+              <option value="病假">病假（需校长签字审批）</option>
+              <option value="婚假">婚假</option>
+              <option value="丧假">丧假</option>
+              <option value="公假">公假</option>
+              <option value="其他">其他</option>
+            </select>
+            <p style="margin:4px 0 0; font-size:12px; color:#6B7280;">事假/病假需填写请假条并经校长手写签字审批后，方可安排代课</p>
+          </div>
           <div id="single-leave">
             <div class="form-group">
               <label>请假日期 *</label>
@@ -1290,7 +1478,7 @@ function renderLeavePage(area) {
       ${leaveRecords.length > 0 ? `
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th><th>操作</th></tr></thead>
+          <thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>假别/原因</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
             ${leaveRecords.map(l => `
             <tr class="${l.status==='approved'?'row-approved':''}">
@@ -1298,10 +1486,10 @@ function renderLeavePage(area) {
               <td>${fmtDate(l.leaveDate)}</td>
               <td>${esc(l.dayOfWeek)}</td>
               <td>${l.period ? '第'+l.period+'节' : '—'}</td>
-              <td>${esc(l.reason||'—')}</td>
-              <td><span class="badge badge-${l.status==='approved'?'green':l.status==='rejected'?'red':'yellow'}">${l.status||'待审核'}</span></td>
+              <td>${esc(l.leaveType||'—')}${l.reason ? '<br><span style="font-size:12px;color:#9CA3AF;">'+esc(l.reason)+'</span>' : ''}</td>
+              <td><span class="badge badge-${l.status==='approved'?'green':l.status==='rejected'?'red':l.status==='pending_principal'?'blue':'yellow'}">${l.status==='pending_principal'?'待校长签字':(l.status||'待审核')}</span></td>
               <td>
-                ${isAdmin ? `<button class="btn btn-sm btn-success" onclick="approveLeave('${l.id}')">批准</button>` : ''}
+                ${isAdmin ? `<button class="btn btn-sm btn-success" onclick="approveLeave('${l.id}')" ${l.status==='pending_principal'?'disabled title="事假/病假需先经校长签字"':''}>批准</button>` : ''}
                 ${(isAdmin || l.status!=='approved') ? `<button class="btn btn-sm btn-danger"  onclick="deleteLeave('${l.id}')">删除</button>` : ''}
               </td>
             </tr>`).join('')}
@@ -1382,6 +1570,7 @@ async function submitLeave(e) {
   try {
   const fd  = new FormData(form);
   const leaveType = fd.get('leaveType');
+  const leaveKind = fd.get('leaveKind') || '其他'; // 假别：事假/病假/婚假/丧假/公假/其他
   const teacherName = fd.get('teacherName');
   const reason = fd.get('reason');
   const status = isAdmin ? 'approved' : 'pending';
@@ -1402,11 +1591,11 @@ async function submitLeave(e) {
         return;
       }
       for (const p of teacherPeriods) {
-        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: p, reason, status });
+        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: p, reason, leaveType: leaveKind, status });
       }
     } else {
       // 单节
-      leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: parseInt(periodVal), reason, status });
+      leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: parseInt(periodVal), reason, leaveType: leaveKind, status });
     }
   } else {
     // 连续多天
@@ -1423,7 +1612,7 @@ async function submitLeave(e) {
       // 根据课表判断该教师当天有哪些课
       const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
       for (const p of teacherPeriods) {
-        leavesToAdd.push({ teacherName, leaveDate: dateStr, dayOfWeek, period: p, reason, status });
+        leavesToAdd.push({ teacherName, leaveDate: dateStr, dayOfWeek, period: p, reason, leaveType: leaveKind, status });
       }
     }
   }
@@ -1461,10 +1650,12 @@ async function submitLeave(e) {
   // 批量提交
   let successCount = 0;
   let dupCount = 0;
+  const submittedIds = [];
   for (const obj of newLeaves) {
     const r = await API.addLeave(obj);
     if (r.success) {
       leaveRecords.unshift({ id: r.data?.id || Date.now().toString(36), ...obj });
+      if (r.data?.id) submittedIds.push(r.data.id);
       successCount++;
     } else if (r.duplicate || (r.error && r.error.includes('已存在'))) {
       dupCount++;
@@ -1486,6 +1677,12 @@ async function submitLeave(e) {
     form.reset();
     $('leave-wday').value = wday(now());
     renderLeavePage($('main-content'));
+    // 事假/病假 → 弹出请假条（仅教师端；管理员代录不需要请假条）
+    if (PRINCIPAL_REVIEW_TYPES.includes(leaveKind) && !isAdmin && submittedIds.length > 0) {
+      const startDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('startDate');
+      const endDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('endDate');
+      showLeaveSlipModal({ leaveIds: submittedIds, teacherName, reason, startDate, endDate });
+    }
   } else {
     toast(skipCount + dupCount > 0 ? '所有请假记录均已存在，未重复提交' : '提交失败', 'error');
   }
@@ -1516,6 +1713,175 @@ async function deleteLeave(id) {
   leaveRecords = leaveRecords.filter(l => l.id !== id);
   toast('已删除', 'success');
   renderLeavePage($('main-content'));
+}
+
+// ══════════════════════════════════════════════════════
+//  校长审批页（请假条手写签字）
+// ══════════════════════════════════════════════════════
+let principalAuthed = sessionStorage.getItem('principalAuthed') === '1';
+
+function renderPrincipalPage(area) {
+  if (!principalAuthed) {
+    area.innerHTML = `
+    <div class="page">
+      ${mobileBackBar('校长审批')}
+      <h2 class="page-title">✍️ 校长审批</h2>
+      <div class="card" style="max-width:420px; margin:0 auto;">
+        <h3>🔑 请输入校长审批密码</h3>
+        <p style="color:#6B7280; font-size:13px;">请假条（事假/病假）需校长手写签字审批后才能安排代课。</p>
+        <input type="password" id="principal-pwd-input" class="form-input" placeholder="校长审批密码" style="margin:12px 0;" onkeydown="if(event.key==='Enter')verifyPrincipalPwd()">
+        <p id="principal-pwd-msg" style="color:#DC2626; font-size:13px; min-height:18px;"></p>
+        <button class="btn btn-primary" onclick="verifyPrincipalPwd()">进入审批</button>
+      </div>
+    </div>`;
+    return;
+  }
+  const pendingSlips = slipRecords.filter(s => s.status === 'pending');
+  const doneSlips = slipRecords.filter(s => s.status !== 'pending');
+  area.innerHTML = `
+  <div class="page">
+    ${mobileBackBar('校长审批')}
+    <h2 class="page-title">✍️ 校长审批</h2>
+    <div class="card">
+      <div class="card-header">
+        <h3>🕐 待审批请假条 (${pendingSlips.length})</h3>
+        <button class="btn btn-sm" onclick="principalAuthed=false;sessionStorage.removeItem('principalAuthed');renderPrincipalPage($('main-content'))">退出校长模式</button>
+      </div>
+      ${pendingSlips.length === 0 ? '<p class="text-muted">暂无待审批的请假条</p>' : `
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>教师</th><th>事由</th><th>请假时间</th><th>提交时间</th><th>操作</th></tr></thead>
+          <tbody>
+            ${pendingSlips.map(s => `
+            <tr>
+              <td>${esc(s.teacherName)}</td>
+              <td>${esc(s.reason)}</td>
+              <td>${fmtDate(s.startDate)} ~ ${fmtDate(s.endDate)}</td>
+              <td>${new Date(s.createdAt).toLocaleString('zh-CN',{hour12:false})}</td>
+              <td><button class="btn btn-sm btn-primary" onclick="showPrincipalApproveModal('${s.id}')">签字审批</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`}
+    </div>
+    ${doneSlips.length > 0 ? `
+    <div class="card">
+      <h3>📋 已处理 (${doneSlips.length})</h3>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>教师</th><th>事由</th><th>时间</th><th>结果</th></tr></thead>
+          <tbody>
+            ${doneSlips.map(s => `
+            <tr>
+              <td>${esc(s.teacherName)}</td>
+              <td>${esc(s.reason)}</td>
+              <td>${fmtDate(s.startDate)} ~ ${fmtDate(s.endDate)}</td>
+              <td><span class="badge badge-${s.status==='approved'?'green':'red'}">${s.status==='approved'?'✅ 已同意':'❌ 已拒绝'}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+function verifyPrincipalPwd() {
+  const input = $('principal-pwd-input');
+  const msg = $('principal-pwd-msg');
+  if (!input) return;
+  if (input.value === PRINCIPAL_PWD) {
+    principalAuthed = true;
+    sessionStorage.setItem('principalAuthed', '1');
+    renderPrincipalPage($('main-content'));
+  } else {
+    msg.textContent = '密码错误，请重试';
+  }
+}
+
+// 校长签字审批弹窗
+function showPrincipalApproveModal(slipId) {
+  const slip = slipRecords.find(s => s.id === slipId);
+  if (!slip) return;
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:560px; width:100%; max-height:88vh; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:16px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0; font-size:16px; font-weight:600;">✍️ 请假条审批</h3>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
+      </div>
+      <div style="padding:20px; overflow-y:auto; max-height:70vh;">
+        <div style="background:#F9FAFB; border:1px solid #E5E7EB; border-radius:8px; padding:16px; margin-bottom:16px;">
+          <p style="margin:4px 0;"><strong>教师：</strong>${esc(slip.teacherName)}</p>
+          <p style="margin:4px 0;"><strong>事由：</strong>${esc(slip.reason)}</p>
+          <p style="margin:4px 0;"><strong>时间：</strong>${fmtDate(slip.startDate)} ~ ${fmtDate(slip.endDate)}</p>
+          <p style="margin:4px 0;"><strong>关联请假：</strong>${slip.leaveIds.length} 条记录</p>
+        </div>
+        ${slip.teacherSignature ? `
+        <div style="margin-bottom:16px;">
+          <p style="font-size:13px; color:#6B7280; margin-bottom:4px;">教师签字：</p>
+          <img src="${slip.teacherSignature}" style="max-height:80px; border:1px solid #E5E7EB; border-radius:6px; background:#fff; padding:4px;">
+        </div>` : ''}
+        <div class="form-group">
+          <label>校长签字 *（请用鼠标/手指签名）</label>
+          <div style="border:2px dashed #CBD5E1; border-radius:8px; overflow:hidden; background:#FAFAFA;">
+            <canvas id="principal-canvas" style="width:100%; height:140px; display:block; touch-action:none; cursor:crosshair;"></canvas>
+          </div>
+          <button type="button" id="principal-clear" class="btn btn-sm" style="margin-top:8px;">✖ 清空重签</button>
+        </div>
+        <p id="principal-msg" style="color:#DC2626; font-size:13px; min-height:18px; margin:8px 0 0;"></p>
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #E5E7EB; display:flex; justify-content:flex-end; gap:8px;">
+        <button id="principal-reject" style="padding:8px 16px; background:#EF4444; color:#fff; border:none; border-radius:6px; cursor:pointer;">❌ 拒绝</button>
+        <button id="principal-approve" style="padding:8px 20px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">✅ 同意并签字</button>
+      </div>
+    </div>
+  `;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+  
+  const canvas = modal.querySelector('#principal-canvas');
+  const pad = initSignaturePad(canvas);
+  modal.querySelector('#principal-clear').onclick = () => pad.clear();
+  const msgEl = modal.querySelector('#principal-msg');
+  
+  async function submit(action) {
+    const sig = action === 'approve' ? pad.getDataUrl() : '';
+    if (action === 'approve' && pad.isEmpty()) { msgEl.textContent = '请先手写签字'; return; }
+    const btn = modal.querySelector(action === 'approve' ? '#principal-approve' : '#principal-reject');
+    btn.disabled = true; btn.textContent = '提交中…';
+    try {
+      const r = await fetch(`/api/leave-slips/${slip.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-principal-pwd': PRINCIPAL_PWD },
+        body: JSON.stringify({ action, signature: sig, principalName: '校长' })
+      });
+      const j = await r.json();
+      if (j.success) {
+        // 更新本地请假条状态
+        slip.status = action === 'approve' ? 'approved' : 'rejected';
+        slip.principalSignedAt = new Date().toISOString();
+        // 同步更新关联请假记录状态
+        if (j.data?.leaveIds) {
+          for (const lid of j.data.leaveIds) {
+            const l = leaveRecords.find(x => x.id === lid);
+            if (l) l.status = action === 'approve' ? 'approved' : 'rejected';
+          }
+        }
+        modal.remove();
+        toast(action === 'approve' ? '✅ 已同意，可安排代课' : '已拒绝该请假条', action === 'approve' ? 'success' : 'info');
+        renderPrincipalPage($('main-content'));
+      } else {
+        msgEl.textContent = j.error || '提交失败';
+        btn.disabled = false; btn.textContent = action === 'approve' ? '✅ 同意并签字' : '❌ 拒绝';
+      }
+    } catch (err) {
+      msgEl.textContent = '网络错误：' + (err.message || err);
+      btn.disabled = false; btn.textContent = action === 'approve' ? '✅ 同意并签字' : '❌ 拒绝';
+    }
+  }
+  modal.querySelector('#principal-approve').onclick = () => submit('approve');
+  modal.querySelector('#principal-reject').onclick = () => submit('reject');
 }
 
 async function approveLeave(id) {
@@ -2991,8 +3357,8 @@ async function initApp() {
   document.body.innerHTML = renderAppShell();
 
   // 加载数据
-  const [schR, leavesR, subsR] = await Promise.all([
-    API.getSchedule(), API.getLeaves(), API.getSubstitutes()
+  const [schR, leavesR, subsR, slipsR] = await Promise.all([
+    API.getSchedule(), API.getLeaves(), API.getSubstitutes(), API.getLeaveSlips()
   ]);
 
   if (schR.success && schR.data && Object.keys(schR.data).length > 0) {
@@ -3026,6 +3392,7 @@ async function initApp() {
 
   leaveRecords = (leavesR.success ? leavesR.data : []) || [];
   substituteRecords = (subsR.success ? subsR.data : []) || [];
+  slipRecords = (slipsR.success ? slipsR.data : []) || [];
 
   // 教师端：检查是否有新安排的代课任务，推送通知
   const myName = sessionStorage.getItem('teacherName') || '';
