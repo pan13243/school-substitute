@@ -468,6 +468,8 @@ function showLeaveSlipModal({ leaveIds, teacherName, reason, startDate, endDate 
       if (j.success) {
         modal.remove();
         toast('✅ 请假条已提交，等待校长审批', 'success');
+        // 刷新本地 slipRecords，避免校长审批页看不到刚提交的请假条
+        try { const sr = await fetch('/api/leave-slips', { headers: { 'x-admin-pwd': adminPwd || 'admin888' } }); const sj = await sr.json(); if (sj.success) slipRecords = sj.data || []; } catch {}
       } else {
         modal.querySelector('#slip-msg').textContent = j.error || '提交失败';
         btn.disabled = false; btn.textContent = '✍️ 提交请假条';
@@ -1573,7 +1575,8 @@ async function submitLeave(e) {
   const leaveKind = fd.get('leaveKind') || '其他'; // 假别：事假/病假/婚假/丧假/公假/其他
   const teacherName = fd.get('teacherName');
   const reason = fd.get('reason');
-  const status = isAdmin ? 'approved' : 'pending';
+  // 事假/病假 → 必须走校长签字流程（不管身份）。其他假别：admin 直接批准，教师待审。
+  const status = PRINCIPAL_REVIEW_TYPES.includes(leaveKind) ? 'pending_principal' : (isAdmin ? 'approved' : 'pending');
 
   const leavesToAdd = [];
 
@@ -1677,8 +1680,8 @@ async function submitLeave(e) {
     form.reset();
     $('leave-wday').value = wday(now());
     renderLeavePage($('main-content'));
-    // 事假/病假 → 弹出请假条（仅教师端；管理员代录不需要请假条）
-    if (PRINCIPAL_REVIEW_TYPES.includes(leaveKind) && !isAdmin && submittedIds.length > 0) {
+    // 事假/病假 → 弹出请假条（不管什么身份都要走校长审批）
+    if (PRINCIPAL_REVIEW_TYPES.includes(leaveKind) && submittedIds.length > 0) {
       const startDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('startDate');
       const endDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('endDate');
       showLeaveSlipModal({ leaveIds: submittedIds, teacherName, reason, startDate, endDate });
@@ -1721,6 +1724,23 @@ async function deleteLeave(id) {
 let principalAuthed = sessionStorage.getItem('principalAuthed') === '1';
 
 function renderPrincipalPage(area) {
+  loadAndRenderPrincipalPage(area);
+}
+
+async function loadAndRenderPrincipalPage(area) {
+  try {
+    // 校长页需要查看全部请假条。带 admin-pwd 后即可获取所有数据（后端校验身份后返回全部）
+    const [sr, lr] = await Promise.all([
+      fetch('/api/leave-slips', { headers: { 'x-admin-pwd': adminPwd || 'admin888' } }).then(r => r.json()).catch(() => ({ success: false, data: [] })),
+      API.getLeaves()
+    ]);
+    if (sr.success) slipRecords = sr.data || [];
+    if (lr.success) leaveRecords = lr.data || [];
+  } catch (e) { console.warn('加载请假条/请假记录失败', e); }
+  _renderPrincipalPageBody(area);
+}
+
+function _renderPrincipalPageBody(area) {
   if (!principalAuthed) {
     area.innerHTML = `
     <div class="page">
