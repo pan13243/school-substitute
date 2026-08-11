@@ -42,7 +42,7 @@ export async function handleSubstitutesGenerate(request, env) {
 
   await saveSubs(env);
 
-  return json({ success: true, results: newOnes, summary, message: `代课安排完成：成功 ${summary.arranged} 条，失败 ${summary.failed} 条` });
+  return json({ success: true, results: newOnes, summary, message: `代课记录已生成：成功 ${summary.arranged} 条，失败 ${summary.failed} 条` });
 }
 
 // POST /api/substitutes 手动添加

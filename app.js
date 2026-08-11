@@ -218,7 +218,7 @@ async function showSetPrivacyPwdModal() {
     <div style="background:#fff; border-radius:12px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
       <div style="padding:20px; border-bottom:1px solid #E5E7EB;">
         <h3 style="margin:0; font-size:16px; font-weight:600;">🔐 隐私密码设置</h3>
-        <p style="margin:8px 0 0; color:#6B7280; font-size:13px;">${hasPwd ? '修改或取消隐私密码' : '设置隐私密码后，查看请假记录和代课安排需要验证'}</p>
+        <p style="margin:8px 0 0; color:#6B7280; font-size:13px;">${hasPwd ? '修改或取消隐私密码' : '设置隐私密码后，查看请假记录和代课记录需要验证'}</p>
       </div>
       <div style="padding:20px;">
         ${hasPwd ? `<div style="margin-bottom:12px;"><input type="password" id="privacy-old-pwd" class="form-input" placeholder="原密码（不修改请留空）" style="width:100%; padding:12px; border:2px solid #E5E7EB; border-radius:8px; font-size:14px;"></div>` : ''}
@@ -274,7 +274,7 @@ async function showMyLeaves() {
   }, '请假记录');
 }
 
-// 教师端：显示自己的代课安排（只读弹窗）
+// 教师端：显示自己的代课记录（只读弹窗）
 async function showMySubstitutes() {
   const currentTeacher = sessionStorage.getItem('teacherName');
   if (!currentTeacher) return;
@@ -285,7 +285,7 @@ async function showMySubstitutes() {
       s.leaveTeacher === currentTeacher || s.substituteTeacher === currentTeacher
     );
     
-    const content = mySubstitutes.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无代课安排</p>' :
+    const content = mySubstitutes.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无代课记录</p>' :
       `<table class="data-table"><thead><tr><th>类型</th><th>日期</th><th>班级</th><th>科目</th><th>节次</th><th>对方教师</th></tr></thead><tbody>` +
       mySubstitutes.map(s => {
         const isMyLeave = s.leaveTeacher === currentTeacher;
@@ -295,8 +295,8 @@ async function showMySubstitutes() {
       }).join('') +
       `</tbody></table>`;
     
-    showModal('我的代课安排', content);
-  }, '代课安排');
+    showModal('我的代课记录', content);
+  }, '代课记录');
 }
 
 // 通用弹窗
@@ -651,7 +651,7 @@ function renderAppShell() {
     home: '系统概览',
     tt: '课表查询',
     leave: '请假登记',
-    sub: '代课安排',
+    sub: '代课记录',
     import: '导入课表',
     settings: '通知设置'
   };
@@ -688,7 +688,7 @@ function renderAppShell() {
           <button class="nav-btn" data-page="home"    onclick="switchPage('home')">🏠 首页</button>
           <button class="nav-btn" data-page="tt"      onclick="switchPage('tt')">📅 课表查询</button>
           <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记</button>
-          <button class="nav-btn" data-page="sub"     onclick="switchPage('sub')">✅ 代课安排${subBadge}</button>
+          <button class="nav-btn" data-page="sub"     onclick="switchPage('sub')">✅ 代课记录${subBadge}</button>
           ${isAdmin ? `
           <div class="sidebar-section-title" style="margin-top:16px">⚙️ 管理员</div>
           <button class="nav-btn" data-page="import"  onclick="switchPage('import')">📤 导入课表</button>
@@ -776,7 +776,7 @@ function renderHomePage(area) {
       <div class="stat-card" onclick="${isAdmin ? '' : 'showMySubstitutes()'}" style="${isAdmin ? '' : 'cursor:pointer;'}">
         <div class="stat-icon">✅</div>
         <div class="stat-num">${isAdmin ? substituteRecords.length : mySubstitutes.length}</div>
-        <div class="stat-label">代课安排</div>
+        <div class="stat-label">代课记录</div>
       </div>
     </div>
 
@@ -794,7 +794,7 @@ function renderHomePage(area) {
       ${isAdmin ? `
       <button class="action-card" onclick="switchPage('sub')">
         <span class="action-icon">✅</span>
-        <span class="action-label">代课安排</span>
+        <span class="action-label">代课记录</span>
       </button>
       <button class="action-card" onclick="switchPage('import')">
         <span class="action-icon">📤</span>
@@ -1551,8 +1551,8 @@ function renderSubPage(area) {
   
   area.innerHTML = `
   <div class="page">
-    ${mobileBackBar('代课安排')}
-    <h2 class="page-title">✅ 代课安排</h2>
+    ${mobileBackBar('代课记录')}
+    <h2 class="page-title">✅ 代课记录</h2>
 
     ${isAdmin ? `
     <div class="action-bar">
@@ -1709,7 +1709,7 @@ function renderSubTable() {
             <td>第${s.period||''}节</td>
             <td>${esc(s.reason||'')}</td>
             <td>
-              <button class="btn btn-sm btn-danger" onclick="deleteSubstituteRecord('${s.id}')" title="删除这条记录">🗑️ 删除</button>
+              ${isAdmin ? `<button class="btn btn-sm btn-danger" onclick="deleteSubstituteRecord('${s.id}')" title="删除这条记录">🗑️ 删除</button>` : '<span style="color:#9CA3AF;font-size:12px;">只读</span>'}
             </td>
           </tr>`).join('')}
         </tbody>
@@ -1821,8 +1821,8 @@ function exportSubExcel() {
   }));
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '代课安排');
-  XLSX.writeFile(wb, `代课安排_${now()}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, '代课记录');
+  XLSX.writeFile(wb, `代课记录_${now()}.xlsx`);
   toast('导出成功','success');
 }
 
@@ -1934,7 +1934,7 @@ function renderImportPage(area) {
 
     <div class="card">
       <h3>📅 方式三：上传校历表 Excel</h3>
-      <p class="text-muted">上传校历表，系统自动识别每一周是<b>单周</b>还是<b>双周</b>（以及假期）。导入后，代课安排会按单/双周匹配对应教师。</p>
+      <p class="text-muted">上传校历表，系统自动识别每一周是<b>单周</b>还是<b>双周</b>（以及假期）。导入后，代课记录会按单/双周匹配对应教师。</p>
       <div class="form-group">
         <input type="file" id="import-calendar" accept=".xlsx,.xls" class="form-file"
                onchange="handleCalendarImport(this.files[0])">
@@ -2963,7 +2963,7 @@ async function adminResetTeacherPwd(teacherName) {
     return;
   }
   
-  if (!confirm(`确定要重置 ${teacherName} 的隐私密码吗？\n重置后该教师查看请假记录和代课安排将不需要密码。`)) {
+  if (!confirm(`确定要重置 ${teacherName} 的隐私密码吗？\n重置后该教师查看请假记录和代课记录将不需要密码。`)) {
     return;
   }
   
