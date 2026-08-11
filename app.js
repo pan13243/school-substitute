@@ -1389,6 +1389,9 @@ function renderTTMy() {
 function renderLeavePage(area) {
   const td = scheduleData || {};
   const teas = td.allTeachers || [];
+  // 教师端只显示自己的请假记录；管理员看全部
+  const currentTeacher = (sessionStorage.getItem('teacherName') || '').trim();
+  const displayLeaves = isAdmin ? leaveRecords : (currentTeacher ? leaveRecords.filter(l => l.teacherName === currentTeacher) : []);
 
   area.innerHTML = `
   <div class="page">
@@ -1474,15 +1477,15 @@ function renderLeavePage(area) {
 
     <div class="card">
       <div class="card-header">
-        <h3>📋 请假记录 (${leaveRecords.length})</h3>
+        <h3>📋 请假记录 (${displayLeaves.length})</h3>
         ${isAdmin ? `<button class="btn btn-sm btn-danger" onclick="clearAllLeaves()">清空</button>` : ''}
       </div>
-      ${leaveRecords.length > 0 ? `
+      ${displayLeaves.length > 0 ? `
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>假别/原因</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
-            ${leaveRecords.map(l => `
+            ${displayLeaves.map(l => `
             <tr class="${l.status==='approved'?'row-approved':''}">
               <td>${esc(l.teacherName)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
