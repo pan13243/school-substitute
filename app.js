@@ -16,7 +16,8 @@ let slipRecords = []; // 请假条（校长签字审批）
 let isSubmittingLeave = false;  // 提交请假全局锁
 // 需校长审批的假别（事假/病假 → 请假条+校长手写签字）
 const PRINCIPAL_REVIEW_TYPES = ['事假', '病假'];
-const PRINCIPAL_PWD = 'principal888'; // 校长审批密码（与后端一致）
+// 校长审批密码（默认值，会从 KV 加载实际值）
+let principalPwd = 'principal888';
 let substituteRecords = [];
 
 // ══════════════════════════════════════════════════════
@@ -886,6 +887,7 @@ function renderLogin() {
       <div class="login-tabs">
         <button class="tab-btn active" onclick="setLoginMode('teacher')">教师入口</button>
         <button class="tab-btn" onclick="setLoginMode('admin')">管理员入口</button>
+        <button class="tab-btn" onclick="setLoginMode('principal')">审批入口</button>
       </div>
       <div id="login-form-area">
         <div id="teacher-login">
@@ -902,6 +904,12 @@ function renderLogin() {
                  onkeydown="if(event.key==='Enter')handleAdminLogin()">
           <button class="btn btn-primary btn-block" onclick="handleAdminLogin()">登录</button>
         </div>
+        <div id="principal-login" style="display:none">
+          <p class="login-hint">请输入校长密码</p>
+          <input type="password" id="principal-pwd-input-login" class="form-input" placeholder="输入校长密码"
+                 onkeydown="if(event.key==='Enter')handlePrincipalLogin()">
+          <button class="btn btn-primary btn-block" onclick="handlePrincipalLogin()">进入审批</button>
+        </div>
       </div>
     </div>
   </div>`;
@@ -915,6 +923,7 @@ function setLoginMode(mode) {
   event.target.classList.add('active');
   $('teacher-login').style.display = mode === 'teacher' ? 'block' : 'none';
   $('admin-login').style.display  = mode === 'admin'  ? 'block' : 'none';
+  $('principal-login').style.display = mode === 'principal' ? 'block' : 'none';
   if (mode === 'teacher') loadTeacherList();
 }
 
@@ -941,6 +950,35 @@ function handleAdminLogin() {
   currentPage = 'home';
   toast('管理员登录成功','success');
   initApp();
+}
+
+async function handlePrincipalLogin() {
+  const pwd = $('principal-pwd-input-login').value.trim();
+  if (!pwd) return toast('请输入密码','warning');
+  try {
+    const r = await fetch('/api/principal-pwd', { headers: { 'x-principal-pwd': pwd } });
+    if (r.ok) {
+      const j = await r.json();
+      if (j.success) {
+        principalPwd = j.data.password; // 从 KV 加载实际密码
+        isAdmin = false;
+        principalAuthed = true;
+        sessionStorage.setItem('role','principal');
+        sessionStorage.setItem('principalAuthed','1');
+        currentPage = 'principal';
+        toast('校长登录成功','success');
+        initApp();
+      } else {
+        toast(j.error || '验证失败','error');
+      }
+    } else if (r.status === 401) {
+      toast('密码错误，请重新输入','error');
+    } else {
+      toast('网络错误','error');
+    }
+  } catch (err) {
+    toast('网络错误：' + (err.message || err),'error');
+  }
 }
 
 async function loadTeacherList() {
@@ -977,8 +1015,8 @@ async function loadTeacherList() {
 //  主界面布局
 // ══════════════════════════════════════════════════════
 function renderAppShell() {
-  const role = isAdmin ? 'admin' : 'teacher';
-  const roleLabel = isAdmin ? '🔐 管理员' : '👤 教师';
+  const role = isAdmin ? 'admin' : (principalAuthed ? 'principal' : 'teacher');
+  const roleLabel = isAdmin ? '🔐 管理员' : (principalAuthed ? '🏫 校长' : '👤 教师');
   // 计算待处理请假数量（已批准但未安排代课的）
   const pendingSubs = leaveRecords.filter(l => l.status === 'approved').length;
   const subBadge = (isAdmin && pendingSubs > 0) ? `<span class="nav-badge">${pendingSubs}</span>` : '';
@@ -993,6 +1031,7 @@ function renderAppShell() {
     sub: '代课记录',
     principal: '校长审批',
     import: '导入课表',
+    slip: '请假条管理',
     settings: '通知设置'
   };
   const currentTitle = pageTitles[currentPage] || '代课调课系统';
@@ -1029,10 +1068,11 @@ function renderAppShell() {
           <button class="nav-btn" data-page="tt"      onclick="switchPage('tt')">📅 课表查询</button>
           <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记</button>
           <button class="nav-btn" data-page="sub"     onclick="switchPage('sub')">✅ 代课记录${subBadge}</button>
-          <button class="nav-btn" data-page="principal" onclick="switchPage('principal')">✍️ 校长审批${principalBadge}</button>
+          ${principalAuthed ? `<button class="nav-btn" data-page="principal" onclick="switchPage('principal')">✍️ 校长审批${principalBadge}</button>` : ''}
           ${isAdmin ? `
           <div class="sidebar-section-title" style="margin-top:16px">⚙️ 管理员</div>
           <button class="nav-btn" data-page="import"  onclick="switchPage('import')">📤 导入课表</button>
+          <button class="nav-btn" data-page="slip"    onclick="switchPage('slip')">📄 请假条管理</button>
           <button class="nav-btn" data-page="settings" onclick="switchPage('settings')">🔔 通知设置</button>
           ` : ''}
         </div>
@@ -1057,6 +1097,7 @@ function switchPage(page) {
   else if (page === 'sub')     renderSubPage(area);
   else if (page === 'principal') renderPrincipalPage(area);
   else if (page === 'import')  renderImportPage(area);
+  else if (page === 'slip')    renderSlipPage(area);
   else if (page === 'settings') renderSettingsPage(area);
 }
 
@@ -1141,12 +1182,21 @@ function renderHomePage(area) {
       <button class="action-card" onclick="switchPage('import')">
         <span class="action-icon">📤</span>
         <span class="action-label">导入课表</span>
+      </button>
+      <button class="action-card" onclick="showResetPrincipalPwdModal()">
+        <span class="action-icon">🔑</span>
+        <span class="action-label">重置校长密码</span>
+      </button>` : ''}
+      ${principalAuthed ? `
+      <button class="action-card" onclick="switchPage('principal')">
+        <span class="action-icon">📋</span>
+        <span class="action-label">校长审批</span>
       </button>` : ''}
       <button class="action-card" onclick="switchPage('tt')">
         <span class="action-icon">📅</span>
         <span class="action-label">课表查询</span>
       </button>
-      ${!isAdmin ? `
+      ${(!isAdmin && !principalAuthed) ? `
       <button class="action-card" onclick="showSetPrivacyPwdModal()">
         <span class="action-icon">🔐</span>
         <span class="action-label">隐私设置</span>
@@ -1932,7 +1982,10 @@ function _renderPrincipalPageBody(area) {
     <div class="card">
       <div class="card-header">
         <h3>🕐 待审批请假条 (${pendingSlips.length})</h3>
-        <button class="btn btn-sm" onclick="principalAuthed=false;sessionStorage.removeItem('principalAuthed');renderPrincipalPage($('main-content'))">退出校长模式</button>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm" onclick="showChangePrincipalPwdModal()">🔑 修改密码</button>
+          <button class="btn btn-sm" onclick="principalAuthed=false;sessionStorage.removeItem('principalAuthed');renderPrincipalPage($('main-content'))">退出校长模式</button>
+        </div>
       </div>
       ${pendingSlips.length === 0 ? '<p class="text-muted">暂无待审批的请假条</p>' : `
       <div class="table-wrap">
@@ -1956,7 +2009,7 @@ function _renderPrincipalPageBody(area) {
       <h3>📋 已处理 (${doneSlips.length})</h3>
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>教师</th><th>事由</th><th>时间</th><th>结果</th></tr></thead>
+          <thead><tr><th>教师</th><th>事由</th><th>时间</th><th>结果</th><th>操作</th></tr></thead>
           <tbody>
             ${doneSlips.map(s => `
             <tr>
@@ -1964,6 +2017,7 @@ function _renderPrincipalPageBody(area) {
               <td>${esc(s.reason)}</td>
               <td>${fmtDate(s.startDate)} ~ ${fmtDate(s.endDate)}</td>
               <td><span class="badge badge-${s.status==='approved'?'green':'red'}">${s.status==='approved'?'✅ 已同意':'❌ 已拒绝'}</span></td>
+              <td><button class="btn btn-sm btn-danger" onclick="deletePrincipalSlip('${s.id}')">🗑 删除</button></td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -1972,20 +2026,176 @@ function _renderPrincipalPageBody(area) {
   </div>`;
 }
 
-function verifyPrincipalPwd() {
+async function verifyPrincipalPwd() {
   const input = $('principal-pwd-input');
   const msg = $('principal-pwd-msg');
   if (!input) return;
-  if (input.value === PRINCIPAL_PWD) {
-    principalAuthed = true;
-    sessionStorage.setItem('principalAuthed', '1');
-    renderPrincipalPage($('main-content'));
-  } else {
-    msg.textContent = '密码错误，请重试';
+  const pwd = input.value;
+  try {
+    const r = await fetch('/api/principal-pwd', { headers: { 'x-principal-pwd': pwd } });
+    if (r.ok) {
+      const j = await r.json();
+      if (j.success) {
+        principalPwd = j.data.password; // 从 KV 加载实际密码
+        principalAuthed = true;
+        sessionStorage.setItem('principalAuthed', '1');
+        renderPrincipalPage($('main-content'));
+      } else {
+        msg.textContent = j.error || '验证失败';
+      }
+    } else if (r.status === 401) {
+      msg.textContent = '密码错误，请重试';
+    } else {
+      msg.textContent = '网络错误';
+    }
+  } catch (err) {
+    msg.textContent = '网络错误：' + (err.message || err);
   }
 }
 
-// 校长签字审批弹窗
+// 校长审批页：删除已处理请假条（需 principal pwd）
+async function deletePrincipalSlip(slipId) {
+  const slip = slipRecords.find(s => s.id === slipId);
+  if (!slip) { toast('未找到该请假条', 'error'); return; }
+  if (!confirm(`确认删除 “${slip.teacherName} / ${slip.reason}” 这条请假条吗？\n该操作不可恢复。`)) return;
+  try {
+    const r = await fetch('/api/leave-slips/' + slipId, {
+      method: 'DELETE',
+      headers: { 'x-principal-pwd': principalPwd }
+    });
+    const j = await r.json();
+    if (j.success) {
+      slipRecords = slipRecords.filter(s => s.id !== slipId);
+      loadAndRenderPrincipalPage($('main-content'));
+      toast('✓ 已删除该请假条', 'success');
+    } else {
+      toast(j.error || '删除失败', 'error');
+    }
+  } catch (err) {
+    toast('网络错误：' + (err.message || err), 'error');
+  }
+}
+
+// 修改校长密码弹窗
+function showChangePrincipalPwdModal() {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:420px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:16px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0; font-size:16px; font-weight:600;">🔑 修改校长密码</h3>
+        <button onclick=\"this.closest('.modal-overlay').remove()\" style=\"background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;\">×</button>
+      </div>
+      <div style=\"padding:20px;\">
+        <div class=\"form-group\">
+          <label>新密码 *</label>
+          <input type=\"password\" id=\"new-principal-pwd\" class=\"form-input\" placeholder=\"请输入新密码（至少4位）\" style=\"margin:8px 0;\">
+        </div>
+        <div class=\"form-group\">
+          <label>确认新密码 *</label>
+          <input type=\"password\" id=\"confirm-principal-pwd\" class=\"form-input\" placeholder=\"请再次输入新密码\" style=\"margin:8px 0;\">
+        </div>
+        <p id=\"change-pwd-msg\" style=\"color:#DC2626; font-size:13px; min-height:18px; margin:8px 0 0;\"></p>
+      </div>
+      <div style=\"padding:12px 20px; border-top:1px solid #E5E7EB; text-align:right;\">
+        <button onclick=\"this.closest('.modal-overlay').remove()\" style=\"padding:8px 16px; background:#9CA3AF; color:#fff; border:none; border-radius:6px; cursor:pointer; margin-right:8px;\">取消</button>
+        <button id=\"change-pwd-submit\" style=\"padding:8px 20px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;\">确认修改</button>
+      </div>
+    </div>
+  `;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+  
+  modal.querySelector('#change-pwd-submit').onclick = async () => {
+    const newPwd = modal.querySelector('#new-principal-pwd').value;
+    const confirmPwd = modal.querySelector('#confirm-principal-pwd').value;
+    const msgEl = modal.querySelector('#change-pwd-msg');
+    if (!newPwd || newPwd.length < 4) { msgEl.textContent = '新密码至少4位'; return; }
+    if (newPwd !== confirmPwd) { msgEl.textContent = '两次输入的密码不一致'; return; }
+    const btn = modal.querySelector('#change-pwd-submit');
+    btn.disabled = true; btn.textContent = '修改中…';
+    try {
+      const r = await fetch('/api/principal-pwd', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-principal-pwd': principalPwd },
+        body: JSON.stringify({ newPassword: newPwd })
+      });
+      const j = await r.json();
+      if (j.success) {
+        principalPwd = newPwd; // 更新本地变量
+        modal.remove();
+        toast('✓ 密码已更新', 'success');
+      } else {
+        msgEl.textContent = j.error || '修改失败';
+        btn.disabled = false; btn.textContent = '确认修改';
+      }
+    } catch (err) {
+      msgEl.textContent = '网络错误：' + (err.message || err);
+      btn.disabled = false; btn.textContent = '确认修改';
+    }
+  };
+}
+
+// 管理员重置校长密码弹窗
+function showResetPrincipalPwdModal() {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:420px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:16px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0; font-size:16px; font-weight:600;">🔑 重置校长密码</h3>
+        <button onclick=\"this.closest('.modal-overlay').remove()\" style=\"background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;\">×</button>
+      </div>
+      <div style=\"padding:20px;\">
+        <p style=\"color:#6B7280; font-size:13px; margin:0 0 12px;\">设置新的校长审批密码，校长登录时需使用新密码。</p>
+        <div class=\"form-group\">
+          <label>新密码 *</label>
+          <input type=\"password\" id=\"reset-principal-pwd\" class=\"form-input\" placeholder=\"请输入新密码（至少4位）\" style=\"margin:8px 0;\">
+        </div>
+        <div class=\"form-group\">
+          <label>确认新密码 *</label>
+          <input type=\"password\" id=\"reset-confirm-principal-pwd\" class=\"form-input\" placeholder=\"请再次输入新密码\" style=\"margin:8px 0;\">
+        </div>
+        <p id=\"reset-pwd-msg\" style=\"color:#DC2626; font-size:13px; min-height:18px; margin:8px 0 0;\"></p>
+      </div>
+      <div style=\"padding:12px 20px; border-top:1px solid #E5E7EB; text-align:right;\">
+        <button onclick=\"this.closest('.modal-overlay').remove()\" style=\"padding:8px 16px; background:#9CA3AF; color:#fff; border:none; border-radius:6px; cursor:pointer; margin-right:8px;\">取消</button>
+        <button id=\"reset-pwd-submit\" style=\"padding:8px 20px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;\">确认重置</button>
+      </div>
+    </div>
+  `;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+  
+  modal.querySelector('#reset-pwd-submit').onclick = async () => {
+    const newPwd = modal.querySelector('#reset-principal-pwd').value;
+    const confirmPwd = modal.querySelector('#reset-confirm-principal-pwd').value;
+    const msgEl = modal.querySelector('#reset-pwd-msg');
+    if (!newPwd || newPwd.length < 4) { msgEl.textContent = '新密码至少4位'; return; }
+    if (newPwd !== confirmPwd) { msgEl.textContent = '两次输入的密码不一致'; return; }
+    const btn = modal.querySelector('#reset-pwd-submit');
+    btn.disabled = true; btn.textContent = '重置中…';
+    try {
+      const r = await fetch('/api/principal-pwd', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd || 'admin888' },
+        body: JSON.stringify({ newPassword: newPwd })
+      });
+      const j = await r.json();
+      if (j.success) {
+        principalPwd = newPwd; // 同步更新本地
+        modal.remove();
+        toast('✓ 校长密码已重置', 'success');
+      } else {
+        msgEl.textContent = j.error || '重置失败';
+        btn.disabled = false; btn.textContent = '确认重置';
+      }
+    } catch (err) {
+      msgEl.textContent = '网络错误：' + (err.message || err);
+      btn.disabled = false; btn.textContent = '确认重置';
+    }
+  };
+}
 function showPrincipalApproveModal(slipId) {
   const slip = slipRecords.find(s => s.id === slipId);
   if (!slip) return;
@@ -2044,7 +2254,7 @@ function showPrincipalApproveModal(slipId) {
     try {
       const r = await fetch(`/api/leave-slips/${slip.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-principal-pwd': PRINCIPAL_PWD },
+        headers: { 'Content-Type': 'application/json', 'x-principal-pwd': principalPwd },
         body: JSON.stringify({ action, signature: sig, principalName: '校长' })
       });
       const j = await r.json();
@@ -2108,8 +2318,8 @@ function renderSubPage(area) {
   
   area.innerHTML = `
   <div class="page">
-    ${mobileBackBar('代课记录')}
-    <h2 class="page-title">✅ 代课记录</h2>
+    ${mobileBackBar('代课安排')}
+    <h2 class="page-title">✅ 代课安排</h2>
 
     ${isAdmin ? `
     <div class="action-bar">
@@ -2234,14 +2444,14 @@ function renderSubTable() {
     return `
     <div class="empty-state">
       <div class="empty-icon">📋</div>
-      <h3>暂无代课记录</h3>
+      <h3>暂无代课安排</h3>
       <p>${isAdmin ? '请先登记请假，再点击"自动生成代课安排"' : '请等候管理员安排代课'}</p>
     </div>`;
   }
   return `
   <div class="card">
     <div class="card-header">
-      <h3>代课记录 (${substituteRecords.length})</h3>
+      <h3>代课安排 (${substituteRecords.length})</h3>
       <div class="filter-row">
         <input type="text" id="sub-filter" class="form-input" placeholder="搜索教师/班级..."
                oninput="filterSubTable(this.value)">
@@ -3543,6 +3753,21 @@ async function initApp() {
   if (role === 'admin') {
     isAdmin  = true;
     adminPwd = sessionStorage.getItem('adminPwd') || '';
+  } else if (role === 'principal') {
+    // 恢复校长身份：先从 API 加载真实密码
+    isAdmin = false;
+    principalAuthed = true;
+    const storedPwd = sessionStorage.getItem('principalAuthed');
+    if (storedPwd) {
+      try {
+        const r = await fetch('/api/principal-pwd', { headers: { 'x-principal-pwd': 'restore' } });
+        if (r.ok) {
+          const j = await r.json();
+          if (j.success) principalPwd = j.data.password;
+        }
+      } catch {}
+    }
+    currentPage = 'principal';
   }
 
   document.body.innerHTML = renderAppShell();
@@ -3592,6 +3817,148 @@ async function initApp() {
   }
 
   switchPage('home');
+
+// ══════════════════════════════════════════════════════
+//  请假条管理页（管理员）
+// ══════════════════════════════════════════════════════
+async function renderSlipPage(area) {
+  area.innerHTML = `
+  <div class="page">
+    ${mobileBackBar('请假条管理')}
+    <h2 class="page-title">📄 请假条管理</h2>
+    <p class="text-muted" style="margin:0 0 12px;">事假/病假请假条永久存档，支持查看和打印导出。</p>
+    <div id="slip-admin-list"></div>
+  </div>`;
+  await loadSlipAdminList();
+}
+
+async function loadSlipAdminList() {
+  const el = $('slip-admin-list');
+  if (!el) return;
+  el.innerHTML = '<p style="color:#9CA3AF; text-align:center; padding:20px;">加载中…</p>';
+  try {
+    const r = await fetch('/api/leave-slips', { headers: { 'x-admin-pwd': adminPwd || 'admin888' } });
+    const j = await r.json();
+    if (!j.success) { el.innerHTML = '<p style="color:#DC2626; text-align:center;">加载失败</p>'; return; }
+    const slips = (j.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (slips.length === 0) { el.innerHTML = '<p class="text-muted" style="text-align:center;">暂无请假条</p>'; return; }
+    el.innerHTML = `
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>教师</th><th>假别</th><th>请假时间</th><th>审批状态</th><th>提交时间</th><th>操作</th></tr></thead>
+        <tbody>
+          ${slips.map(s => `
+          <tr>
+            <td>${esc(s.teacherName)}</td>
+            <td>${esc(s.reason)}</td>
+            <td>${fmtDate(s.startDate)}${s.startDate !== s.endDate ? ' ~ ' + fmtDate(s.endDate) : ''}</td>
+            <td><span class="badge badge-${s.status==='approved'?'green':s.status==='pending'?'yellow':'red'}">${s.status==='approved'?'✅ 同意':s.status==='pending'?'⏳ 待批':'❌ 拒绝'}</span></td>
+            <td>${new Date(s.createdAt).toLocaleString('zh-CN',{hour12:false})}</td>
+            <td><button class="btn btn-sm" onclick="showSlipDetailModal('${s.id}')">📋 查看</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  } catch (err) { el.innerHTML = '<p style="color:#DC2626; text-align:center;">网络错误</p>'; }
+}
+
+async function showSlipDetailModal(slipId) {
+  const slip = slipRecords.find(s => s.id === slipId);
+  if (!slip) { toast('未找到该请假条','error'); return; }
+  const statusColor = slip.status==='approved'?'#16A34A':slip.status==='pending'?'#D97706':'#DC2626';
+  const statusText = slip.status==='approved'?'✅ 同意':slip.status==='pending'?'⏳ 待审批':'❌ 已拒绝';
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:560px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:14px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0; font-size:16px;">📋 请假条详情</h3>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
+      </div>
+      <div style="padding:20px;">
+        <p style="text-align:center; color:${statusColor}; font-weight:600; margin:0 0 16px;">${statusText}</p>
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+          <tr><td style="padding:6px 0; color:#6B7280; width:80px;">教师姓名</td><td style="padding:6px 0; font-weight:500;">${esc(slip.teacherName)}</td></tr>
+          <tr><td style="padding:6px 0; color:#6B7280;">请假类型</td><td style="padding:6px 0;">${esc(slip.reason)}</td></tr>
+          <tr><td style="padding:6px 0; color:#6B7280;">开始时间</td><td style="padding:6px 0;">${fmtDate(slip.startDate)}</td></tr>
+          <tr><td style="padding:6px 0; color:#6B7280;">结束时间</td><td style="padding:6px 0;">${fmtDate(slip.endDate)}</td></tr>
+          <tr><td style="padding:6px 0; color:#6B7280;">提交时间</td><td style="padding:6px 0;">${new Date(slip.createdAt).toLocaleString('zh-CN',{hour12:false})}</td></tr>
+          ${slip.principalName ? '<tr><td style="padding:6px 0; color:#6B7280;">审批校长</td><td style="padding:6px 0;">'+esc(slip.principalName)+'</td></tr>' : ''}
+          ${slip.principalSignedAt ? '<tr><td style="padding:6px 0; color:#6B7280;">审批时间</td><td style="padding:6px 0;">'+new Date(slip.principalSignedAt).toLocaleString('zh-CN',{hour12:false})+'</td></tr>' : ''}
+        </table>
+        ${slip.teacherSignature ? '<p style="color:#6B7280; font-size:13px; margin:12px 0 4px;">教师签字：</p><img src="'+slip.teacherSignature+'" style="border:1px solid #E5E7EB; border-radius:4px; max-width:200px; display:block;"/>' : ''}
+        ${slip.principalSignature ? '<p style="color:#6B7280; font-size:13px; margin:12px 0 4px;">校长签字：</p><img src="'+slip.principalSignature+'" style="border:1px solid #E5E7EB; border-radius:4px; max-width:200px; display:block;"/>' : ''}
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #E5E7EB; display:flex; gap:8px; justify-content:flex-end;">
+        <button onclick="showSlipPrintModal('${slipId}')" style="padding:8px 20px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">🖨️ 打印请假条</button>
+        <button onclick="this.closest('.modal-overlay').remove()" style="padding:8px 16px; background:#9CA3AF; color:#fff; border:none; border-radius:6px; cursor:pointer;">关闭</button>
+      </div>
+    </div>`;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+}
+
+function showSlipPrintModal(slipId) {
+  const slip = slipRecords.find(s => s.id === slipId);
+  if (!slip) { toast('未找到该请假条','error'); return; }
+  const bg = slip.status==='approved'?'#F0FDF4':slip.status==='pending'?'#FFFBEB':'#FEF2F2';
+  const stampEl = slip.status==='approved' ? '<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-25deg); font-size:52px; color:rgba(220,38,38,0.12); font-weight:900; pointer-events:none; white-space:nowrap;">已批准</div>' : slip.status==='pending' ? '<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-25deg); font-size:52px; color:rgba(217,119,6,0.12); font-weight:900; pointer-events:none; white-space:nowrap;">待审批</div>' : '<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-25deg); font-size:52px; color:rgba(220,38,38,0.12); font-weight:900; pointer-events:none; white-space:nowrap;">已拒绝</div>';
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:600px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3); max-height:90vh; overflow-y:auto;">
+      <div style="padding:14px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0; font-size:16px;">🖨️ 请假条预览</h3>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
+      </div>
+      <div id="slip-print-area" style="padding:28px; background:${bg}; position:relative;">
+        ${stampEl}
+        <div style="text-align:center; margin-bottom:16px;">
+          <div style="font-size:22px; font-weight:700; letter-spacing:4px;">请假条</div>
+          <div style="font-size:13px; color:#6B7280; margin-top:4px;">施秉县双井镇中心小学</div>
+        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:14px; background:#fff;">
+          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6; width:85px;">请假教师</td><td style="border:1px solid #333; padding:8px 10px;">${esc(slip.teacherName)}</td></tr>
+          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6;">请假类型</td><td style="border:1px solid #333; padding:8px 10px;">${esc(slip.reason)}</td></tr>
+          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6;">开始时间</td><td style="border:1px solid #333; padding:8px 10px;">${fmtDate(slip.startDate)}</td></tr>
+          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6;">结束时间</td><td style="border:1px solid #333; padding:8px 10px;">${fmtDate(slip.endDate)}</td></tr>
+          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6;">请假天数</td><td style="border:1px solid #333; padding:8px 10px;">1天</td></tr>
+          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6; vertical-align:top;">请假事由</td><td style="border:1px solid #333; padding:8px 10px; height:56px;">${esc(slip.reason)}</td></tr>
+        </table>
+        <div style="margin-top:16px; display:flex; gap:24px; align-items:flex-end;">
+          <div style="text-align:center;">
+            ${slip.teacherSignature ? '<img src="'+slip.teacherSignature+'" style="border-bottom:1px solid #333; width:110px; height:52px; object-fit:contain; display:block;"/>' : '<div style="border-bottom:1px solid #333; width:110px; height:52px;"></div>'}
+            <div style="font-size:12px; color:#6B7280; margin-top:2px;">教师签字</div>
+          </div>
+          <div style="flex:1;"></div>
+          <div style="text-align:center;">
+            ${slip.principalSignature ? '<img src="'+slip.principalSignature+'" style="border-bottom:1px solid #333; width:110px; height:52px; object-fit:contain; display:block;"/>' : '<div style="border-bottom:1px solid #333; width:110px; height:52px;"></div>'}
+            <div style="font-size:12px; color:#6B7280; margin-top:2px;">校长签字</div>
+          </div>
+        </div>
+        <div style="margin-top:12px; font-size:11px; color:#9CA3AF; text-align:right;">
+          提交时间：${new Date(slip.createdAt).toLocaleString('zh-CN',{hour12:false})}
+        </div>
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #E5E7EB; text-align:center;">
+        <button onclick="printSlipContent()" style="padding:10px 36px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:15px; font-weight:600;">🖨️ 打印</button>
+      </div>
+    </div>`;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+}
+
+function printSlipContent() {
+  const area = document.getElementById('slip-print-area');
+  if (!area) return;
+  const html = area.innerHTML;
+  const w = window.open('', '_blank', 'width=680,height=800');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>请假条</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:"SimSun","宋体",serif;padding:24px;}table{width:100%;border-collapse:collapse;}td{border:1px solid #333;padding:8px 10px;font-size:14px;}img{max-width:110px;}</style></head><body>' + html + '</body></html>');
+  w.document.close();
+  w.onload = () => { w.focus(); w.print(); };
+}
+
+
 }
 
 // 检查并推送新安排的代课任务（教师端）

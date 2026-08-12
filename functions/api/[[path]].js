@@ -492,19 +492,45 @@ async function handleLeavesPost(request, env) {
   return json({ success: true, data: leave });
 }
 
-// ============ 请假条（校长签字审批）============
-const PRINCIPAL_PWD = 'principal888'; // 校长审批密码（后续可改为 config 配置）
 
-function authPrincipal(headers) {
+// ============ 校长密码管理 ============
+async function handlePrincipalPwdGet(request, env) {
+  if (!await authPrincipal(request.headers, env)) return json({ success: false, error: '密码错误' }, 401);
+  const pwd = await getPrincipalPwd(env);
+  return json({ success: true, data: { password: pwd } });
+}
+
+async function handlePrincipalPwdPut(request, env) {
+  // 管理员或校长都可以重置密码
+  const isAdminReq = authAdmin(request.headers);
+  const isPrincipalReq = await authPrincipal(request.headers, env);
+  if (!isAdminReq && !isPrincipalReq) return json({ success: false, error: '权限不足' }, 401);
+  const body = await request.json().catch(() => ({}));
+  const { newPassword } = body;
+  if (!newPassword || newPassword.length < 4) return json({ success: false, error: '新密码至少4位' }, 400);
+  await putKV(env, 'principalPwd', newPassword);
+  return json({ success: true, message: '密码已更新' });
+}
+
+// ============ 请假条（校长签字审批）============
+const DEFAULT_PRINCIPAL_PWD = 'principal888'; // 校长审批密码默认值（KV key principalPwd 可覆盖）
+
+
+async function getPrincipalPwd(env) {
+  const stored = await getKV(env, 'principalPwd');
+  return stored || DEFAULT_PRINCIPAL_PWD;
+}
+async function authPrincipal(headers, env) {
   const p = headers.get('x-principal-pwd') || '';
-  return p === PRINCIPAL_PWD;
+  const correct = await getPrincipalPwd(env);
+  return p === correct;
 }
 
 // 获取请假条列表：管理员/校长看全部；教师带 x-teacher-name 只看自己的
 async function handleLeaveSlipsGet(request, env) {
   const slips = await getKV(env, 'leaveSlips') || [];
   const isAdminReq = authAdmin(request.headers);
-  const isPrincipalReq = authPrincipal(request.headers);
+  const isPrincipalReq = await authPrincipal(request.headers, env);
   const teacherNameHeader = request.headers.get('x-teacher-name') || '';
   if (!isAdminReq && !isPrincipalReq && !teacherNameHeader) {
     return json({ success: false, error: '无权限查看请假条' }, 401);
@@ -550,7 +576,7 @@ async function handleLeaveSlipsPost(request, env) {
 
 // 校长审批请假条：同意 → 关联请假记录置 approved；拒绝 → 置 rejected
 async function handleLeaveSlipsPut(request, env) {
-  if (!authPrincipal(request.headers)) return json({ success: false, error: '校长密码错误' }, 401);
+  if (!await authPrincipal(request.headers, env)) return json({ success: false, error: '校长密码错误' }, 401);
   const url = new URL(request.url);
   const id = url.pathname.split('/').pop();
   const body = await request.json().catch(() => ({}));
@@ -588,6 +614,26 @@ async function handleLeaveSlipsPut(request, env) {
   if (changed > 0) await putKV(env, 'leaves', leaves);
   await putKV(env, 'leaveSlips', slips);
   return json({ success: true, data: slip, changedLeaves: changed });
+}
+
+async function handleLeaveSlipsDelete(request, env) {
+  if (!await authPrincipal(request.headers, env)) return json({ success: false, error: '校长密码错误' }, 401);
+  const url = new URL(request.url);
+  const id = url.pathname.split('/').pop();
+  const slips = await getKV(env, 'leaveSlips') || [];
+  const idx = slips.findIndex(s => s.id === id);
+  if (idx === -1) return json({ success: false, error: '请假条不存在' }, 404);
+  const slip = slips[idx];
+  // 同步删除关联的请假记录（联动清理）
+  const leaves = await getKV(env, 'leaves') || [];
+  const filteredLeaves = leaves.filter(l => !slip.leaveIds.includes(l.id));
+  if (filteredLeaves.length !== leaves.length) {
+    await putKV(env, 'leaves', filteredLeaves);
+  }
+  // 从 leaveSlips 中移除
+  slips.splice(idx, 1);
+  await putKV(env, 'leaveSlips', slips);
+  return json({ success: true });
 }
 
 async function handleLeavesPut(request, env) {
@@ -859,7 +905,11 @@ export async function onRequest(context) {
   }
   
   // 路由分发
-  if (path === '/api/schedule' || path === '/api/schedule/') {
+    if (path === '/api/principal-pwd') {
+    if (method === 'GET') return handlePrincipalPwdGet(request, env);
+    if (method === 'PUT') return handlePrincipalPwdPut(request, env);
+  }
+if (path === '/api/schedule' || path === '/api/schedule/') {
     if (method === 'GET') return handleScheduleGet(env);
     if (method === 'POST') return handleScheduleImport(request, env);
     if (method === 'DELETE') return handleScheduleDelete(env);
@@ -877,6 +927,7 @@ export async function onRequest(context) {
     if (method === 'GET') return handleLeaveSlipsGet(request, env);
     if (method === 'POST') return handleLeaveSlipsPost(request, env);
     if (method === 'PUT' && path !== '/api/leave-slips') return handleLeaveSlipsPut(request, env);
+    if (method === 'DELETE' && path !== '/api/leave-slips') return handleLeaveSlipsDelete(request, env);
   }
   
   if (path === '/api/substitutes') {
