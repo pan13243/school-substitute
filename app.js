@@ -3817,6 +3817,7 @@ async function initApp() {
   }
 
   switchPage('home');
+}
 
 // ══════════════════════════════════════════════════════
 //  请假条管理页（管理员）
@@ -3957,9 +3958,6 @@ function printSlipContent() {
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>请假条</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:"SimSun","宋体",serif;padding:24px;}table{width:100%;border-collapse:collapse;}td{border:1px solid #333;padding:8px 10px;font-size:14px;}img{max-width:110px;}</style></head><body>' + html + '</body></html>');
   w.document.close();
   w.onload = () => { w.focus(); w.print(); };
-}
-
-
 }
 
 // 检查并推送新安排的代课任务（教师端）
