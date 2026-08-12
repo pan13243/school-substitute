@@ -3841,6 +3841,7 @@ async function loadSlipAdminList() {
     const j = await r.json();
     if (!j.success) { el.innerHTML = '<p style="color:#DC2626; text-align:center;">加载失败</p>'; return; }
     const slips = (j.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    slipRecords = slips; // 同步全局，供 showSlipDetailModal 等使用
     if (slips.length === 0) { el.innerHTML = '<p class="text-muted" style="text-align:center;">暂无请假条</p>'; return; }
     el.innerHTML = `
     <div class="table-wrap">
