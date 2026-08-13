@@ -2585,7 +2585,11 @@ async function confirmSubstitutes() {
 
 function renderSubTable() {
   // 优先显示已批准但未安排代课的请假
-  const approvedLeaves = leaveRecords.filter(l => l.status === 'approved');
+  // 教师端只看到自己的；管理员看全部
+  const currentTeacher = (sessionStorage.getItem('teacherName') || '').trim();
+  const approvedLeaves = isAdmin 
+    ? leaveRecords.filter(l => l.status === 'approved')
+    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher) : []);
   
   if (approvedLeaves.length > 0) {
     return `
