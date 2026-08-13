@@ -1724,17 +1724,24 @@ function renderLeavePage(area) {
       </form>
     </div>
 
+    ${(() => {
+      // 管理员只显示待处理的请假记录（pending / pending_principal）
+      const pendingLeaves = isAdmin 
+        ? leaveRecords.filter(l => l.status === 'pending' || l.status === 'pending_principal')
+        : displayLeaves;
+      const showLeaves = isAdmin ? pendingLeaves : displayLeaves;
+      return `
     <div class="card">
       <div class="card-header">
-        <h3>📋 请假记录 (${displayLeaves.length})</h3>
+        <h3>${isAdmin ? '⏳ 待处理请假' : '📋 请假记录'} (${showLeaves.length})</h3>
         ${isAdmin ? `<button class="btn btn-sm btn-danger" onclick="clearAllLeaves()">清空</button>` : ''}
       </div>
-      ${displayLeaves.length > 0 ? `
+      ${showLeaves.length > 0 ? `
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>假别/原因</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
-            ${displayLeaves.map(l => `
+            ${showLeaves.map(l => `
             <tr class="${l.status==='approved'?'row-approved':''}">
               <td>${esc(l.teacherName)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
@@ -1749,8 +1756,9 @@ function renderLeavePage(area) {
             </tr>`).join('')}
           </tbody>
         </table>
-      </div>` : '<p class="text-muted">暂无请假记录</p>'}
-    </div>
+      </div>` : `<p class="text-muted">${isAdmin ? '暂无待处理的请假记录' : '暂无请假记录'}</p>`}
+    </div>`;
+    })()}
   </div>`;
 }
 
