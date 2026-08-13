@@ -2374,8 +2374,8 @@ function renderSubPage(area) {
     : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher) : []);
   const pendingCount = approvedLeaves.length;
   
-  // 方案B：提取所有待安排代课的请假教师（去重）
-  const pendingTeachers = [...new Set(approvedLeaves.map(l => l.teacherName))];
+  // 方案B：提取所有待安排代课的请假教师（去重，trim处理）
+  const pendingTeachers = [...new Set(approvedLeaves.map(l => (l.teacherName || '').trim()).filter(Boolean))];
   // 默认选中第一个
   if (!currentSubTeacher || !pendingTeachers.includes(currentSubTeacher)) {
     currentSubTeacher = pendingTeachers[0] || null;
