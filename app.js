@@ -1104,6 +1104,9 @@ function renderAppShell() {
   // 计算待处理请假数量（已批准但未安排代课的）
   const pendingSubs = leaveRecords.filter(l => l.status === 'approved').length;
   const subBadge = (isAdmin && pendingSubs > 0) ? `<span class="nav-badge">${pendingSubs}</span>` : '';
+  // 待处理请假数量（pending + pending_principal，用于请假登记按钮徽章）
+  const pendingLeaves = leaveRecords.filter(l => l.status === 'pending' || l.status === 'pending_principal').length;
+  const leaveBadge = (isAdmin && pendingLeaves > 0) ? `<span class="nav-badge" style="background:#EF4444;">${pendingLeaves}</span>` : '';
   // 待校长审批的请假条数量
   const pendingSlips = (slipRecords || []).filter(s => s.status === 'pending').length;
   const principalBadge = pendingSlips > 0 ? `<span class="nav-badge" style="background:#F59E0B;">${pendingSlips}</span>` : '';
@@ -1150,7 +1153,7 @@ function renderAppShell() {
           <div class="sidebar-section-title">📋 功能菜单</div>
           <button class="nav-btn" data-page="home"    onclick="switchPage('home')">🏠 首页</button>
           <button class="nav-btn" data-page="tt"      onclick="switchPage('tt')">📅 课表查询</button>
-          <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记</button>
+          <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记${leaveBadge}</button>
           <button class="nav-btn" data-page="sub"     onclick="switchPage('sub')">✅ 代课记录${subBadge}</button>
           ${principalAuthed ? `<button class="nav-btn" data-page="principal" onclick="switchPage('principal')">✍️ 校长审批${principalBadge}</button>` : ''}
           ${isAdmin ? `
