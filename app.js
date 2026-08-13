@@ -4074,7 +4074,7 @@ async function loadSlipAdminList() {
             <td>${fmtDate(s.startDate)}${s.startDate !== s.endDate ? ' ~ ' + fmtDate(s.endDate) : ''}</td>
             <td><span class="badge badge-${s.status==='approved'?'green':s.status==='pending'?'yellow':'red'}">${s.status==='approved'?'✅ 同意':s.status==='pending'?'⏳ 待批':'❌ 拒绝'}</span></td>
             <td>${new Date(s.createdAt).toLocaleString('zh-CN',{hour12:false})}</td>
-            <td><button class="btn btn-sm" onclick="showSlipDetailModal('${s.id}')">📋 查看</button></td>
+            <td><button class="btn btn-sm" onclick="showSlipDetailModal('${s.id}')">📋 查看</button><button class="btn btn-sm btn-danger" onclick="deleteSlip('${s.id}')" style="margin-left:6px;">🗑️ 删除</button></td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -4176,6 +4176,30 @@ function printSlipContent() {
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>请假条</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:"SimSun","宋体",serif;padding:24px;}table{width:100%;border-collapse:collapse;}td{border:1px solid #333;padding:8px 10px;font-size:14px;}img{max-width:110px;}</style></head><body>' + html + '</body></html>');
   w.document.close();
   w.onload = () => { w.focus(); w.print(); };
+}
+
+// 删除请假条
+async function deleteSlip(slipId) {
+  if (!confirm('确定要删除这条请假条吗？删除后不可恢复。')) return;
+  try {
+    const r = await fetch(`/api/leave-slips/${slipId}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-pwd': adminPwd || 'admin888' }
+    });
+    const j = await r.json();
+    if (j.success) {
+      toast('请假条已删除', 'success');
+      // 关闭可能打开的详情弹窗
+      const modal = document.querySelector('.modal-overlay');
+      if (modal) modal.remove();
+      // 刷新列表
+      await loadSlipAdminList();
+    } else {
+      toast(j.message || '删除失败', 'error');
+    }
+  } catch (err) {
+    toast('网络错误，删除失败', 'error');
+  }
 }
 
 // 检查并推送新安排的代课任务（教师端）
