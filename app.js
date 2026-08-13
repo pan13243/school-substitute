@@ -53,6 +53,20 @@ function wdayCn(d) { return wday(d).replace('周',''); }
 // 转换为完整形式'星期一'以匹配系统数据
 function wdayFull(d) { const map = {'周日':'星期日','周一':'星期一','周二':'星期二','周三':'星期三','周四':'星期四','周五':'星期五','周六':'星期六'}; return map[wday(d)] || wday(d); }
 
+// 根据教师名、请假日期、节次查对应班级（用于请假记录列表显示）
+function getTeacherClass(teacherName, leaveDate, period) {
+  if (!teacherName || !scheduleData || !scheduleData.timetable) return '—';
+  const dow = leaveDate ? wdayFull(leaveDate) : null;
+  if (!dow) return '—';
+  const dayData = scheduleData.timetable[dow];
+  if (!dayData) return '—';
+  for (const [cls, slots] of Object.entries(dayData)) {
+    const matched = Array.isArray(slots) ? slots.find(s => s.period == period) : null;
+    if (matched && matched.teacher === teacherName) return cls;
+  }
+  return '—';
+}
+
 // 从时间段获取节次（用于课后服务）
 const AFTER_SCHOOL_PERIOD_MAP = {
   '13:00': 11, '13：00': 11,
@@ -271,10 +285,10 @@ async function showMyLeaves() {
     const myLeaves = leaveRecords.filter(l => l.teacherName === currentTeacher);
     
     const content = myLeaves.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无请假记录</p>' :
-      `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>节次</th><th>假别</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
+      `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>班级</th><th>节次</th><th>假别</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
       myLeaves.map(l => {
         const st = l.status==='approved' ? '✅已批准' : (l.status==='pending_principal' ? '⏳待校长签字' : (l.status==='rejected' ? '❌已拒绝' : '⏳待审批'));
-        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.dayOfWeek)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'—')}</td><td>${esc(l.reason||'—')}</td><td>${st}</td></tr>`;
+        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.dayOfWeek)}</td><td>${getTeacherClass(currentTeacher, l.leaveDate, l.period)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'—')}</td><td>${esc(l.reason||'—')}</td><td>${st}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
     
@@ -345,11 +359,12 @@ function showAdminLeaveHistory() {
   const records = leaveRecords || [];
   const content = records.length === 0 
     ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无请假记录</p>'
-    : `<table class="data-table"><thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th><th>操作</th></tr></thead><tbody>` +
+    : `<table class="data-table"><thead><tr><th>教师</th><th>班级</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th><th>状态</th><th>操作</th></tr></thead><tbody>` +
       records.map(l => {
         const statusMap = { 'pending': '<span style="color:#F59E0B;">待审批</span>', 'pending_principal': '<span style="color:#EF4444;">待校长签字</span>', 'approved': '<span style="color:#10B981;">已批准</span>', 'rejected': '<span style="color:#EF4444;">已拒绝</span>' };
         return `<tr>
           <td>${esc(l.teacherName)}</td>
+          <td>${getTeacherClass(l.teacherName, l.leaveDate, l.period)}</td>
           <td>${fmtDate(l.leaveDate)}</td>
           <td>${esc(l.dayOfWeek || '—')}</td>
           <td>${l.period ? '第'+l.period+'节' : '—'}</td>
@@ -1747,11 +1762,12 @@ function renderLeavePage(area) {
       ${showLeaves.length > 0 ? `
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>教师</th><th>日期</th><th>星期</th><th>节次</th><th>假别/原因</th><th>状态</th><th>操作</th></tr></thead>
+          <thead><tr><th>教师</th><th>班级</th><th>日期</th><th>星期</th><th>节次</th><th>假别/原因</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
             ${showLeaves.map(l => `
             <tr class="${l.status==='approved'?'row-approved':''}">
               <td>${esc(l.teacherName)}</td>
+              <td>${getTeacherClass(l.teacherName, l.leaveDate, l.period)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
               <td>${esc(l.dayOfWeek)}</td>
               <td>${l.period ? '第'+l.period+'节' : '—'}</td>
@@ -2601,12 +2617,13 @@ function renderSubTable() {
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr>
-            <th>请假教师</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th>
+            <th>请假教师</th><th>班级</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th>
           </tr></thead>
           <tbody>
             ${approvedLeaves.map(l => `
             <tr>
               <td>${esc(l.teacherName)}</td>
+              <td>${getTeacherClass(l.teacherName, l.leaveDate, l.period)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
               <td>${esc(l.dayOfWeek)}</td>
               <td>第${l.period}节</td>
