@@ -214,6 +214,8 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
     const teacherSlots = teacherSchedule[leave.teacherName] || {};
     for (const [slotKey, slot] of Object.entries(teacherSlots)) {
       if (!slotKey.startsWith(leaveWeekday + '_')) continue;
+      // 【按节次过滤】只代与该请假相同节次的课（全天假 period==='all' 才代全部节次）
+      if (leave.period && leave.period !== 'all' && String(slot.period) !== String(leave.period)) continue;
       // 检查该 slot 是否已生成过代课
       const slotDedupeKey = `${leave.id}_${slot.period}_${slot.className}`;
       if (generatedSlots.has(slotDedupeKey)) continue;
@@ -257,6 +259,8 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
       for (const slot of daySlots) {
         // 只处理 7-11 节的课后服务
         if (!slot.period || slot.period < 7 || slot.period > 11) continue;
+        // 【按节次过滤】只代与该请假相同节次的课后服务（全天假才全部）
+        if (leave.period && leave.period !== 'all' && String(slot.period) !== String(leave.period)) continue;
         // 【单双周判断】先确认请假教师当天是否轮值该时段
         // 校历 dayMap 给出该日期的单/双周；若教师是轮换制（singleWeek+doubleWeek），
         // 只在对应周上课；当天不是他/她轮值则跳过
