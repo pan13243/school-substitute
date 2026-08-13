@@ -2620,9 +2620,18 @@ function renderSubTable() {
   
   // 教师端：只显示与自己相关的代课（自己请假被代课，或自己代别人的课）
   const myTeacherName = (sessionStorage.getItem('teacherName') || '').trim();
-  const displaySubs = isAdmin 
+  let displaySubs = isAdmin 
     ? substituteRecords 
     : (myTeacherName ? substituteRecords.filter(s => s.leaveTeacher === myTeacherName || s.substituteTeacher === myTeacherName) : []);
+  
+  // 去重：同一天同节次同班级只显示一条
+  const seen = new Set();
+  displaySubs = displaySubs.filter(s => {
+    const key = `${s.leaveDate}_${s.period}_${s.className}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   
   if (displaySubs.length === 0) {
     return `
@@ -2686,13 +2695,13 @@ async function doGenerateSubstitutes() {
     console.log('[doGenerateSubstitutes] API返回:', r.summary, 'results.length:', (r.data||r.results||[]).length);
     if (r.success) {
       const results = r.data || r.results || [];
-      // 前端也去重
+      // 前端也去重（增加日期维度，确保同一天同节次同班级只出现一次）
       const seen = new Set();
       const uniqueResults = [];
       for (const s of results) {
-        const key = `${s.leaveId}_${s.period}_${s.className}`;
+        const key = `${s.leaveId}_${s.leaveDate}_${s.period}_${s.className}`;
         if (seen.has(key)) {
-          console.warn('[doGenerateSubstitutes] 跳过重复:', s.leaveTeacher, '第'+s.period+'节', s.className);
+          console.warn('[doGenerateSubstitutes] 跳过重复:', s.leaveTeacher, s.leaveDate, '第'+s.period+'节', s.className);
           continue;
         }
         seen.add(key);
