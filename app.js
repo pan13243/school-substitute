@@ -55,14 +55,36 @@ function wdayFull(d) { const map = {'周日':'星期日','周一':'星期一','�
 
 // 根据教师名、请假日期、节次查对应班级（用于请假记录列表显示）
 function getTeacherClass(teacherName, leaveDate, period) {
-  if (!teacherName || !scheduleData || !scheduleData.timetable) return '—';
+  if (!teacherName || !scheduleData || period === undefined || period === null || period === '') return '—';
   const dow = leaveDate ? wdayFull(leaveDate) : null;
   if (!dow) return '—';
-  const dayData = scheduleData.timetable[dow];
-  if (!dayData) return '—';
-  for (const [cls, slots] of Object.entries(dayData)) {
-    const matched = Array.isArray(slots) ? slots.find(s => s.period == period) : null;
-    if (matched && matched.teacher === teacherName) return cls;
+  // 正课表（period 1-6）：timetable[day][className][slots]
+  if (period === 'all' || Number(period) <= 6) {
+    const dayData = scheduleData.timetable && scheduleData.timetable[dow];
+    if (dayData) {
+      for (const [cls, slots] of Object.entries(dayData)) {
+        const arr = Array.isArray(slots) ? slots : [];
+        const matched = arr.find(s => s.period == period);
+        if (matched && matched.teacher === teacherName) return cls;
+      }
+    }
+  }
+  // 课后服务段（period 7-11）：afterSchoolService.slots[].assignments[className] = {teacher, week}
+  if (period !== 'all' && Number(period) >= 7) {
+    const ass = scheduleData.afterSchoolService && scheduleData.afterSchoolService.slots;
+    if (Array.isArray(ass)) {
+      const slot = ass.find(s => s.day === dow && s.period == period);
+      if (slot && slot.assignments) {
+        for (const [cls, info] of Object.entries(slot.assignments)) {
+          // 支持双师字段：teacher / singleWeek / doubleWeek（任一匹配即算）
+          const teachers = [];
+          if (info.teacher) teachers.push(info.teacher);
+          if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
+          if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
+          if (teachers.includes(teacherName)) return cls;
+        }
+      }
+    }
   }
   return '—';
 }
