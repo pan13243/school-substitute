@@ -708,7 +708,14 @@ async function handleSubstitutesGenerate(request, env) {
   
   const cfg = await getKV(env, 'config') || {};
   const leaves = await getKV(env, 'leaves') || [];
-  const pendingLeaves = leaves.filter(l => l.status === 'pending' || l.status === 'approved');
+  const existingSubs = await getKV(env, 'substitutes') || [];
+  
+  // 【限制】一个请假只能安排一次代课：过滤掉已经有代课的请假
+  const leavesWithSubs = new Set(existingSubs.map(s => s.leaveId).filter(Boolean));
+  const pendingLeaves = leaves.filter(l => 
+    (l.status === 'pending' || l.status === 'approved') && 
+    !leavesWithSubs.has(l.id)  // 排除已有代课的请假
+  );
   
   if (!cfg.timetable) {
     return json({ success: false, error: '尚未导入课表，请先导入总课表' }, 400);
@@ -717,7 +724,7 @@ async function handleSubstitutesGenerate(request, env) {
     return json({ success: false, error: '暂无待处理请假（没有pending或approved状态的请假记录）' }, 400);
   }
   
-  const results = generateSubstitutes({
+  const newResults = generateSubstitutes({
     leaves: pendingLeaves,
     timetable: cfg.timetable,
     teacherAssignment: cfg.teacherAssignment,
@@ -726,15 +733,18 @@ async function handleSubstitutesGenerate(request, env) {
     targetDate
   });
   
+  // 【合并】保留已有代课 + 新增代课
+  const results = [...existingSubs, ...newResults];
+  
   // 【调试】记录生成详情
-  console.log('[generateSubstitutes] pendingLeaves:', pendingLeaves.length, 'results:', results.length);
-  for (const r of results.slice(0, 10)) {
+  console.log('[generateSubstitutes] pendingLeaves:', pendingLeaves.length, 'newResults:', newResults.length, 'total:', results.length);
+  for (const r of newResults.slice(0, 10)) {
     console.log('  -', r.leaveTeacher, r.leaveDate, '第'+r.period+'节', '→', r.substituteTeacher);
   }
-  if (results.length > 10) console.log('  ... and', results.length - 10, 'more');
+  if (newResults.length > 10) console.log('  ... and', newResults.length - 10, 'more');
   
   await putKV(env, 'substitutes', results);
-  return json({ success: true, results, summary: { total: results.length, arranged: results.length, failed: 0 } });
+  return json({ success: true, results: newResults, summary: { total: newResults.length, arranged: newResults.length, failed: 0 } });
 }
 
 async function handleSubstitutesDelete(request, env) {
