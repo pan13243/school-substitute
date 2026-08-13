@@ -2618,7 +2618,13 @@ function renderSubTable() {
     </div>`;
   }
   
-  if (substituteRecords.length === 0) {
+  // 教师端：只显示与自己相关的代课（自己请假被代课，或自己代别人的课）
+  const myTeacherName = (sessionStorage.getItem('teacherName') || '').trim();
+  const displaySubs = isAdmin 
+    ? substituteRecords 
+    : (myTeacherName ? substituteRecords.filter(s => s.leaveTeacher === myTeacherName || s.substituteTeacher === myTeacherName) : []);
+  
+  if (displaySubs.length === 0) {
     return `
     <div class="empty-state">
       <div class="empty-icon">📋</div>
@@ -2629,7 +2635,7 @@ function renderSubTable() {
   return `
   <div class="card">
     <div class="card-header">
-      <h3>代课安排 (${substituteRecords.length})</h3>
+      <h3>代课安排 (${displaySubs.length})</h3>
       <div class="filter-row">
         <input type="text" id="sub-filter" class="form-input" placeholder="搜索教师/班级..."
                oninput="filterSubTable(this.value)">
@@ -2643,7 +2649,7 @@ function renderSubTable() {
           <th>安排方式</th><th>操作</th>
         </tr></thead>
         <tbody id="sub-tbody">
-          ${substituteRecords.map(s => `
+          ${displaySubs.map(s => `
           <tr class="sub-row">
             <td>${esc(s.leaveTeacher||'')}</td>
             <td class="sub-tea">${esc(s.substituteTeacher||'—')}</td>
