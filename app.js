@@ -1010,8 +1010,10 @@ function setLoginMode(mode) {
 function handleTeacherLogin(teacherName) {
   if (!teacherName) return;
   isAdmin = false;
+  principalAuthed = false;
   sessionStorage.setItem('role','teacher');
   sessionStorage.setItem('teacherName', teacherName);
+  sessionStorage.removeItem('principalAuthed');
   currentPage = 'home';
   initApp();
 }
@@ -1025,8 +1027,10 @@ function handleAdminLogin() {
   }
   adminPwd = pwd;
   isAdmin = true;
+  principalAuthed = false;
   sessionStorage.setItem('role','admin');
   sessionStorage.setItem('adminPwd', pwd);
+  sessionStorage.removeItem('principalAuthed');
   currentPage = 'home';
   toast('管理员登录成功','success');
   initApp();
@@ -3822,7 +3826,9 @@ async function initApp() {
   const role = sessionStorage.getItem('role');
   if (role === 'admin') {
     isAdmin  = true;
+    principalAuthed = false;
     adminPwd = sessionStorage.getItem('adminPwd') || '';
+    sessionStorage.removeItem('principalAuthed');
   } else if (role === 'principal') {
     // 恢复校长身份：先从 API 加载真实密码
     isAdmin = false;
@@ -3838,6 +3844,11 @@ async function initApp() {
       } catch {}
     }
     currentPage = 'principal';
+  } else if (role === 'teacher') {
+    // 教师端：确保清除校长身份标记
+    isAdmin = false;
+    principalAuthed = false;
+    sessionStorage.removeItem('principalAuthed');
   }
 
   document.body.innerHTML = renderAppShell();
