@@ -1235,6 +1235,7 @@ function renderHomePage(area) {
         <div class="stat-num">${cls.length * 30}</div>
         <div class="stat-label">周总课时</div>
       </div>` : ''}
+      ${!principalAuthed ? `
       <div class="stat-card" onclick="${isAdmin ? 'showAdminLeaveHistory()' : 'showMyLeaves()'}" style="cursor:pointer;">
         <div class="stat-icon">🏖️</div>
         <div class="stat-num">${isAdmin ? leaveRecords.length : myLeaves.length}</div>
@@ -1244,7 +1245,7 @@ function renderHomePage(area) {
         <div class="stat-icon">✅</div>
         <div class="stat-num">${isAdmin ? substituteRecords.length : mySubstitutes.length}</div>
         <div class="stat-label">代课记录</div>
-      </div>
+      </div>` : ''}
     </div>
 
     ${!hasData && isAdmin ? `
