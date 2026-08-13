@@ -307,6 +307,34 @@ async function showMySubstitutes() {
   }, '代课记录');
 }
 
+// 管理员：查看所有历史代课记录（可删除）
+function showAdminSubstituteHistory() {
+  if (!isAdmin) {
+    toast('无权访问', 'error');
+    return;
+  }
+  
+  const records = substituteRecords || [];
+  const content = records.length === 0 
+    ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无代课记录</p>'
+    : `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>请假教师</th><th>代课教师</th><th>班级</th><th>科目</th><th>节次</th><th>操作</th></tr></thead><tbody>` +
+      records.map(s => `
+        <tr>
+          <td>${fmtDate(s.leaveDate)}</td>
+          <td>${esc(s.dayOfWeek || '—')}</td>
+          <td>${esc(s.leaveTeacher)}</td>
+          <td>${esc(s.substituteTeacher)}</td>
+          <td>${esc(s.className)}</td>
+          <td>${esc(s.subject || '—')}</td>
+          <td>第${s.period}节</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteSubstituteFromModal('${s.id}')">删除</button></td>
+        </tr>
+      `).join('') +
+      `</tbody></table>`;
+  
+  showModal('代课记录历史（管理员）', content);
+}
+
 // 通用弹窗
 function showModal(title, content) {
   const modal = document.createElement('div');
@@ -1156,7 +1184,7 @@ function renderHomePage(area) {
         <div class="stat-num">${isAdmin ? leaveRecords.length : myLeaves.length}</div>
         <div class="stat-label">请假记录</div>
       </div>
-      <div class="stat-card" onclick="${isAdmin ? '' : 'showMySubstitutes()'}" style="${isAdmin ? '' : 'cursor:pointer;'}">
+      <div class="stat-card" onclick="${isAdmin ? 'showAdminSubstituteHistory()' : 'showMySubstitutes()'}" style="cursor:pointer;">
         <div class="stat-icon">✅</div>
         <div class="stat-num">${isAdmin ? substituteRecords.length : mySubstitutes.length}</div>
         <div class="stat-label">代课记录</div>
@@ -2566,6 +2594,33 @@ async function deleteSubstituteRecord(id) {
       // 本地刷新
       substituteRecords = substituteRecords.filter(s => s.id !== id);
       switchPage('sub');
+    } else {
+      toast(data.error || '删除失败','error');
+    }
+  } catch (e) {
+    toast('网络错误: ' + e.message,'error');
+  }
+}
+
+// 从弹窗删除代课记录（仅管理员，删除后刷新弹窗）
+async function deleteSubstituteFromModal(id) {
+  if (!isAdmin) { toast('仅管理员可删除','warning'); return; }
+  if (!confirm('确认删除这条代课记录？')) return;
+  try {
+    const r = await fetch('/api/substitutes/delete-one', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd },
+      body: JSON.stringify({ id })
+    });
+    const data = await r.json();
+    if (data.success) {
+      toast('删除成功','success');
+      // 本地刷新
+      substituteRecords = substituteRecords.filter(s => s.id !== id);
+      // 关闭旧弹窗，重新打开刷新后的内容
+      const modal = document.querySelector('.modal-overlay');
+      if (modal) modal.remove();
+      showAdminSubstituteHistory();
     } else {
       toast(data.error || '删除失败','error');
     }
