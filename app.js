@@ -1177,7 +1177,7 @@ function renderHomePage(area) {
       ${isAdmin ? `
       <button class="action-card" onclick="switchPage('sub')">
         <span class="action-icon">✅</span>
-        <span class="action-label">代课记录</span>
+        <span class="action-label">代课安排</span>
       </button>
       <button class="action-card" onclick="switchPage('import')">
         <span class="action-icon">📤</span>
