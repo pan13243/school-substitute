@@ -368,3 +368,41 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
   #club-table-modal .data-table { font-size: 13px; min-width: 520px; }
   #club-table-modal .data-table tbody td { padding: 8px 10px; }
 }
+
+/* 代课安排页教师课表切换标签 */
+.sub-teacher-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #F3F4F6;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.sub-tab-label {
+  font-size: 13px;
+  color: #6B7280;
+  font-weight: 500;
+}
+.sub-tab-btn {
+  padding: 5px 14px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 20px;
+  background: #fff;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.sub-tab-btn:hover {
+  background: #EFF6FF;
+  border-color: #3B82F6;
+  color: #2563EB;
+}
+.sub-tab-btn.active {
+  background: #2563EB;
+  border-color: #2563EB;
+  color: #fff;
+  font-weight: 600;
+}

@@ -2360,9 +2360,19 @@ async function clearAllLeaves() {
 // ══════════════════════════════════════════════════════
 let previewSubstitutes = []; // 预览状态的代课安排
 
+// 代课安排页当前选中的教师（用于课表对比）
+let currentSubTeacher = null;
+
 function renderSubPage(area) {
   const approvedLeaves = leaveRecords.filter(l => l.status === 'approved');
   const pendingCount = approvedLeaves.length;
+  
+  // 方案B：提取所有待安排代课的请假教师（去重）
+  const pendingTeachers = [...new Set(approvedLeaves.map(l => l.teacherName))];
+  // 默认选中第一个
+  if (!currentSubTeacher || !pendingTeachers.includes(currentSubTeacher)) {
+    currentSubTeacher = pendingTeachers[0] || null;
+  }
   
   area.innerHTML = `
   <div class="page">
@@ -2370,6 +2380,16 @@ function renderSubPage(area) {
     <h2 class="page-title">✅ 代课安排</h2>
 
     ${isAdmin ? `
+    ${pendingTeachers.length > 0 ? `
+    <div class="sub-teacher-tabs">
+      <span class="sub-tab-label">待安排教师：</span>
+      ${pendingTeachers.map(t => `
+        <button class="sub-tab-btn ${t === currentSubTeacher ? 'active' : ''}" 
+                onclick="switchSubTeacher('${esc(t)}')">
+          ${esc(t)}
+        </button>`).join('')}
+    </div>` : ''}
+    
     <div class="action-bar">
       ${pendingCount > 0 ? `<span class="pending-badge">${pendingCount} 条请假待安排</span>` : ''}
       <button class="btn btn-primary" onclick="doGenerateSubstitutes()">⚡ 自动生成代课安排</button>
@@ -2381,7 +2401,106 @@ function renderSubPage(area) {
     </div>` : ''}
 
     ${previewSubstitutes.length > 0 ? renderPreviewTable() : renderSubTable()}
+
+    ${isAdmin && !previewSubstitutes.length && currentSubTeacher ? `
+    <div class="card" style="margin-top:16px;">
+      <div class="card-header">
+        <h3>📅 ${esc(currentSubTeacher)} 老师的课表</h3>
+        <span class="preview-hint">点击上方教师标签切换查看</span>
+      </div>
+      <div id="sub-teacher-tt">
+        ${renderTeacherSubTT(currentSubTeacher)}
+      </div>
+    </div>` : ''}
   </div>`;
+}
+
+function switchSubTeacher(teacherName) {
+  currentSubTeacher = teacherName;
+  renderSubPage($('main-content'));
+}
+
+// 渲染指定教师的课表（用于代课安排页课表对比）
+function renderTeacherSubTT(teacherName) {
+  if (!teacherName) return '<p class="text-muted">请从上方选择一位教师</p>';
+  const td = scheduleData || {};
+  const tt = td.timetable || {};
+  const afterSchool = td.afterSchoolService || {};
+  const days = ['星期一','星期二','星期三','星期四','星期五'];
+  const dayOrder = d => days.indexOf(d);
+  const timeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'14:00-14:40', 6:'14:50-15:30' };
+  const fridayTimeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'13:00-13:40', 6:'13:50-14:30', 7:'14:40-15:20', 8:'15:25-16:50' };
+  const getTime = (day, p) => day === '星期五' ? (fridayTimeMap[p] || '—') : (timeMap[p] || '—');
+  const afterSchoolTimeMap = { 7:'15:40-16:20', 8:'16:25-17:05', 9:'17:10-17:50', 10:'19:30-20:30', 11:'13:00-13:50' };
+  const fridayAfterSchoolTimeMap = { 7:'14:40-15:20', 8:'15:25-16:50' };
+  const afterSchoolName = { 7:'课后服务1', 8:'课后服务2', 9:'课后服务3', 10:'晚自习', 11:'午休' };
+  const getAfterSchoolTime = (day, period, fallback) => day === '星期五' ? (fridayAfterSchoolTimeMap[period] || fallback || '—') : (afterSchoolTimeMap[period] || fallback || '—');
+
+  const mySlots = [];
+  for (const [day, classMap] of Object.entries(tt)) {
+    for (const [cn, slots] of Object.entries(classMap)) {
+      for (const s of slots) {
+        if (s.teacher === teacherName) mySlots.push({ day, className: cn, ...s, isAfterSchool: false });
+      }
+    }
+  }
+
+  const myAfterSchoolSlots = [];
+  const assSlots = afterSchool.slots || [];
+  for (const slot of assSlots) {
+    const period = getPeriod(slot.time);
+    if (period >= 7 && slot.assignments) {
+      const assignments = Array.isArray(slot.assignments)
+        ? slot.assignments
+        : Object.entries(slot.assignments).map(([className, data]) => ({ className, ...data }));
+      for (const assign of assignments) {
+        const candidates = [];
+        if (assign.teacher) {
+          assign.teacher.split(/[\n\r,，;；\s　]+/).map(t => t.trim()).filter(t => t).forEach(t => candidates.push({ name: t, week: assign.week || '通用' }));
+        }
+        if (assign.singleWeek) candidates.push({ name: assign.singleWeek, week: '单周' });
+        if (assign.doubleWeek) candidates.push({ name: assign.doubleWeek, week: '双周' });
+        for (const c of candidates) {
+          if (c.name !== teacherName) continue;
+          myAfterSchoolSlots.push({
+            day: slot.day,
+            className: assign.className,
+            period: period,
+            subject: afterSchoolName[period] || slot.project || '课后服务',
+            time: getAfterSchoolTime(slot.day, period, slot.time),
+            isAfterSchool: true,
+            weekType: c.week
+          });
+        }
+      }
+    }
+  }
+
+  const allSlots = [...mySlots, ...myAfterSchoolSlots];
+  if (allSlots.length === 0) return `<p class="text-muted" style="padding:12px">暂无 ${esc(teacherName)} 老师的课表记录</p>`;
+  allSlots.sort((a,b) => dayOrder(a.day) - dayOrder(b.day) || a.period - b.period);
+
+  let html = `<div class="table-wrap"><table class="data-table tt-table">`;
+  html += `<thead><tr><th>星期</th><th>节次</th><th>时间</th><th>班级</th><th>科目</th></tr></thead><tbody>`;
+  allSlots.forEach(s => {
+    const weekTag = s.isAfterSchool && s.weekType !== '通用'
+      ? `<span class="week-tag ${s.weekType === '双周' ? 'week-double' : ''}" style="margin-left:4px;font-size:11px;">${s.weekType}</span>`
+      : '';
+    let subjectLabel = esc(s.subject);
+    if (s.day === '星期五' && s.period === 8 && s.isAfterSchool) {
+      subjectLabel = '特色社团活动';
+    }
+    const actualTime = s.time || getTime(s.day, s.period);
+    html += `<tr>
+      <td>${esc(s.day)}</td>
+      <td>第${s.period}节</td>
+      <td class="time-cell">${actualTime}</td>
+      <td>${esc(s.className)}</td>
+      <td>${subjectLabel}${weekTag}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
 }
 
 function renderPreviewTable() {
