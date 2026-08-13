@@ -617,7 +617,9 @@ async function handleLeaveSlipsPut(request, env) {
 }
 
 async function handleLeaveSlipsDelete(request, env) {
-  if (!await authPrincipal(request.headers, env)) return json({ success: false, error: '校长密码错误' }, 401);
+  const isAdminReq = authAdmin(request.headers);
+  const isPrincipalReq = await authPrincipal(request.headers, env);
+  if (!isAdminReq && !isPrincipalReq) return json({ success: false, error: '无权限删除' }, 401);
   const url = new URL(request.url);
   const id = url.pathname.split('/').pop();
   const slips = await getKV(env, 'leaveSlips') || [];
