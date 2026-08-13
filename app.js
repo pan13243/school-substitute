@@ -2367,7 +2367,11 @@ let previewSubstitutes = []; // 预览状态的代课安排
 let currentSubTeacher = null;
 
 function renderSubPage(area) {
-  const approvedLeaves = leaveRecords.filter(l => l.status === 'approved');
+  // 教师端只看到自己的待安排代课；管理员看全部
+  const currentTeacher = (sessionStorage.getItem('teacherName') || '').trim();
+  const approvedLeaves = isAdmin 
+    ? leaveRecords.filter(l => l.status === 'approved')
+    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher) : []);
   const pendingCount = approvedLeaves.length;
   
   // 方案B：提取所有待安排代课的请假教师（去重）
