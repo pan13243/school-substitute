@@ -34,6 +34,7 @@ function getWeekdayFromDate(dateStr) {
   return weekdays[date.getDay()];
 }
 
+// 以下 3 个函数已废弃，被新 priorityWeight 替代（2026-08-14）
 // 判断教师是否在某班任课（任意科目）
 function teacherInClass(teacher, className, teacherAssignment) {
   const clsSubjects = teacherAssignment?.[className] || {};
@@ -41,6 +42,7 @@ function teacherInClass(teacher, className, teacherAssignment) {
 }
 
 // 获取教师在某班任教的主科（优先级：语文/数学 > 英语 > 科学/道法）
+// 【已废弃】被新 priorityWeight 替代（2026-08-14）
 function getTeacherMainSubject(teacher, className, teacherAssignment) {
   const clsSubjects = teacherAssignment?.[className] || {};
   const subjects = [];
@@ -55,6 +57,7 @@ function getTeacherMainSubject(teacher, className, teacherAssignment) {
 }
 
 // 获取教师任教的最高优先级科目（跨所有班级），用于判断是否为副科老师
+// 【已废弃】被新 priorityWeight 替代（2026-08-14）
 function getTeacherTopSubject(teacher, teacherAssignment) {
   const allSubjects = [];
   for (const cls in teacherAssignment) {
@@ -70,30 +73,41 @@ function getTeacherTopSubject(teacher, teacherAssignment) {
 }
 
 function priorityWeight(teacher, subject, className, teacherAssignment) {
-  const isSameClass = teacherInClass(teacher, className, teacherAssignment);
-
-  if (isSameClass) {
-    // 1级：同班主科互换（语文↔数学）
-    if (MAIN_SUBJECTS.includes(subject)) {
-      const partner = MAIN_SUBJECTS.find(s => s !== subject); // 语文→数学, 数学→语文
-      if (teacherAssignment?.[className]?.[partner] === teacher) return 1;
+  // 判断教师身份：是否教主科（语文/数学/英语/科学/道德与法治）
+  const isMain = (() => {
+    for (const cls in teacherAssignment) {
+      const subs = teacherAssignment[cls] || {};
+      for (const [subj, t] of Object.entries(subs)) {
+        if (t === teacher) {
+          if (['语文','数学','英语','科学','道德与法治','道德'].includes(subj)) return true;
+        }
+      }
     }
-    // 2级：同班英语老师
-    const tMain = getTeacherMainSubject(teacher, className, teacherAssignment);
-    if (tMain && SECONDARY_EARLY.includes(tMain)) return 2;
-    // 3级：同班道法/科学老师
-    if (tMain && SECONDARY_LATE.includes(tMain)) return 3;
-    // 4级：同班其他副科老师
+    return false;
+  })();
+
+  // 判断是否同班
+  const inSameClass = (() => {
+    const subs = teacherAssignment?.[className] || {};
+    return Object.values(subs).includes(teacher);
+  })();
+
+  if (inSameClass) {
+    // 同班语文或数学老师 → 1档
+    if (['语文','数学'].includes(subject)) return 1;
+    // 同班英语老师 → 2档
+    if (subject === '英语') return 2;
+    // 同班科学或道德与法治老师 → 3档
+    if (['科学','道德与法治','道德'].includes(subject)) return 3;
+    // 同班副科老师（多科目老师身份但在同班教副科）→ 4档
     return 4;
   }
 
-  // 5级：其他班的副科老师（主科/英语/道法/科学不跨班代课）
-  const topSubj = getTeacherTopSubject(teacher, teacherAssignment);
-  if (topSubj && SIDE_SUBJECTS.includes(topSubj)) return 5;
-  // 其他班的主科/英语/道法科学老师不参与跨班代课
+  // 跨班：只允许副科老师（非主科身份）→ 5档
+  if (!isMain) return 5;
+  // 主科老师不跨班 → 不安排
   return 99;
 }
-
 function buildTeacherSchedule(timetable) {
   const ts = {};
   const allClasses = new Set();
@@ -124,7 +138,7 @@ function findSubstitute({ leaveTeacher, className, subject, day, period, teacher
     if (occupiedSlots && occupiedSlots[slotKey] && occupiedSlots[slotKey].has(t)) continue;
     const daySlots = Object.keys(schedule).filter(k => k.startsWith(day + '_'));
     const weight = priorityWeight(t, subject, className, teacherAssignment);
-    if (weight >= 99) continue; // 排除其他班的主科/英语/道法科学老师
+    if (weight >= 99) continue; // weight=99 为主科老师跨班，不安排
     candidates.push({ teacher: t, weight, workload: daySlots.length });
   }
   candidates.sort((a, b) => a.weight - b.weight || a.workload - b.workload);
