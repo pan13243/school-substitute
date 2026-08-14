@@ -1189,13 +1189,8 @@ function renderAppShell() {
         <div class="sidebar-section">
           <div class="sidebar-section-title">📋 功能菜单</div>
           <button class="nav-btn" data-page="home"    onclick="switchPage('home')">🏠 首页</button>
-          <button class="nav-btn" data-page="tt"      onclick="switchPage('tt')">📅 课表查询</button>
-          <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记${leaveBadge}</button>
-          <button class="nav-btn" data-page="sub"     onclick="switchPage('sub')">✅ 代课记录${subBadge}</button>
-          ${principalAuthed ? `<button class="nav-btn" data-page="principal" onclick="switchPage('principal')">✍️ 校长审批${principalBadge}</button>` : ''}
           ${isAdmin ? `
           <div class="sidebar-section-title" style="margin-top:16px">⚙️ 管理员</div>
-          <button class="nav-btn" data-page="import"  onclick="switchPage('import')">📤 导入课表</button>
           <button class="nav-btn" data-page="slip"    onclick="switchPage('slip')">📄 请假条管理</button>
           <button class="nav-btn" data-page="settings" onclick="switchPage('settings')">🔔 通知设置</button>
           ` : ''}
