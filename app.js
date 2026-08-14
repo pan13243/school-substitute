@@ -2660,9 +2660,9 @@ function renderSubTable() {
   // 教师端：只显示与自己相关的代课（自己请假被代课，或自己代别人的课）
   const myTeacherName = (sessionStorage.getItem('teacherName') || '').trim();
   let displaySubs = isAdmin 
-    ? substituteRecords 
+    ? [] // 管理员端不显示已安排代课（在首页"代课记录"卡片查看）
     : (myTeacherName ? substituteRecords.filter(s => s.leaveTeacher === myTeacherName || s.substituteTeacher === myTeacherName) : []);
-  
+
   // 去重：同一天同节次同班级只显示一条
   const seen = new Set();
   displaySubs = displaySubs.filter(s => {
@@ -2671,12 +2671,12 @@ function renderSubTable() {
     seen.add(key);
     return true;
   });
-  
+
   if (displaySubs.length === 0) {
     return `
     <div class="empty-state">
       <div class="empty-icon">📋</div>
-      <h3>暂无代课安排</h3>
+      <h3>暂无待安排代课</h3>
       <p>${isAdmin ? '请先登记请假，再点击"自动生成代课安排"' : '请等候管理员安排代课'}</p>
     </div>`;
   }
