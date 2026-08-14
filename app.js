@@ -1336,17 +1336,9 @@ function renderTimetablePage(area) {
   const cls = td.classes  || [];
   const myName = sessionStorage.getItem('teacherName') || '';
 
-  // 切换视图：班级/教师
-  const mySlots = [];
-  if (myName && tt.星期一) {
-    for (const [day, classMap] of Object.entries(tt)) {
-      for (const [cn, slots] of Object.entries(classMap)) {
-        for (const s of slots) {
-          if (s.teacher === myName) mySlots.push({ day, className: cn, ...s });
-        }
-      }
-    }
-  }
+  // 管理员端：Tab 2 改为「按教师查看」；教师端：保持「我的课表」
+  const tab2Label = isAdmin ? '按教师查看' : '我的课表';
+  const tab2Disabled = isAdmin ? false : !myName; // 管理员不disabled，教师没 myName 才 disabled
 
   area.innerHTML = `
   <div class="page">
@@ -1355,7 +1347,7 @@ function renderTimetablePage(area) {
 
     <div class="view-toggle">
       <button class="tab-btn active" onclick="setTTView('class',this)">按班级查看</button>
-      <button class="tab-btn" onclick="setTTView('my',this)" ${!myName?'disabled':''}>我的课表</button>
+      <button class="tab-btn" onclick="setTTView('my',this)" ${tab2Disabled?'disabled':''}>${tab2Label}</button>
     </div>
 
     <div id="tt-class-view">
@@ -1369,11 +1361,19 @@ function renderTimetablePage(area) {
       <div id="tt-class-content"></div>
     </div>
 
-    ${myName ? `
     <div id="tt-my-view" style="display:none">
-      <h3>👤 ${esc(myName)} 老师的课表</h3>
+      ${isAdmin ? `
+      <div class="form-row" style="position:relative;">
+        <label>教师姓名：</label>
+        <input type="text" id="tt-teacher-input" class="form-input" 
+               placeholder="输入教师姓名..." 
+               oninput="onTeacherNameInput(this.value)"
+               onblur="onTeacherNameBlur()"
+               style="width:200px;">
+        <div id="tt-teacher-suggest" class="suggest-list" style="display:none;"></div>
+      </div>` : (myName ? `<h3>👤 ${esc(myName)} 老师的课表</h3>` : '')}
       <div id="tt-my-content"></div>
-    </div>` : ''}
+    </div>
   </div>`;
 }
 
@@ -1385,8 +1385,48 @@ function setTTView(v, btn) {
   btn.classList.add('active');
   $('tt-class-view').style.display  = v === 'class' ? 'block' : 'none';
   $('tt-my-view').style.display     = v === 'my'    ? 'block' : 'none';
-  if (v === 'my') renderTTMy();
-  else renderTTClass();
+  if (v === 'my') {
+    // 管理员不传参，等用户输入；教师直接传 myName
+    const myName = sessionStorage.getItem('teacherName') || '';
+    if (!isAdmin && myName) renderTTMy(myName);
+  } else renderTTClass();
+}
+
+// 教师姓名输入模糊匹配（管理员端课表查询）
+let ttTeacherInputTimer = null;
+function onTeacherNameInput(val) {
+  clearTimeout(ttTeacherInputTimer);
+  ttTeacherInputTimer = setTimeout(() => {
+    const suggest = $('tt-teacher-suggest');
+    if (!suggest) return;
+    val = val.trim();
+    if (!val) { suggest.style.display = 'none'; return; }
+    const teas = scheduleData?.allTeachers || [];
+    const matches = teas.filter(t => t.includes(val)).slice(0, 8); // 最多显示 8 条
+    if (matches.length === 0) {
+      suggest.innerHTML = '<div class="suggest-item" style="color:#9CA3AF;">未找到匹配教师</div>';
+      suggest.style.display = 'block';
+      return;
+    }
+    suggest.innerHTML = matches.map(t => `<div class="suggest-item" onclick="pickTeacherName('${esc(t)}')">${esc(t)}</div>`).join('');
+    suggest.style.display = 'block';
+  }, 150);
+}
+
+function onTeacherNameBlur() {
+  // 延迟隐藏，让 onclick 事件能触发
+  setTimeout(() => {
+    const suggest = $('tt-teacher-suggest');
+    if (suggest) suggest.style.display = 'none';
+  }, 200);
+}
+
+function pickTeacherName(name) {
+  const input = $('tt-teacher-input');
+  if (input) input.value = name;
+  const suggest = $('tt-teacher-suggest');
+  if (suggest) suggest.style.display = 'none';
+  renderTTMy(name);
 }
 
 function renderTTClass() {
@@ -1559,13 +1599,15 @@ function renderTTClass() {
   area.innerHTML = html;
 }
 
-function renderTTMy() {
+function renderTTMy(teacherName) {
   const td = scheduleData || {};
   const tt = td.timetable || {};
   const afterSchool = td.afterSchoolService || {};
-  const myName = sessionStorage.getItem('teacherName') || '';
+  // 管理员传参；教师用 sessionStorage
+  const myName = teacherName || sessionStorage.getItem('teacherName') || '';
   const area = $('tt-my-content');
   if (!area) return;
+  if (!myName) { area.innerHTML = '<p class="text-muted">请输入教师姓名</p>'; return; }
 
   // 顶部工具条：「社团活动」按钮
   const toolbar = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">

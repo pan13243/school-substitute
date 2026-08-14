@@ -406,3 +406,29 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
   color: #fff;
   font-weight: 600;
 }
+
+/* 教师姓名模糊匹配下拉建议 */
+.suggest-list {
+  position: absolute;
+  top: 100%;
+  left: 80px;
+  z-index: 1000;
+  min-width: 200px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  margin-top: 4px;
+}
+.suggest-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+}
+.suggest-item:hover {
+  background: #EFF6FF;
+  color: #2563EB;
+}
