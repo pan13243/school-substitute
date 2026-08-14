@@ -762,8 +762,14 @@ async function handleSubstitutesSave(request, env) {
   const body = await request.json().catch(() => ({}));
   const { data } = body;
   if (!Array.isArray(data)) return json({ success: false, error: '数据格式错误' }, 400);
-  await putKV(env, 'substitutes', data);
-  return json({ success: true, message: '保存成功', count: data.length });
+  // 按 leaveId 去重追加：同 leaveId 的新方案覆盖旧的，不同 leaveId 的保留
+  // 修复前端“整份覆盖”导致历史代课记录丢失的问题
+  const existing = await getKV(env, 'substitutes') || [];
+  const previewLeaveIds = new Set(data.map(s => s.leaveId).filter(Boolean));
+  const existingKept = existing.filter(s => !previewLeaveIds.has(s.leaveId));
+  const merged = [...existingKept, ...data];
+  await putKV(env, 'substitutes', merged);
+  return json({ success: true, message: '保存成功', count: merged.length });
 }
 
 // 删除单条代课记录
