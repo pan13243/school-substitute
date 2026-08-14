@@ -672,7 +672,7 @@ window.saveSigToLib = function(btn, scope, canvasId) {
 };
 
 // 教师提交请假条弹窗（事假/病假）
-function showLeaveSlipModal({ leaveIds, teacherName, reason, startDate, endDate }) {
+function showLeaveSlipModal({ leaveIds, teacherName, leaveType, reason, startDate, endDate }) {
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
   modal.innerHTML = `
@@ -686,6 +686,10 @@ function showLeaveSlipModal({ leaveIds, teacherName, reason, startDate, endDate 
           <div class="form-group" style="grid-column:1/-1">
             <label>教师姓名</label>
             <input type="text" id="slip-teacher" value="${esc(teacherName)}" readonly class="form-input" style="background:#F3F4F6;">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>假别</label>
+            <input type="text" id="slip-leave-type" value="${esc(leaveType||'')}" readonly class="form-input" style="background:#F3F4F6;">
           </div>
           <div class="form-group" style="grid-column:1/-1">
             <label>请假事由 *</label>
@@ -740,7 +744,7 @@ function showLeaveSlipModal({ leaveIds, teacherName, reason, startDate, endDate 
       const r = await fetch('/api/leave-slips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leaveIds, teacherName, reason: reasonV, startDate: startV, endDate: endV, signature: sig })
+        body: JSON.stringify({ leaveIds, teacherName, leaveType: leaveType, reason: reasonV, startDate: startV, endDate: endV, signature: sig })
       });
       const j = await r.json();
       if (j.success) {
@@ -2028,7 +2032,7 @@ async function submitLeave(e) {
     if (PRINCIPAL_REVIEW_TYPES.includes(leaveKind) && submittedIds.length > 0) {
       const startDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('startDate');
       const endDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('endDate');
-      showLeaveSlipModal({ leaveIds: submittedIds, teacherName, reason, startDate, endDate });
+      showLeaveSlipModal({ leaveIds: submittedIds, teacherName, leaveType: leaveKind, reason, startDate, endDate });
     }
   } else {
     toast(skipCount + dupCount > 0 ? '所有请假记录均已存在，未重复提交' : '提交失败', 'error');
