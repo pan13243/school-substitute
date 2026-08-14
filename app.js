@@ -4255,11 +4255,11 @@ function showSlipPrintModal(slipId) {
           </tr>
           <tr>
             <td style="padding:6px 10px;"><b>审批：</b></td>
-            <td style="padding:6px 10px; border-bottom:1px solid #333;">${slip.status==='approved'?'已批准':slip.status==='rejected'?'已拒绝':'待审批'}</td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${slip.status==='approved' || slip.status==='rejected' ? (esc(slip.principalName || '校长') + (slip.status==='approved' ? ' ✓ 同意' : ' ✗ 拒绝')) : '待审批'}</td>
           </tr>
           <tr>
             <td style="padding:6px 10px;"><b>审批时间：</b></td>
-            <td style="padding:6px 10px; border-bottom:1px solid #333;">${slip.status==='approved'||slip.status==='rejected' ? new Date(slip.updatedAt||slip.createdAt).toLocaleString('zh-CN',{hour12:false}) : '—'}</td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${slip.principalSignedAt ? new Date(slip.principalSignedAt).toLocaleString('zh-CN',{hour12:false}) : '—'}</td>
           </tr>
           <tr>
             <td style="padding:6px 10px;"><b>教师签字：</b></td>
