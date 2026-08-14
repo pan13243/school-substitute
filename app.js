@@ -2625,9 +2625,11 @@ function renderSubTable() {
   // 优先显示已批准但未安排代课的请假
   // 教师端只看到自己的；管理员看全部
   const currentTeacher = (sessionStorage.getItem('teacherName') || '').trim();
+  // 已安排过的请假 leaveId 集合（去重）——同 leaveId 的代课任一存在即视为已安排
+  const arrangedLeaveIds = new Set(substituteRecords.map(s => s.leaveId).filter(Boolean));
   const approvedLeaves = isAdmin 
-    ? leaveRecords.filter(l => l.status === 'approved')
-    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher) : []);
+    ? leaveRecords.filter(l => l.status === 'approved' && !arrangedLeaveIds.has(l.id))
+    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher && !arrangedLeaveIds.has(l.id)) : []);
   
   if (approvedLeaves.length > 0) {
     return `
