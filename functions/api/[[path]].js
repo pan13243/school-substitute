@@ -8,7 +8,8 @@ const MAIN_SUBJECTS = ['语文', '数学'];
 const SECONDARY_EARLY = ['英语'];
 const SECONDARY_LATE = ['道德与法治', '道德', '科学'];
 const SIDE_SUBJECTS = ['音乐', '美术', '体育', '信息技术', '综合实践', '劳动', '校本课程', '书法'];
-const ADMIN_TEACHERS = ['龙燕', '龙光辉', '潘懂平'];
+// ADMIN_TEACHERS 已移除，代课候选不再排除龙燕/龙光辉/潘懂平（2026-08-14）
+// const ADMIN_TEACHERS = ['龙燕', '龙光辉', '潘懂平'];
 
 const DAY_MAP = {
   '周一': '星期一', '1': '星期一', '星期一': '星期一',
@@ -115,7 +116,7 @@ function findSubstitute({ leaveTeacher, className, subject, day, period, teacher
   const candidates = [];
   for (const [t, schedule] of Object.entries(teacherSchedule)) {
     if (t === leaveTeacher) continue;
-    if (ADMIN_TEACHERS.includes(t)) continue;
+    // ADMIN_TEACHERS 限制已移除，任何老师均可参与代课排序（2026-08-14）
     // 【请假排除】当天已有请假记录的教师不能安排代课
     if (absentTeachers && absentTeachers.has(t)) continue;
     // 【时段占用】该时段有正课或课后服务值班的教师不能安排

@@ -9,8 +9,8 @@ export const SECONDARY_EARLY  = ['英语'];                   // 3=英语
 export const SECONDARY_LATE   = ['道德与法治', '道德', '科学']; // 4=道法 5=科学
 export const SIDE_SUBJECTS    = ['音乐', '美术', '体育', '信息技术', '劳动', '健康', '阅读', '书法']; // 6
 
-// 特殊身份教师（不自动安排代课）
-export const ADMIN_TEACHERS   = ['龙燕', '龙光辉', '潘懂平'];
+// ADMIN_TEACHERS 已移除（2026-08-14）：任何老师均可参与代课排序
+// export const ADMIN_TEACHERS = ['龙燕', '龙光辉', '潘懂平'];
 
 // 宽松模式：跨班支援教师
 const LOOSE_MODE_TEACHERS = [];
@@ -89,7 +89,7 @@ export function findSubstitute(leaveTeacher, leaveDate, slot, teacherSchedule,
   const candidates = allTeachers
     .filter(t => {
       if (t === leaveTeacher) return false;
-      if (ADMIN_TEACHERS.includes(t)) return false;
+      // ADMIN_TEACHERS 限制已移除，任何老师均可参与（2026-08-14）
       if (t in teacherSchedule && slotKey in teacherSchedule[t]) return false;
       const daySub = (existingSubs[t] || 0) + tempSchedule.filter(
         s => s.teacher === t && s.date === leaveDate).length;
