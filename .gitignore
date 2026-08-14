@@ -5,3 +5,13 @@ package-lock.json
 .DS_Store
 *.xlsx
 *.xls
+
+#调试脚本（工作区临时文件）
+__patch.*
+add_slip_page.*
+find_arrange.*
+fix_admin_name.*
+patch_*.mjs
+*.ps1
+wrangler.toml.deleted
+*.deleted
