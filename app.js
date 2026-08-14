@@ -1304,6 +1304,10 @@ function renderHomePage(area) {
         <span class="action-icon">✅</span>
         <span class="action-label">代课安排</span>
       </button>
+      <button class="action-card" onclick="switchPage('slip')">
+        <span class="action-icon">📄</span>
+        <span class="action-label">请假条管理</span>
+      </button>
       <button class="action-card" onclick="switchPage('import')">
         <span class="action-icon">📤</span>
         <span class="action-label">导入课表</span>
