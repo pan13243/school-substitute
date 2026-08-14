@@ -1763,6 +1763,8 @@ function renderLeavePage(area) {
               <option value="婚假">婚假</option>
               <option value="丧假">丧假</option>
               <option value="公假">公假</option>
+              <option value="育儿假">育儿假</option>
+              <option value="产检假">产检假</option>
               <option value="其他">其他</option>
             </select>
             <p style="margin:4px 0 0; font-size:12px; color:#6B7280;">事假/病假需填写请假条并经校长手写签字审批后，方可安排代课</p>
@@ -4245,7 +4247,7 @@ function showSlipPrintModal(slipId) {
           </tr>
           <tr>
             <td style="padding:6px 10px;"><b>假别：</b></td>
-            <td style="padding:6px 10px; border-bottom:1px solid #333;">${esc(slip.leaveType || slip.reason)}</td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${esc(slip.leaveType || slip.reason || '其他')}</td>
           </tr>
           <tr>
             <td style="padding:6px 10px; vertical-align:top;"><b>请假事由：</b></td>
