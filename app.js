@@ -503,7 +503,7 @@ function initSignaturePad(canvas) {
   canvas.addEventListener('touchmove', move, { passive: false });
   canvas.addEventListener('touchend', stop);
   
-  return {
+  const sigPad = {
     getDataUrl: () => hasInk ? canvas.toDataURL('image/png') : '',
     clear: () => {
       ctx.setTransform(1, 0, 0, 1, 1, 1);
@@ -511,8 +511,12 @@ function initSignaturePad(canvas) {
       ctx.scale(dpr, dpr);
       hasInk = false;
     },
-    isEmpty: () => !hasInk
+    isEmpty: () => !hasInk,
+    setInk: (value) => { hasInk = !!value; },
+    paint: (dataUrl) => paintSignatureOnCanvas(canvas, dataUrl)
   };
+  canvas._sigPad = sigPad; // 暴露引用供外部调用
+  return sigPad;
 }
 
 // ══════════════════════════════════════════════════════
@@ -607,16 +611,8 @@ window.onPickSavedSig = function(scope, id) {
   const canvas = document.querySelector('.modal-overlay canvas#slip-canvas') || document.querySelector('.modal-overlay canvas#principal-canvas');
   if (!canvas) return;
   paintSignatureOnCanvas(canvas, entry.dataUrl);
-  // 设置 hasInk 状态 - 重走 initSignaturePad 的事件不现实，直接手动重描后再主动打个点
-  // 解决办法：利用 toDataUrl 反向: 重新赋后调画板内部状态 - 但我们没引用。这里改用重新初始化不能采用。
-  // 简化方案：使用派发事件 hack - 在 canvas 上模拟画一笔以唤醒 hasInk
-  // 为了兼容，我们修改 initSignaturePad 返回的 isEmpty 由 hasInk 控制，但外层拿不到引用。
-  // 因此重设方案：用 dispatchEvent mousemove 不行。更佳：再提供外部 setInk API。
-  // 这里采取一次性手动派发 mousedown+mouseup，迫使画板标记 hasInk
-  const rect = canvas.getBoundingClientRect();
-  const evtInit = { bubbles: true, clientX: rect.left + 2, clientY: rect.top + 2 };
-  canvas.dispatchEvent(new MouseEvent('mousedown', evtInit));
-  window.dispatchEvent(new MouseEvent('mouseup', evtInit));
+  // 直接设置 hasInk，不再依赖事件模拟（修复小概率浏览器不响应导致“请先签名”误报）
+  if (canvas._sigPad) canvas._sigPad.setInk(true);
   toast('✓ 已加载签名：“' + entry.name + '”', 'success');
 };
 
