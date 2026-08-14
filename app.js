@@ -2646,8 +2646,11 @@ async function confirmSubstitutes() {
     toast('没有可确认的方案', 'warning');
     return;
   }
-  // 保存到正式记录
-  substituteRecords = [...previewSubstitutes];
+  // 按 leaveId 去重追加：同 leaveId 的代课替换旧的，不同的保留
+  // 修复：原“整份覆盖”逻辑导致后续确认会抹掉之前的代课记录
+  const previewLeaveIds = new Set(previewSubstitutes.map(s => s.leaveId).filter(Boolean));
+  const existingKept = substituteRecords.filter(s => !previewLeaveIds.has(s.leaveId));
+  substituteRecords = [...existingKept, ...previewSubstitutes];
   previewSubstitutes = [];
   // 调用API保存
   const r = await API.saveSubstitutes(substituteRecords);
