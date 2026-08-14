@@ -4222,34 +4222,58 @@ function showSlipPrintModal(slipId) {
         <h3 style="margin:0; font-size:16px;">🖨️ 请假条预览</h3>
         <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
       </div>
-      <div id="slip-print-area" style="padding:28px; background:${bg}; position:relative;">
+      <div id="slip-print-area" style="padding:28px; background:#fff; position:relative;">
         ${stampEl}
-        <div style="text-align:center; margin-bottom:16px;">
-          <div style="font-size:22px; font-weight:700; letter-spacing:4px;">请假条</div>
-          <div style="font-size:13px; color:#6B7280; margin-top:4px;">施秉县双井镇中心小学</div>
+        <div style="text-align:center; margin-bottom:20px;">
+          <div style="font-size:24px; font-weight:700; letter-spacing:6px;">请假条</div>
+          <div style="font-size:13px; color:#6B7280; margin-top:6px;">施秉县双井镇中心小学</div>
         </div>
-        <table style="width:100%; border-collapse:collapse; font-size:14px; background:#fff;">
-          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6; width:85px;">请假教师</td><td style="border:1px solid #333; padding:8px 10px;">${esc(slip.teacherName)}</td></tr>
-          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6;">请假类型</td><td style="border:1px solid #333; padding:8px 10px;">${esc(slip.reason)}</td></tr>
-          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6;">开始时间</td><td style="border:1px solid #333; padding:8px 10px;">${fmtDate(slip.startDate)}</td></tr>
-          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6;">结束时间</td><td style="border:1px solid #333; padding:8px 10px;">${fmtDate(slip.endDate)}</td></tr>
-          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6;">请假天数</td><td style="border:1px solid #333; padding:8px 10px;">1天</td></tr>
-          <tr><td style="border:1px solid #333; padding:8px 10px; background:#F3F4F6; vertical-align:top;">请假事由</td><td style="border:1px solid #333; padding:8px 10px; height:56px;">${esc(slip.reason)}</td></tr>
+        <table style="width:100%; border-collapse:collapse; font-size:15px; line-height:2;">
+          <tr>
+            <td style="padding:6px 10px; width:100px;"><b>教师姓名：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${esc(slip.teacherName)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><b>请假类型：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${esc(slip.leaveType || slip.reason)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px; vertical-align:top;"><b>请假事由：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333; height:52px; vertical-align:top;">${esc(slip.reason)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><b>开始时间：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${fmtDate(slip.startDate)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><b>结束时间：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${fmtDate(slip.endDate)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><b>提交时间：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${new Date(slip.createdAt).toLocaleString('zh-CN',{hour12:false})}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><b>审批：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${slip.status==='approved'?'已批准':slip.status==='rejected'?'已拒绝':'待审批'}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><b>审批时间：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${slip.status==='approved'||slip.status==='rejected' ? new Date(slip.updatedAt||slip.createdAt).toLocaleString('zh-CN',{hour12:false}) : '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><b>教师签字：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">
+              ${slip.teacherSignature ? '<img src="'+slip.teacherSignature+'" style="max-height:40px; max-width:160px; object-fit:contain; vertical-align:middle;"/>' : ''}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><b>校长签字：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">
+              ${slip.principalSignature ? '<img src="'+slip.principalSignature+'" style="max-height:40px; max-width:160px; object-fit:contain; vertical-align:middle;"/>' : ''}
+            </td>
+          </tr>
         </table>
-        <div style="margin-top:16px; display:flex; gap:24px; align-items:flex-end;">
-          <div style="text-align:center;">
-            ${slip.teacherSignature ? '<img src="'+slip.teacherSignature+'" style="border-bottom:1px solid #333; width:110px; height:52px; object-fit:contain; display:block;"/>' : '<div style="border-bottom:1px solid #333; width:110px; height:52px;"></div>'}
-            <div style="font-size:12px; color:#6B7280; margin-top:2px;">教师签字</div>
-          </div>
-          <div style="flex:1;"></div>
-          <div style="text-align:center;">
-            ${slip.principalSignature ? '<img src="'+slip.principalSignature+'" style="border-bottom:1px solid #333; width:110px; height:52px; object-fit:contain; display:block;"/>' : '<div style="border-bottom:1px solid #333; width:110px; height:52px;"></div>'}
-            <div style="font-size:12px; color:#6B7280; margin-top:2px;">校长签字</div>
-          </div>
-        </div>
-        <div style="margin-top:12px; font-size:11px; color:#9CA3AF; text-align:right;">
-          提交时间：${new Date(slip.createdAt).toLocaleString('zh-CN',{hour12:false})}
-        </div>
       </div>
       <div style="padding:12px 20px; border-top:1px solid #E5E7EB; text-align:center;">
         <button onclick="printSlipContent()" style="padding:10px 36px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:15px; font-weight:600;">🖨️ 打印</button>
@@ -4263,8 +4287,8 @@ function printSlipContent() {
   const area = document.getElementById('slip-print-area');
   if (!area) return;
   const html = area.innerHTML;
-  const w = window.open('', '_blank', 'width=680,height=800');
-  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>请假条</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:"SimSun","宋体",serif;padding:24px;}table{width:100%;border-collapse:collapse;}td{border:1px solid #333;padding:8px 10px;font-size:14px;}img{max-width:110px;}</style></head><body>' + html + '</body></html>');
+  const w = window.open('', '_blank', 'width=680,height=900');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>请假条</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:"SimSun","宋体",serif;padding:32px 36px;font-size:15px;line-height:2;background:#fff;}table{width:100%;border-collapse:collapse;}td{padding:6px 10px;vertical-align:top;}b{display:inline-block;width:90px;}img{max-height:40px;max-width:160px;object-fit:contain;vertical-align:middle;}@media print{body{padding:0;}}</style></head><body>' + html + '</body></html>');
   w.document.close();
   w.onload = () => { w.focus(); w.print(); };
 }
