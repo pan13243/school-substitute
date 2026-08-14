@@ -73,39 +73,47 @@ function getTeacherTopSubject(teacher, teacherAssignment) {
 }
 
 function priorityWeight(teacher, subject, className, teacherAssignment) {
-  // 判断教师身份：是否教主科（语文/数学/英语/科学/道德与法治）
-  const isMain = (() => {
+  // 去代课老师在同班的所有任教科目
+  const inClassSubjects = (() => {
+    const subs = teacherAssignment?.[className] || {};
+    const result = [];
+    for (const [subj, t] of Object.entries(subs)) {
+      if (t === teacher) result.push(subj);
+    }
+    return result;
+  })();
+
+  // 去代课老师在所有班的所有任教科目
+  const allSubjects = (() => {
+    const result = [];
     for (const cls in teacherAssignment) {
       const subs = teacherAssignment[cls] || {};
       for (const [subj, t] of Object.entries(subs)) {
-        if (t === teacher) {
-          if (['语文','数学','英语','科学','道德与法治','道德'].includes(subj)) return true;
-        }
+        if (t === teacher) result.push(subj);
       }
     }
-    return false;
+    return result;
   })();
 
-  // 判断是否同班
-  const inSameClass = (() => {
-    const subs = teacherAssignment?.[className] || {};
-    return Object.values(subs).includes(teacher);
-  })();
+  // 在同班吗？
+  const inSameClass = inClassSubjects.length > 0;
 
   if (inSameClass) {
-    // 同班语文或数学老师 → 1档
-    if (['语文','数学'].includes(subject)) return 1;
-    // 同班英语老师 → 2档
-    if (subject === '英语') return 2;
-    // 同班科学或道德与法治老师 → 3档
-    if (['科学','道德与法治','道德'].includes(subject)) return 3;
-    // 同班副科老师（多科目老师身份但在同班教副科）→ 4档
+    // 1档：同班 + 该班教语文或数学
+    if (inClassSubjects.some(s => ['语文','数学'].includes(s))) return 1;
+    // 2档：同班 + 该班教英语
+    if (inClassSubjects.includes('英语')) return 2;
+    // 3档：同班 + 该班教科学或道德与法治
+    if (inClassSubjects.some(s => ['科学','道德与法治','道德'].includes(s))) return 3;
+    // 4档：同班 + 只教副科
     return 4;
   }
 
-  // 跨班：只允许副科老师（非主科身份）→ 5档
+  // 跨班：判断去代课老师跨班身份
+  const isMain = allSubjects.some(s => ['语文','数学','英语','科学','道德与法治','道德'].includes(s));
+  // 5档：跨班 + 副科身份
   if (!isMain) return 5;
-  // 主科老师不跨班 → 不安排
+  // 99：跨班 + 主科身份（不安排）
   return 99;
 }
 function buildTeacherSchedule(timetable) {
