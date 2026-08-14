@@ -4240,7 +4240,7 @@ function showSlipPrintModal(slipId) {
             <td style="padding:6px 10px; border-bottom:1px solid #333;">${esc(slip.teacherName)}</td>
           </tr>
           <tr>
-            <td style="padding:6px 10px;"><b>请假类型：</b></td>
+            <td style="padding:6px 10px;"><b>假别：</b></td>
             <td style="padding:6px 10px; border-bottom:1px solid #333;">${esc(slip.leaveType || slip.reason)}</td>
           </tr>
           <tr>
