@@ -2376,11 +2376,10 @@ function showPrincipalApproveModal(slipId) {
   const pad = initSignaturePad(canvas);
   modal.querySelector('#principal-clear').onclick = () => pad.clear();
   const msgEl = modal.querySelector('#principal-msg');
-  const pname = modal.querySelector('#principal-name-input')?.value.trim();
-  if (!pname) { msgEl.textContent = '请输入审批人姓名'; return; }
-
-  
   async function submit(action) {
+    const pname = modal.querySelector('#principal-name-input')?.value.trim();
+    if (!pname) { msgEl.textContent = '请输入审批人姓名'; return; }
+
     const sig = action === 'approve' ? pad.getDataUrl() : '';
     if (action === 'approve' && pad.isEmpty()) { msgEl.textContent = '请先手写签字'; return; }
     const btn = modal.querySelector(action === 'approve' ? '#principal-approve' : '#principal-reject');
