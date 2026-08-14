@@ -4254,7 +4254,7 @@ function showSlipPrintModal(slipId) {
             <td style="padding:6px 10px; border-bottom:1px solid #333;">${new Date(slip.createdAt).toLocaleString('zh-CN',{hour12:false})}</td>
           </tr>
           <tr>
-            <td style="padding:6px 10px;"><b>审批：</b></td>
+            <td style="padding:6px 10px;"><b>审批人：</b></td>
             <td style="padding:6px 10px; border-bottom:1px solid #333;">${slip.status==='approved' || slip.status==='rejected' ? (esc(slip.principalName || '校长') + (slip.status==='approved' ? ' ✓ 同意' : ' ✗ 拒绝')) : '待审批'}</td>
           </tr>
           <tr>
