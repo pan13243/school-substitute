@@ -2356,6 +2356,10 @@ function showPrincipalApproveModal(slipId) {
             <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="toggleSigPicker(this,'principal')">📂 选择签名</button>
             <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="saveSigToLib(this,'principal','principal-canvas')">💾 保存到签名库</button>
           </div>
+          <div style="margin-top:10px;">
+            <label style="font-size:13px; color:#374151; margin-bottom:4px; display:block;">审批人姓名 *</label>
+            <input id="principal-name-input" type="text" class="form-input" placeholder="请输入审批人姓名" style="width:100%;" required>
+          </div>
         </div>
         <p id="principal-msg" style="color:#DC2626; font-size:13px; min-height:18px; margin:8px 0 0;"></p>
       </div>
@@ -2372,6 +2376,9 @@ function showPrincipalApproveModal(slipId) {
   const pad = initSignaturePad(canvas);
   modal.querySelector('#principal-clear').onclick = () => pad.clear();
   const msgEl = modal.querySelector('#principal-msg');
+  const pname = modal.querySelector('#principal-name-input')?.value.trim();
+  if (!pname) { msgEl.textContent = '请输入审批人姓名'; return; }
+
   
   async function submit(action) {
     const sig = action === 'approve' ? pad.getDataUrl() : '';
@@ -2382,7 +2389,7 @@ function showPrincipalApproveModal(slipId) {
       const r = await fetch(`/api/leave-slips/${slip.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-principal-pwd': principalPwd },
-        body: JSON.stringify({ action, signature: sig, principalName: '校长' })
+        body: JSON.stringify({ action, signature: sig, principalName: (modal.querySelector('#principal-name-input')?.value.trim() || '审批人') })
       });
       const j = await r.json();
       if (j.success) {
