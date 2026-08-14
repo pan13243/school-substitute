@@ -2331,7 +2331,7 @@ function showPrincipalApproveModal(slipId) {
   modal.innerHTML = `
     <div style="background:#fff; border-radius:12px; max-width:560px; width:100%; max-height:88vh; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
       <div style="padding:16px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
-        <h3 style="margin:0; font-size:16px; font-weight:600;">✍️ 请假条审批</h3>
+        <h3 style="margin:0; font-size:16px; font-weight:600;">✍️ 请假条 - 审批人签字</h3>
         <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
       </div>
       <div style="padding:20px; overflow-y:auto; max-height:70vh;">
@@ -2347,7 +2347,7 @@ function showPrincipalApproveModal(slipId) {
           <img src="${slip.teacherSignature}" style="max-height:80px; border:1px solid #E5E7EB; border-radius:6px; background:#fff; padding:4px;">
         </div>` : ''}
         <div class="form-group">
-          <label>校长签字 *（请用鼠标/手指签名）</label>
+          <label>审批人签字 *（请用鼠标/手指签名）</label>
           <div style="border:2px dashed #CBD5E1; border-radius:8px; overflow:hidden; background:#FAFAFA;">
             <canvas id="principal-canvas" style="width:100%; height:140px; display:block; touch-action:none; cursor:crosshair;"></canvas>
           </div>
