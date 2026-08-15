@@ -1344,9 +1344,9 @@ function renderTimetablePage(area) {
   const cls = td.classes  || [];
   const myName = sessionStorage.getItem('teacherName') || '';
 
-  // 管理员端：Tab 2 改为「按教师查看」；教师端：保持「我的课表」
-  const tab2Label = isAdmin ? '按教师查看' : '我的课表';
-  const tab2Disabled = isAdmin ? false : !myName; // 管理员不disabled，教师没 myName 才 disabled
+  // 管理员端 / 校长端：Tab 2 改为「按教师查看」；教师端：保持「我的课表」
+  const tab2Label = (isAdmin || principalAuthed) ? '按教师查看' : '我的课表';
+  const tab2Disabled = (isAdmin || principalAuthed) ? false : !myName; // 管理员/校长不disabled，教师没 myName 才 disabled
 
   area.innerHTML = `
   <div class="page">
@@ -1370,7 +1370,7 @@ function renderTimetablePage(area) {
     </div>
 
     <div id="tt-my-view" style="display:none">
-      ${isAdmin ? `
+      ${(isAdmin || principalAuthed) ? `
       <div class="form-row" style="position:relative;">
         <label>教师姓名：</label>
         <input type="text" id="tt-teacher-input" class="form-input" 
