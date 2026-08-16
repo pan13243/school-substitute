@@ -1784,18 +1784,12 @@ function renderLeavePage(area) {
             </div>
             <div class="form-group">
               <label>请假节次 *</label>
-              <select name="period" id="leave-period" class="form-select">
-                <option value="">— 选择节次 —</option>
-                ${[1,2,3,4,5,6].map(p => `<option value="${p}">第${p}节</option>`).join('')}
-                <optgroup label="课后服务">
-                  <option value="7">第7节 课后服务1</option>
-                  <option value="8">第8节 课后服务2</option>
-                  <option value="9">第9节 课后服务3</option>
-                  <option value="10">第10节 晚自习</option>
-                  <option value="11">第11节 午休</option>
-                </optgroup>
-                <option value="all">全天（按课表自动判断）</option>
-              </select>
+              <div id="leave-period" style="display:flex; flex-wrap:wrap; gap:8px; padding:8px 0;">
+${[1,2,3,4,5,6].map(p => `<label style="display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border:1px solid #E5E7EB; border-radius:6px; background:#F9FAFB; cursor:pointer; font-size:13px;"><input type="checkbox" name="period" value="${p}" style="accent-color:#3B82F6;">第${p}节</label>`).join("")}
+<div style="width:100%; font-size:12px; color:#9CA3AF; margin-top:4px;">课后服务</div>
+${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2","9":"课后服务3","10":"晚自习","11":"午休"}; return `<label style="display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border:1px solid #E5E7EB; border-radius:6px; background:#F9FAFB; cursor:pointer; font-size:13px;"><input type="checkbox" name="period" value="${p}" style="accent-color:#3B82F6;">第${p}节 ${names[p]}</label>`; }).join("")}
+<label style="display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border:1px solid #3B82F6; border-radius:6px; background:#EFF6FF; cursor:pointer; font-size:13px;"><input type="checkbox" name="period" value="all" style="accent-color:#3B82F6;">全天（按课表自动判断）</label>
+</div>
             </div>
           </div>
           <div id="range-leave" style="display:none">
@@ -1864,10 +1858,6 @@ function updateLeaveWday(el) {
 function toggleLeaveType(type) {
   $('single-leave').style.display = type === 'single' ? '' : 'none';
   $('range-leave').style.display = type === 'range' ? '' : 'none';
-  const periodSel = $('leave-period');
-  if (periodSel) {
-    periodSel.required = type === 'single';
-  }
 }
 
 // 根据课表获取教师某天的有课节次
@@ -1937,10 +1927,15 @@ async function submitLeave(e) {
   if (leaveType === 'single') {
     // 单日请假
     const leaveDate = fd.get('leaveDate');
-    const periodVal = fd.get('period');
+    const periodVals = fd.getAll('period');
     const dayOfWeek = wdayFull(leaveDate);
 
-    if (periodVal === 'all') {
+    if (periodVals.length === 0) {
+      toast('请至少选择一个请假节次', 'warning');
+      return;
+    }
+
+    if (periodVals.includes('all')) {
       // 根据课表自动判断该教师当天有哪些课
       const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
       if (teacherPeriods.length === 0) {
@@ -1951,8 +1946,10 @@ async function submitLeave(e) {
         leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: p, reason, leaveType: leaveKind, status });
       }
     } else {
-      // 单节
-      leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: parseInt(periodVal), reason, leaveType: leaveKind, status });
+      // 勾选的每个节次各生成一条记录
+      for (const pv of periodVals) {
+        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: parseInt(pv), reason, leaveType: leaveKind, status });
+      }
     }
   } else {
     // 连续多天
