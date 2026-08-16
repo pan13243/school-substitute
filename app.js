@@ -1784,11 +1784,14 @@ function renderLeavePage(area) {
             </div>
             <div class="form-group">
               <label>请假节次 *</label>
-              <div id="leave-period" style="display:flex; flex-wrap:wrap; gap:8px; padding:8px 0;">
-${[1,2,3,4,5,6].map(p => `<label style="display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border:1px solid #E5E7EB; border-radius:6px; background:#F9FAFB; cursor:pointer; font-size:13px;"><input type="checkbox" name="period" value="${p}" style="accent-color:#3B82F6;">第${p}节</label>`).join("")}
-<div style="width:100%; font-size:12px; color:#9CA3AF; margin-top:4px;">课后服务</div>
-${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2","9":"课后服务3","10":"晚自习","11":"午休"}; return `<label style="display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border:1px solid #E5E7EB; border-radius:6px; background:#F9FAFB; cursor:pointer; font-size:13px;"><input type="checkbox" name="period" value="${p}" style="accent-color:#3B82F6;">第${p}节 ${names[p]}</label>`; }).join("")}
-<label style="display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border:1px solid #3B82F6; border-radius:6px; background:#EFF6FF; cursor:pointer; font-size:13px;"><input type="checkbox" name="period" value="all" style="accent-color:#3B82F6;">全天（按课表自动判断）</label>
+              <div style="position:relative;">
+<input type="text" id="leave-period" class="form-input" readonly placeholder="— 选择节次（可多选）—" onclick="togglePeriodDropdown()" onblur="closePeriodDropdown()">
+<div id="leave-period-panel" onmousedown="event.preventDefault()" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:99; background:#fff; border:1px solid #E5E7EB; border-radius:8px; padding:6px; max-height:260px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.12);">
+${[1,2,3,4,5,6].map(p => `<label style="display:block; padding:7px 8px; border-radius:6px; cursor:pointer; font-size:14px;"><input type="checkbox" name="period" value="${p}" onclick="updatePeriodText()" style="accent-color:#3B82F6;"> 第${p}节</label>`).join("")}
+<div style="padding:6px 8px; font-size:12px; color:#9CA3AF;">课后服务</div>
+${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2","9":"课后服务3","10":"晚自习","11":"午休"}; return `<label style="display:block; padding:7px 8px; border-radius:6px; cursor:pointer; font-size:14px;"><input type="checkbox" name="period" value="${p}" onclick="updatePeriodText()" style="accent-color:#3B82F6;"> 第${p}节 ${names[p]}</label>`; }).join("")}
+<label style="display:block; padding:7px 8px; border-radius:6px; cursor:pointer; font-size:14px; background:#EFF6FF;"><input type="checkbox" name="period" value="all" onclick="updatePeriodText()" style="accent-color:#3B82F6;"> 全天（按课表自动判断）</label>
+</div>
 </div>
             </div>
           </div>
@@ -1858,6 +1861,24 @@ function updateLeaveWday(el) {
 function toggleLeaveType(type) {
   $('single-leave').style.display = type === 'single' ? '' : 'none';
   $('range-leave').style.display = type === 'range' ? '' : 'none';
+}
+
+function togglePeriodDropdown() {
+  const p = $('leave-period-panel');
+  if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function closePeriodDropdown() {
+  setTimeout(() => { const p = $('leave-period-panel'); if (p) p.style.display = 'none'; }, 150);
+}
+
+function updatePeriodText() {
+  const boxes = document.querySelectorAll('#leave-period-panel input[name="period"]:checked');
+  const t = $('leave-period');
+  if (!t) return;
+  const labels = [];
+  boxes.forEach(b => { labels.push(b.value === 'all' ? '全天' : '第' + b.value + '节'); });
+  t.value = labels.join('、');
 }
 
 // 根据课表获取教师某天的有课节次
