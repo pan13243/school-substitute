@@ -3033,6 +3033,20 @@ async function exportSubKaoqin() {
   } catch (e) { console.warn('reload failed', e); }
   const noSubLeaves = (leaveRecords || []).filter(l => l.needSubstitute === false);
   if (substituteRecords.length === 0 && noSubLeaves.length === 0) { toast('无记录可导出','warning'); return; }
+  // 以请假条（slip）的 duration 为准
+  let slipDurMap = {};
+  try {
+    const slipRes = await fetch('/api/leave-slips');
+    const slipData = slipRes.ok ? await slipRes.json() : null;
+    if (slipData && Array.isArray(slipData.data)) {
+      slipData.data.forEach(slip => {
+        if (slip.duration != null) {
+          // 该请假条关联的每条 leave 都用同一个 duration
+          (slip.leaveIds || []).forEach(lid => { slipDurMap[lid] = slip.duration; });
+        }
+      });
+    }
+  } catch (e) { console.warn('slip fetch failed', e); }
   // 统计每位请假教师每天的总节数（用于「节数」列）
   const cntMap = {};
   substituteRecords.forEach(s => {
@@ -3085,7 +3099,7 @@ async function exportSubKaoqin() {
     r[4]  = s.reason || '';
     r[5]  = s.leaveType || '';     // 假别：自动填
     r[6]  = '';                    // 迟到早退旷工：留空手填
-    r[7]  = (s.duration != null ? s.duration : (leaveDurationMap[s.leaveId] != null ? leaveDurationMap[s.leaveId] : 1));  // 天数（请假时长）：自动填
+    r[7]  = (slipDurMap[s.leaveId] != null ? slipDurMap[s.leaveId] : (s.duration != null ? s.duration : (leaveDurationMap[s.leaveId] != null ? leaveDurationMap[s.leaveId] : 1)));  // 天数：以请假条时长为准
     r[8]  = s.substituteTeacher || '';
     r[9]  = s.className || '';
     r[10] = s.period || '';
@@ -3103,7 +3117,7 @@ async function exportSubKaoqin() {
     r[4]  = l.reason || '';
     r[5]  = l.leaveType || '';
     r[6]  = '';
-    r[7]  = (l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : 1));
+    r[7]  = (slipDurMap[l.id] != null ? slipDurMap[l.id] : (l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : 1)));
     r[8]  = '';
     r[9]  = '';
     r[10] = l.period === 'all' ? '全天' : (l.period || '');
