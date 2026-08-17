@@ -13,6 +13,7 @@ let currentPage = 'login';
 let scheduleData = null;   // { timetable, teacherAssignment, allTeachers, classes }
 let leaveRecords = [];
 let slipRecords = []; // 请假条（校长签字审批）
+let leaveDurationMap = {}; // 本地缓存：leaveId → 请假时长（提交时写入，供列表/考勤导出用）
 let isSubmittingLeave = false;  // 提交请假全局锁
 // 需校长审批的假别（事假/病假 → 请假条+校长手写签字）
 const PRINCIPAL_REVIEW_TYPES = ['事假', '病假'];
@@ -1888,7 +1889,7 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
       ${showLeaves.length > 0 ? `
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>教师</th><th>班级</th><th>日期</th><th>星期</th><th>节次</th><th>假别/原因</th><th>状态</th><th>操作</th></tr></thead>
+          <thead><tr><th>教师</th><th>班级</th><th>日期</th><th>星期</th><th>节次</th><th>时长</th><th>假别/原因</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
             ${showLeaves.map(l => `
             <tr class="${l.status==='approved'?'row-approved':''}">
@@ -1897,6 +1898,7 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
               <td>${fmtDate(l.leaveDate)}</td>
               <td>${esc(l.dayOfWeek)}</td>
               <td>${l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '—')}</td>
+              <td>${l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : (leaveType === 'range' ? calcLeaveDays(l.leaveDate, l.leaveDate) : 1))} 天</td>
               <td>${esc(l.leaveType||'—')}${l.needSubstitute === false ? ' <span class="badge badge-blue">仅登记</span>' : ''}${l.reason ? '<br><span style="font-size:12px;color:#9CA3AF;">'+esc(l.reason)+'</span>' : ''}</td>
               <td><span class="badge badge-${l.status==='approved'?'green':l.status==='rejected'?'red':l.status==='pending_principal'?'blue':'yellow'}">${l.status==='pending_principal'?'待校长签字':(l.status||'待审核')}</span></td>
               <td>
@@ -2002,6 +2004,27 @@ async function submitLeave(e) {
   // 事假/病假 → 必须走校长签字流程（不管身份）。其他假别：admin 直接批准，教师待审。
   const status = PRINCIPAL_REVIEW_TYPES.includes(leaveKind) ? 'pending_principal' : (isAdmin ? 'approved' : 'pending');
 
+  // 预填请假时长：单日按有课节次推断（1节=0.3天/2-3节=0.5天/4节+=1天/无课=1天），连续多天按工作日（跳过周六日）。
+  // 弹窗内可改，但 leave 记录用此预填值；弹窗内用户改的话，slip 提交时再回传同步给对应 leave（这里先按预填走，弹窗内修改不联动更新 leave——请假记录时长按此预填值。
+  // 老数据无 duration → 列表/考勤导出用 calcLeaveDays 兜底。
+  let durationVal = null;
+  if (leaveType === 'single') {
+    const pv0 = fd.getAll('period');
+    if (pv0.includes('all')) durationVal = 1;
+    else {
+      const dayOfWeek0 = wdayFull(fd.get('leaveDate'));
+      const classN0 = getTeacherPeriods(teacherName, dayOfWeek0).filter(p => pv0.map(Number).includes(p)).length;
+      if (classN0 >= 4) durationVal = 1;
+      else if (classN0 === 0) durationVal = 1; // 勾选节次都没课 → 全天计
+      else if (classN0 === 1) durationVal = 0.3;
+      else durationVal = 0.5;
+    }
+  } else {
+    durationVal = calcLeaveDays(fd.get('startDate'), fd.get('endDate'));
+  }
+  leaveDurationMap = {};
+  function attachDuration(o) { return { ...o, duration: durationVal }; }
+
   const leavesToAdd = [];
 
   if (leaveType === 'single') {
@@ -2020,10 +2043,10 @@ async function submitLeave(e) {
       const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
       if (teacherPeriods.length === 0) {
         // 无课（如后勤老师）→ 仅登记一条，不安排代课
-        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false });
+        leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false }));
       } else {
         for (const p of teacherPeriods) {
-          leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: p, reason, leaveType: leaveKind, status, needSubstitute: true });
+          leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: p, reason, leaveType: leaveKind, status, needSubstitute: true }));
         }
       }
     } else {
@@ -2031,7 +2054,7 @@ async function submitLeave(e) {
       const hasClassPeriods = getTeacherPeriods(teacherName, dayOfWeek);
       for (const pv of periodVals) {
         const pNum = parseInt(pv);
-        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: pNum, reason, leaveType: leaveKind, status, needSubstitute: hasClassPeriods.includes(pNum) });
+        leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: pNum, reason, leaveType: leaveKind, status, needSubstitute: hasClassPeriods.includes(pNum) }));
       }
     }
   } else {
@@ -2049,10 +2072,10 @@ async function submitLeave(e) {
       // 根据课表判断该教师当天有哪些课；无课（如后勤老师）→ 仅登记一条，不安排代课
       const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
       if (teacherPeriods.length === 0) {
-        leavesToAdd.push({ teacherName, leaveDate: dateStr, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false });
+        leavesToAdd.push(attachDuration({ teacherName, leaveDate: dateStr, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false }));
       } else {
         for (const p of teacherPeriods) {
-          leavesToAdd.push({ teacherName, leaveDate: dateStr, dayOfWeek, period: p, reason, leaveType: leaveKind, status, needSubstitute: true });
+          leavesToAdd.push(attachDuration({ teacherName, leaveDate: dateStr, dayOfWeek, period: p, reason, leaveType: leaveKind, status, needSubstitute: true }));
         }
       }
     }
@@ -2119,22 +2142,14 @@ async function submitLeave(e) {
     $('leave-wday').value = wday(now());
     renderLeavePage($('main-content'));
     // 事假/病假 → 弹出请假条（不管什么身份都要走校长审批）
-    if (submittedIds.length > 0) {
+    if (PRINCIPAL_REVIEW_TYPES.includes(leaveKind) && submittedIds.length > 0) {
       const startDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('startDate');
       const endDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('endDate');
-      // 时长预填：单日按有课节次推断（1节=0.3天/2-3节=0.5天/4节+=1天/无课按全天=1天），连续多天按工作日数；弹窗内可改
-      let durationVal = null;
-      if (leaveType === 'single') {
-        const periodVals = fd.getAll('period');
-        const classN = leavesToAdd.filter(x => x.needSubstitute !== false).length;
-        if (periodVals.includes('all') || classN >= 4) durationVal = 1;
-        else if (classN === 0) durationVal = 1;
-        else if (classN === 1) durationVal = 0.3;
-        else durationVal = 0.5;
-      } else {
-        durationVal = calcLeaveDays(fd.get('startDate'), fd.get('endDate'));
-      }
       showLeaveSlipModal({ leaveIds: submittedIds, teacherName, leaveType: leaveKind, reason, startDate, endDate, duration: durationVal });
+    }
+    // 所有假别都把请假时长写入 leaveDurationMap（让列表/考勤表渲染时用）
+    if (submittedIds.length > 0) {
+      for (const id of submittedIds) leaveDurationMap[id] = durationVal;
     }
   } else {
     toast(skipCount + dupCount > 0 ? '所有请假记录均已存在，未重复提交' : '提交失败', 'error');
@@ -3048,9 +3063,9 @@ function exportSubKaoqin() {
     r[2]  = dr.y;  r[3] = dr.m;  r[4] = dr.dd;
     r[5]  = s.dayOfWeek || '';
     r[6]  = s.reason || '';
-    r[7]  = '';          // 假别：系统未存储，留空手填
+    r[7]  = s.leaveType || '';   // 假别：已存储，自动填
     r[8]  = '';          // 迟到早退旷工：留空手填
-    r[9]  = '';          // 天数：留空手填
+    r[9]  = (s.duration != null ? s.duration : (leaveDurationMap[s.leaveId] != null ? leaveDurationMap[s.leaveId] : 1));  // 天数：自动填
     r[10] = s.substituteTeacher || '';
     r[11] = s.className || '';
     r[12] = s.period || '';
@@ -3068,9 +3083,9 @@ function exportSubKaoqin() {
     r[2]  = dr.y;  r[3] = dr.m;  r[4] = dr.dd;
     r[5]  = l.dayOfWeek || '';
     r[6]  = l.reason || '';
-    r[7]  = '';          // 假别：留空手填
+    r[7]  = l.leaveType || '';   // 假别：自动填
     r[8]  = '';          // 迟到早退旷工：留空手填
-    r[9]  = '';          // 天数：留空手填
+    r[9]  = (l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : 1));  // 天数：自动填
     r[10] = '';          // 前去代课教师：无
     r[11] = '';          // 班级：无
     r[12] = l.period === 'all' ? '全天' : (l.period || '');
