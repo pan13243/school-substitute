@@ -2491,6 +2491,7 @@ function showPrincipalApproveModal(slipId) {
           <p style="margin:4px 0;"><strong>教师：</strong>${esc(slip.teacherName)}</p>
           <p style="margin:4px 0;"><strong>事由：</strong>${esc(slip.reason)}</p>
           <p style="margin:4px 0;"><strong>时间：</strong>${fmtDate(slip.startDate)} ~ ${fmtDate(slip.endDate)}</p>
+          <p style="margin:4px 0;"><strong>请假时长：</strong>${slip.duration || calcLeaveDays(slip.startDate, slip.endDate)} 天</p>
           <p style="margin:4px 0;"><strong>关联请假：</strong>${slip.leaveIds.length} 条记录</p>
         </div>
         ${slip.teacherSignature ? `
