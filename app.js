@@ -3039,85 +3039,93 @@ async function exportSubKaoqin() {
     const k = (s.leaveTeacher||'') + '|' + (s.leaveDate||'');
     cntMap[k] = (cntMap[k] || 0) + 1;
   });
+  // 13 列 A-M 模板（按用户桌面模板）
+  // A=序号 B=有假教师 C=时间(年/月/日) D=星期 E=事由 F=假别
+  // G=迟到、早退、旷工 H=天数 I=前去代课教师 J=班级 K=节次 L=科目 M=节数
   const arr = (n, v) => Array.from({length:n}, () => v);
-  const parseDate = (d) => {
-    if (!d) return {y:'',m:'',dd:''};
+  const fmtDate = (d) => {
+    if (!d) return '';
     const m = String(d).split(/[-/]/);
-    return { y: m[0]||'', m: m[1]||'', dd: m[2]||'' };
+    const y = m[0] || '';
+    const mo = (m[1] || '').replace(/^0/, '');
+    const dd = (m[2] || '').replace(/^0/, '');
+    return `${y}/${mo}/${dd}`;
   };
   const rows = [];
-  rows[0] = arr(16,''); rows[0][0] = '施秉县双井镇小学、幼儿园教师考勤统计表';
-  rows[1] = arr(16,''); rows[1][0] = '（2025—2026学年度第二学期）';
-  rows[2] = arr(16,''); rows[2][0] = '  （2026年        月）';
-  rows[3] = arr(16,''); rows[3][9] = '登记人：';
-  rows[4] = arr(16,''); rows[4][0] = '学校（盖章）：施秉县双井镇中心小学'; rows[4][9] = '审核人：';
-  rows[5] = arr(16,'');
-  rows[5][0]='序号'; rows[5][1]='有假教师'; rows[5][2]='考勤备注';
-  rows[5][10]='前去代课教师'; rows[5][11]='代课情况'; rows[5][15]='备注';
-  rows[6] = arr(16,'');
-  rows[6][2]='请假时间'; rows[6][5]='星期'; rows[6][6]='事由'; rows[6][7]='假别';
-  rows[6][8]='迟到、早退、旷工'; rows[6][9]='天数';
-  rows[6][11]='班级'; rows[6][12]='节次'; rows[6][13]='科目'; rows[6][14]='节数';
-  rows[7] = arr(16,''); rows[7][2]='年'; rows[7][3]='月'; rows[7][4]='日';
+  rows[0] = arr(13, ''); rows[0][0] = '施秉县双井镇小学、幼儿园教师考勤统计表';
+  rows[1] = arr(13, ''); rows[1][0] = '（2025—2026学年度第二学期）';
+  rows[2] = arr(13, ''); rows[2][0] = '  （2026年        月）';
+  rows[3] = arr(13, ''); rows[3][7] = '登记人：                       ';
+  rows[4] = arr(13, ''); rows[4][0] = '学校（盖章）：施秉县双井镇中心小学';
+  rows[4][7] = '审核人：                            ';
+  // 第 6 行（索引 5）：表头（13 列，单行）
+  rows[5] = arr(13, '');
+  rows[5][0]  = '序号';
+  rows[5][1]  = '有假教师';
+  rows[5][2]  = '时间';
+  rows[5][3]  = '星期';
+  rows[5][4]  = '事由';
+  rows[5][5]  = '假别';
+  rows[5][6]  = '迟到、早退、旷工';
+  rows[5][7]  = '天数';
+  rows[5][8]  = '前去代课教师';
+  rows[5][9]  = '班级';
+  rows[5][10] = '节次';
+  rows[5][11] = '科目';
+  rows[5][12] = '节数';
   let idx = 1;
+  // 有代课记录的请假
   substituteRecords.forEach(s => {
-    const dr = parseDate(s.leaveDate);
-    const k = (s.leaveTeacher||'') + '|' + (s.leaveDate||'');
-    const r = arr(16,'');
+    const k = (s.leaveTeacher || '') + '|' + (s.leaveDate || '');
+    const r = arr(13, '');
     r[0]  = idx++;
     r[1]  = s.leaveTeacher || '';
-    r[2]  = dr.y;  r[3] = dr.m;  r[4] = dr.dd;
-    r[5]  = s.dayOfWeek || '';
-    r[6]  = s.reason || '';
-    r[7]  = s.leaveType || '';   // 假别：已存储，自动填
-    r[8]  = '';          // 迟到早退旷工：留空手填
-    r[9]  = (s.duration != null ? s.duration : (leaveDurationMap[s.leaveId] != null ? leaveDurationMap[s.leaveId] : 1));  // 天数：自动填
-    r[10] = s.substituteTeacher || '';
-    r[11] = s.className || '';
-    r[12] = s.period || '';
-    r[13] = s.subject || '';
-    r[14] = cntMap[k] || 1;
-    r[15] = '';          // 备注：留空手填
+    r[2]  = fmtDate(s.leaveDate);  // 时间：YYYY/M/D 一格
+    r[3]  = s.dayOfWeek || '';
+    r[4]  = s.reason || '';
+    r[5]  = s.leaveType || '';     // 假别：自动填
+    r[6]  = '';                    // 迟到早退旷工：留空手填
+    r[7]  = (s.duration != null ? s.duration : (leaveDurationMap[s.leaveId] != null ? leaveDurationMap[s.leaveId] : 1));  // 天数（请假时长）：自动填
+    r[8]  = s.substituteTeacher || '';
+    r[9]  = s.className || '';
+    r[10] = s.period || '';
+    r[11] = s.subject || '';
+    r[12] = cntMap[k] || 1;        // 节数：同教师同日期总节数
     rows.push(r);
   });
-  // 仅登记请假（后勤/无课老师）：代课情况留空，备注标注「仅登记」
+  // 仅登记请假（后勤/无课老师）：代课情况留空
   noSubLeaves.forEach(l => {
-    const dr = parseDate(l.leaveDate);
-    const r = arr(16,'');
+    const r = arr(13, '');
     r[0]  = idx++;
     r[1]  = l.teacherName || '';
-    r[2]  = dr.y;  r[3] = dr.m;  r[4] = dr.dd;
-    r[5]  = l.dayOfWeek || '';
-    r[6]  = l.reason || '';
-    r[7]  = l.leaveType || '';   // 假别：自动填
-    r[8]  = '';          // 迟到早退旷工：留空手填
-    r[9]  = (l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : 1));  // 天数：自动填
-    r[10] = '';          // 前去代课教师：无
-    r[11] = '';          // 班级：无
-    r[12] = l.period === 'all' ? '全天' : (l.period || '');
-    r[13] = '';          // 科目：无
-    r[14] = '';          // 节数：无
-    r[15] = '仅登记';    // 备注
+    r[2]  = fmtDate(l.leaveDate);
+    r[3]  = l.dayOfWeek || '';
+    r[4]  = l.reason || '';
+    r[5]  = l.leaveType || '';
+    r[6]  = '';
+    r[7]  = (l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : 1));
+    r[8]  = '';
+    r[9]  = '';
+    r[10] = l.period === 'all' ? '全天' : (l.period || '');
+    r[11] = '';
+    r[12] = '';
     rows.push(r);
   });
   const ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!merges'] = [
-    {s:{r:0,c:0},e:{r:0,c:15}}, {s:{r:1,c:0},e:{r:1,c:15}}, {s:{r:2,c:0},e:{r:2,c:15}},
-    {s:{r:3,c:9},e:{r:3,c:15}}, {s:{r:4,c:0},e:{r:4,c:8}}, {s:{r:4,c:9},e:{r:4,c:15}},
-    {s:{r:6,c:2},e:{r:6,c:9}}, {s:{r:6,c:11},e:{r:6,c:14}},
-    {s:{r:7,c:2},e:{r:7,c:4}},
-    {s:{r:6,c:0},e:{r:8,c:0}}, {s:{r:6,c:1},e:{r:8,c:1}},
-    {s:{r:7,c:5},e:{r:8,c:5}}, {s:{r:7,c:6},e:{r:8,c:6}}, {s:{r:7,c:7},e:{r:8,c:7}},
-    {s:{r:7,c:8},e:{r:8,c:8}}, {s:{r:7,c:9},e:{r:8,c:9}},
-    {s:{r:6,c:10},e:{r:8,c:10}}, {s:{r:7,c:11},e:{r:8,c:11}}, {s:{r:7,c:12},e:{r:8,c:12}},
-    {s:{r:7,c:13},e:{r:8,c:13}}, {s:{r:7,c:14},e:{r:8,c:14}}, {s:{r:6,c:15},e:{r:8,c:15}}
+    {s:{r:0,c:0},e:{r:0,c:12}},  // 标题
+    {s:{r:1,c:0},e:{r:1,c:12}},  // 学期
+    {s:{r:2,c:0},e:{r:2,c:12}},  // 月份
+    {s:{r:3,c:7},e:{r:3,c:12}},  // 登记人 H-M
+    {s:{r:4,c:0},e:{r:4,c:6}},   // 学校盖章 A-G
+    {s:{r:4,c:7},e:{r:4,c:12}}   // 审核人 H-M
   ];
   ws['!cols'] = [
-    {wch:6},{wch:12},{wch:6},{wch:5},{wch:5},{wch:8},{wch:12},{wch:8},{wch:12},{wch:6},
-    {wch:12},{wch:10},{wch:6},{wch:10},{wch:6},{wch:12}
+    {wch:6},{wch:12},{wch:14},{wch:8},{wch:14},{wch:8},
+    {wch:14},{wch:8},{wch:12},{wch:10},{wch:8},{wch:10},{wch:8}
   ];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '教师考勤统计表');
+  XLSX.utils.book_append_sheet(wb, ws, '请假表');
   XLSX.writeFile(wb, `教师考勤统计表_${now()}.xlsx`);
   toast('考勤表导出成功','success');
 }
