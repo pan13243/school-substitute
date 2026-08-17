@@ -1847,10 +1847,12 @@ function renderLeavePage(area) {
               <div style="position:relative;">
 <input type="text" id="leave-period" class="form-input" readonly placeholder="— 选择节次（可多选）—" onclick="togglePeriodDropdown()" onblur="closePeriodDropdown()">
 <div id="leave-period-panel" onmousedown="event.preventDefault()" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:99; background:#fff; border:1px solid #E5E7EB; border-radius:8px; padding:6px; max-height:260px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.12);">
+<label style="display:block; padding:7px 8px; border-radius:6px; cursor:pointer; font-size:14px; background:#F0FDF4;"><input type="checkbox" name="period" value="none" onclick="updatePeriodText()" style="accent-color:#10B981;"> 无课（仅登记，不安排代课）</label>
+<div style="padding:6px 8px; font-size:12px; color:#9CA3AF; border-top:1px solid #E5E7EB; margin-top:4px;">正课</div>
 ${[1,2,3,4,5,6].map(p => `<label style="display:block; padding:7px 8px; border-radius:6px; cursor:pointer; font-size:14px;"><input type="checkbox" name="period" value="${p}" onclick="updatePeriodText()" style="accent-color:#3B82F6;"> 第${p}节</label>`).join("")}
-<div style="padding:6px 8px; font-size:12px; color:#9CA3AF;">课后服务</div>
+<div style="padding:6px 8px; font-size:12px; color:#9CA3AF; border-top:1px solid #E5E7EB; margin-top:4px;">课后服务</div>
 ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2","9":"课后服务3","10":"晚自习","11":"午休"}; return `<label style="display:block; padding:7px 8px; border-radius:6px; cursor:pointer; font-size:14px;"><input type="checkbox" name="period" value="${p}" onclick="updatePeriodText()" style="accent-color:#3B82F6;"> 第${p}节 ${names[p]}</label>`; }).join("")}
-<label style="display:block; padding:7px 8px; border-radius:6px; cursor:pointer; font-size:14px; background:#EFF6FF;"><input type="checkbox" name="period" value="all" onclick="updatePeriodText()" style="accent-color:#3B82F6;"> 全天（按课表自动判断）</label>
+<label style="display:block; padding:7px 8px; border-radius:6px; cursor:pointer; font-size:14px; background:#EFF6FF; margin-top:4px; border-top:1px solid #E5E7EB;"><input type="checkbox" name="period" value="all" onclick="updatePeriodText()" style="accent-color:#3B82F6;"> 全天（按课表自动判断）</label>
 </div>
 </div>
             </div>
@@ -1937,8 +1939,27 @@ function updatePeriodText() {
   const boxes = document.querySelectorAll('#leave-period-panel input[name="period"]:checked');
   const t = $('leave-period');
   if (!t) return;
+  const values = Array.from(boxes).map(b => b.value);
+  // 互斥逻辑：选了"无课"就不能选其他；选了其他就取消"无课"
+  const hasNone = values.includes('none');
+  const hasOthers = values.some(v => v !== 'none');
+  if (hasNone && hasOthers) {
+    // 当前点击的是 none → 取消其他；否则取消 none
+    const clicked = event?.target?.value;
+    if (clicked === 'none') {
+      boxes.forEach(b => { if (b.value !== 'none') b.checked = false; });
+    } else {
+      boxes.forEach(b => { if (b.value === 'none') b.checked = false; });
+    }
+  }
+  // 重新计算
+  const finalBoxes = document.querySelectorAll('#leave-period-panel input[name="period"]:checked');
   const labels = [];
-  boxes.forEach(b => { labels.push(b.value === 'all' ? '全天' : '第' + b.value + '节'); });
+  finalBoxes.forEach(b => {
+    if (b.value === 'all') labels.push('全天');
+    else if (b.value === 'none') labels.push('无课（仅登记）');
+    else labels.push('第' + b.value + '节');
+  });
   t.value = labels.join('、');
 }
 
@@ -2038,7 +2059,10 @@ async function submitLeave(e) {
       return;
     }
 
-    if (periodVals.includes('all')) {
+    // 选了"无课（仅登记）"→ 直接生成一条仅登记记录
+    if (periodVals.includes('none')) {
+      leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false }));
+    } else if (periodVals.includes('all')) {
       // 根据课表自动判断该教师当天有哪些课
       const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
       if (teacherPeriods.length === 0) {
