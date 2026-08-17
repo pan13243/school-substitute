@@ -80,8 +80,15 @@ function getTeacherClass(teacherName, leaveDate, period) {
           // 支持双师字段：teacher / singleWeek / doubleWeek（任一匹配即算）
           const teachers = [];
           if (info.teacher) teachers.push(info.teacher);
-          if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
-          if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
+          // singleWeek/doubleWeek 可能是字符串或数组
+          if (info.singleWeek) {
+            if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
+            else teachers.push(info.singleWeek);
+          }
+          if (info.doubleWeek) {
+            if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
+            else teachers.push(info.doubleWeek);
+          }
           if (teachers.includes(teacherName)) return cls;
         }
       }
