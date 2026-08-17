@@ -672,7 +672,21 @@ window.saveSigToLib = function(btn, scope, canvasId) {
 };
 
 // 教师提交请假条弹窗（事假/病假）
-function showLeaveSlipModal({ leaveIds, teacherName, leaveType, reason, startDate, endDate }) {
+// 计算请假时长（工作日天数，跳过周六日）；老数据无 duration 时兜底显示用
+function calcLeaveDays(startDate, endDate) {
+  if (!startDate) return 1;
+  const s = new Date(startDate);
+  const e = new Date(endDate || startDate);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return 1;
+  let days = 0;
+  for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+    const wd = d.getDay();
+    if (wd !== 0 && wd !== 6) days++;
+  }
+  return days || 1;
+}
+
+function showLeaveSlipModal({ leaveIds, teacherName, leaveType, reason, startDate, endDate, duration }) {
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
   modal.innerHTML = `
@@ -690,6 +704,26 @@ function showLeaveSlipModal({ leaveIds, teacherName, leaveType, reason, startDat
           <div class="form-group" style="grid-column:1/-1">
             <label>假别</label>
             <input type="text" id="slip-leave-type" value="${esc(leaveType||'')}" readonly class="form-input" style="background:#F3F4F6;">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>请假时长（天）*</label>
+            <select id="slip-duration" class="form-input">
+              <option value="0.3">0.3 天（1节）</option>
+              <option value="0.5">0.5 天</option>
+              <option value="1">1 天</option>
+              <option value="1.5">1.5 天</option>
+              <option value="2">2 天</option>
+              <option value="2.5">2.5 天</option>
+              <option value="3">3 天</option>
+              <option value="3.5">3.5 天</option>
+              <option value="4">4 天</option>
+              <option value="5">5 天</option>
+              <option value="6">6 天</option>
+              <option value="7">7 天</option>
+              <option value="10">10 天</option>
+              <option value="15">15 天</option>
+              <option value="30">30 天</option>
+            </select>
           </div>
           <div class="form-group" style="grid-column:1/-1">
             <label>请假事由 *</label>
@@ -725,13 +759,28 @@ function showLeaveSlipModal({ leaveIds, teacherName, leaveType, reason, startDat
   `;
   modal.className = 'modal-overlay';
   document.body.appendChild(modal);
-  
+  // 预填请假时长：传入值优先；多天按工作日数，单日默认 1（用户可改）
+  const durSel = modal.querySelector('#slip-duration');
+  if (durSel) {
+    let dv = duration;
+    if (dv == null) {
+      dv = (startDate && endDate && startDate !== endDate) ? calcLeaveDays(startDate, endDate) : 1;
+    }
+    const opts = Array.from(durSel.options).map(o => o.value);
+    if (!opts.includes(String(dv))) {
+      const opt = document.createElement('option');
+      opt.value = dv; opt.textContent = dv + ' 天';
+      durSel.appendChild(opt);
+    }
+    durSel.value = String(dv);
+  }
   const canvas = modal.querySelector('#slip-canvas');
   const pad = initSignaturePad(canvas);
   modal.querySelector('#slip-clear').onclick = () => pad.clear();
   
   modal.querySelector('#slip-submit').onclick = async () => {
     const reasonV = modal.querySelector('#slip-reason').value.trim();
+    const durationV = modal.querySelector('#slip-duration').value;
     const startV = modal.querySelector('#slip-start').value;
     const endV = modal.querySelector('#slip-end').value;
     const sig = pad.getDataUrl();
@@ -744,7 +793,7 @@ function showLeaveSlipModal({ leaveIds, teacherName, leaveType, reason, startDat
       const r = await fetch('/api/leave-slips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leaveIds, teacherName, leaveType: leaveType, reason: reasonV, startDate: startV, endDate: endV, signature: sig })
+        body: JSON.stringify({ leaveIds, teacherName, leaveType: leaveType, reason: reasonV, startDate: startV, endDate: endV, duration: durationV, signature: sig })
       });
       const j = await r.json();
       if (j.success) {
@@ -2070,10 +2119,22 @@ async function submitLeave(e) {
     $('leave-wday').value = wday(now());
     renderLeavePage($('main-content'));
     // 事假/病假 → 弹出请假条（不管什么身份都要走校长审批）
-    if (PRINCIPAL_REVIEW_TYPES.includes(leaveKind) && submittedIds.length > 0) {
+    if (submittedIds.length > 0) {
       const startDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('startDate');
       const endDate = leaveType === 'single' ? fd.get('leaveDate') : fd.get('endDate');
-      showLeaveSlipModal({ leaveIds: submittedIds, teacherName, leaveType: leaveKind, reason, startDate, endDate });
+      // 时长预填：单日按有课节次推断（1节=0.3天/2-3节=0.5天/4节+=1天/无课按全天=1天），连续多天按工作日数；弹窗内可改
+      let durationVal = null;
+      if (leaveType === 'single') {
+        const periodVals = fd.getAll('period');
+        const classN = leavesToAdd.filter(x => x.needSubstitute !== false).length;
+        if (periodVals.includes('all') || classN >= 4) durationVal = 1;
+        else if (classN === 0) durationVal = 1;
+        else if (classN === 1) durationVal = 0.3;
+        else durationVal = 0.5;
+      } else {
+        durationVal = calcLeaveDays(fd.get('startDate'), fd.get('endDate'));
+      }
+      showLeaveSlipModal({ leaveIds: submittedIds, teacherName, leaveType: leaveKind, reason, startDate, endDate, duration: durationVal });
     }
   } else {
     toast(skipCount + dupCount > 0 ? '所有请假记录均已存在，未重复提交' : '提交失败', 'error');
@@ -4265,13 +4326,14 @@ async function loadSlipAdminList() {
     el.innerHTML = `
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th>教师</th><th>假别</th><th>请假时间</th><th>审批状态</th><th>提交时间</th><th>操作</th></tr></thead>
+        <thead><tr><th>教师</th><th>假别</th><th>请假时间</th><th>时长</th><th>审批状态</th><th>提交时间</th><th>操作</th></tr></thead>
         <tbody>
           ${slips.map(s => `
           <tr>
             <td>${esc(s.teacherName)}</td>
             <td>${esc(s.reason)}</td>
             <td>${fmtDate(s.startDate)}${s.startDate !== s.endDate ? ' ~ ' + fmtDate(s.endDate) : ''}</td>
+            <td>${s.duration != null ? s.duration + ' 天' : calcLeaveDays(s.startDate, s.endDate) + ' 天'}</td>
             <td><span class="badge badge-${s.status==='approved'?'green':s.status==='pending'?'yellow':'red'}">${s.status==='approved'?'✅ 同意':s.status==='pending'?'⏳ 待批':'❌ 拒绝'}</span></td>
             <td>${new Date(s.createdAt).toLocaleString('zh-CN',{hour12:false})}</td>
             <td><button class="btn btn-sm" onclick="showSlipDetailModal('${s.id}')">📋 查看</button><button class="btn btn-sm btn-danger" onclick="deleteSlip('${s.id}')" style="margin-left:6px;">🗑️ 删除</button></td>
@@ -4300,6 +4362,7 @@ async function showSlipDetailModal(slipId) {
         <table style="width:100%; border-collapse:collapse; font-size:14px;">
           <tr><td style="padding:6px 0; color:#6B7280; width:80px;">教师姓名</td><td style="padding:6px 0; font-weight:500;">${esc(slip.teacherName)}</td></tr>
           <tr><td style="padding:6px 0; color:#6B7280;">请假类型</td><td style="padding:6px 0;">${esc(slip.reason)}</td></tr>
+          <tr><td style="padding:6px 0; color:#6B7280;">请假时长</td><td style="padding:6px 0;">${slip.duration != null ? slip.duration + ' 天' : calcLeaveDays(slip.startDate, slip.endDate) + ' 天'}</td></tr>
           <tr><td style="padding:6px 0; color:#6B7280;">开始时间</td><td style="padding:6px 0;">${fmtDate(slip.startDate)}</td></tr>
           <tr><td style="padding:6px 0; color:#6B7280;">结束时间</td><td style="padding:6px 0;">${fmtDate(slip.endDate)}</td></tr>
           <tr><td style="padding:6px 0; color:#6B7280;">提交时间</td><td style="padding:6px 0;">${new Date(slip.createdAt).toLocaleString('zh-CN',{hour12:false})}</td></tr>
@@ -4345,6 +4408,10 @@ function showSlipPrintModal(slipId) {
           <tr>
             <td style="padding:6px 10px;"><b>假别：</b></td>
             <td style="padding:6px 10px; border-bottom:1px solid #333;">${esc(slip.leaveType || slip.reason || '其他')}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 10px;"><b>请假时长：</b></td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${slip.duration != null ? slip.duration + ' 天' : calcLeaveDays(slip.startDate, slip.endDate) + ' 天'}</td>
           </tr>
           <tr>
             <td style="padding:6px 10px; vertical-align:top;"><b>请假事由：</b></td>

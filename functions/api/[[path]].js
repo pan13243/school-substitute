@@ -592,7 +592,7 @@ async function handleLeaveSlipsGet(request, env) {
 // 创建请假条（教师提交事假/病假时）
 async function handleLeaveSlipsPost(request, env) {
   const body = await request.json().catch(() => ({}));
-  const { leaveIds, teacherName, leaveType, reason, startDate, endDate, signature, teacherSignedAt } = body;
+  const { leaveIds, teacherName, leaveType, reason, startDate, endDate, duration, signature, teacherSignedAt } = body;
   if (!teacherName || !reason) return json({ success: false, error: '缺少教师或事由' }, 400);
   if (!signature) return json({ success: false, error: '缺少教师签字' }, 400);
   if (!Array.isArray(leaveIds) || leaveIds.length === 0) {
@@ -613,7 +613,8 @@ async function handleLeaveSlipsPost(request, env) {
     teacherSignature: signature,
     teacherSignedAt: teacherSignedAt || new Date().toISOString(),
     leaveType: leaveType || validLeaves[0]?.leaveType || validLeaves[0]?.reason || '其他',
-    status: 'pending', // pending → 待校长签字；approved → 校长同意；rejected → 校长拒绝
+    duration: duration || null, // 请假时长（天）：0.3/0.5/1/2...；null = 老数据打印时自动推算
+    status: ['事假', '病假'].includes(leaveType) ? 'pending' : 'approved', // 事假/病假→待校长签字；其他假别教师签字即生效
     createdAt: new Date().toISOString()
   };
   const slips = await getKV(env, 'leaveSlips') || [];
