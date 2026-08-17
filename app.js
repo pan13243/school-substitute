@@ -2732,7 +2732,7 @@ function renderPreviewTable() {
             <td>${esc(s.leaveTeacher||'')}</td>
             <td>
               <select class="form-select sub-select" onchange="updatePreviewSub(${idx}, this.value)">
-                ${getSubstituteOptions(s.substituteTeacher)}
+                ${getSubstituteOptions(s.substituteTeacher, s)}
               </select>
             </td>
             <td>${esc(s.className||'')}</td>
@@ -2748,9 +2748,123 @@ function renderPreviewTable() {
   </div>`;
 }
 
-function getSubstituteOptions(currentTeacher) {
+// 判断老师t在dow/period是否有课，有课返回班级名，无课返回null
+function getTeacherConflict(t, dow, period) {
+  if (!t || !dow || !scheduleData) return null;
+  const p = parseInt(period);
+  const dayData = scheduleData.timetable?.[dow];
+  if (dayData) {
+    for (const [cls, slots] of Object.entries(dayData)) {
+      const slot = slots.find ? slots.find(s => s.period == p) : null;
+      if (slot && slot.teachers ? slot.teachers.includes(t) : slot.teacher === t) return cls;
+    }
+  }
+  if (p >= 7 && scheduleData.afterSchoolService?.slots) {
+    const slot = scheduleData.afterSchoolService.slots.find(s => s.day === dow && s.period == p);
+    if (slot?.assignments) {
+      for (const [cls, info] of Object.entries(slot.assignments)) {
+        const teachers = [];
+        if (info.teacher) teachers.push(info.teacher);
+        if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
+        if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
+        if (teachers.includes(t)) return cls;
+      }
+    }
+  }
+  return null;
+}
+
+// 老师在targetClass的周几属于哪个优先级档位
+// 1=同班语文/数学 2=同班英语 3=同班科学/道法 4=同班副科 5=跨班副科 99=跨班主科(不安排)
+function getTeacherTier(teacherName, targetClass, dow) {
+  if (!teacherName || !targetClass || !dow) return 99;
+  const dayData = scheduleData.timetable?.[dow];
+  if (!dayData) {
+    // 课后服务时段也在 timetable 里，不单独处理 afterSchoolService
+    // 若 timetable 无数据，用 teacherAssignment 估算
+    const ta = scheduleData.teacherAssignment || {};
+    const clsSubs = ta[targetClass] || {};
+    const subjs = Object.entries(clsSubs);
+    const myMain = subjs.find(([,t]) => t === teacherName);
+    if (myMain) {
+      const s = myMain[0];
+      if (['语文','数学'].includes(s)) return 1;
+      if (s === '英语') return 2;
+      if (['科学','道德与法治','道德','科学课'].includes(s)) return 3;
+      return 4;
+    }
+    // 跨班：查该老师的主科身份
+    return isMainSubjectTeacher(teacherName) ? 99 : 5;
+  }
+  const slots = dayData[targetClass];
+  if (!slots) return 99;
+  // 查该老师在 targetClass 教什么
+  const mySlots = Array.isArray(slots) ? slots.filter(s =>
+    s.teachers ? s.teachers.includes(teacherName) : s.teacher === teacherName
+  ) : [];
+  if (mySlots.length === 0) {
+    // 不在 targetClass 教课 → 跨班
+    return isMainSubjectTeacher(teacherName) ? 99 : 5;
+  }
+  // 在 targetClass 教课 → 取最高优先级学科
+  for (const s of mySlots) {
+    const subj = s.subject;
+    if (['语文','数学'].includes(subj)) return 1;
+  }
+  for (const s of mySlots) {
+    const subj = s.subject;
+    if (['英语'].includes(subj)) return 2;
+  }
+  for (const s of mySlots) {
+    const subj = s.subject;
+    if (['科学','道德与法治','道德'].includes(subj)) return 3;
+  }
+  return 4; // 同班副科
+}
+
+// 判断是否为跨班主科老师（教两个班以上的语文/数学/英语）
+function isMainSubjectTeacher(teacherName) {
+  const ta = scheduleData?.teacherAssignment || {};
+  let mainCount = 0;
+  for (const [cls, subs] of Object.entries(ta)) {
+    for (const [subj, t] of Object.entries(subs)) {
+      if (t === teacherName && ['语文','数学','英语','科学','道德与法治','道德'].includes(subj)) mainCount++;
+    }
+  }
+  return mainCount >= 2; // 教两个班以上为主科老师
+}
+
+// 当前选中老师的档位（用于保持选中状态）
+function getCurrentTier(currentTeacher, targetClass, dow) {
+  if (!currentTeacher) return 99;
+  // 查该老师在 targetClass 是否有课
+  const conflict = getTeacherConflict(currentTeacher, dow, null);
+  if (!conflict) return isMainSubjectTeacher(currentTeacher) ? 99 : 5;
+  return getTeacherTier(currentTeacher, targetClass, dow);
+}
+
+function getSubstituteOptions(currentTeacher, s) {
+  if (!s) {
+    // 兜底：老调用方式
+    const teachers = scheduleData?.allTeachers || [];
+    return teachers.map(t => `<option value="${esc(t)}" ${t === currentTeacher ? 'selected' : ''}>${esc(t)}</option>`).join('');
+  }
+  const dow = s.dayOfWeek;
+  const period = s.period;
+  const targetClass = s.className || '';
   const teachers = scheduleData?.allTeachers || [];
-  return teachers.map(t => `<option value="${esc(t)}" ${t === currentTeacher ? 'selected' : ''}>${esc(t)}</option>`).join('');
+  const result = [];
+  for (const t of teachers) {
+    if (t === s.leaveTeacher) continue; // 不安排自己
+    if (getTeacherConflict(t, dow, period)) continue; // 有课的老师过滤掉
+    const tier = getTeacherTier(t, targetClass, dow);
+    if (tier === 99) continue; // 跨班主科不安排
+    const curTier = t === currentTeacher ? tier : getCurrentTier(currentTeacher, targetClass, dow);
+    result.push({ name: t, tier });
+  }
+  // 按档位排序：1→2→3→4→5，同档位按姓名
+  result.sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name, 'zh'));
+  return result.map(t => `<option value="${esc(t.name)}" ${t.name === currentTeacher ? 'selected' : ''}>${esc(t.name)}</option>`).join('');
 }
 
 function updatePreviewSub(idx, newTeacher) {
