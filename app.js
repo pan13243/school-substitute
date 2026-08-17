@@ -2607,7 +2607,7 @@ function renderSubPage(area) {
         <button class="btn btn-success" onclick="confirmSubstitutes()">✅ 确认方案</button>
         <button class="btn btn-secondary" onclick="cancelPreview()">❌ 取消预览</button>
       ` : `<button class="btn btn-secondary" onclick="exportSubExcel()" ${substituteRecords.length === 0 ? 'disabled' : ''}>📥 导出Excel</button>
-      <button class="btn btn-secondary" onclick="exportSubKaoqin()" ${(substituteRecords.length === 0 && (leaveRecords||[]).filter(l=>l.needSubstitute===false).length === 0) ? 'disabled' : ''}>📋 按考勤表导出</button>`}
+      <button class="btn btn-secondary" onclick="exportSubKaoqin()"  >📋 按考勤表导出</button>`}
     </div>` : ''}
 
     ${previewSubstitutes.length > 0 ? renderPreviewTable() : renderSubTable()}
