@@ -3023,8 +3023,14 @@ function exportSubExcel() {
 }
 
 // 按「教师考勤统计表」模板格式导出（自动填可生成项，其余留空手填）
-function exportSubKaoqin() {
-  // 含「仅登记」请假（后勤/无课老师，无代课信息，仅考勤留痕）
+async function exportSubKaoqin() {
+  // 先 reload 最新数据（用户可能刚提交请假未刷新页面）
+  try {
+    const lr = await API.getLeaves();
+    if (lr.success && Array.isArray(lr.data)) leaveRecords = lr.data;
+    const sr = await API.getSubstitutes();
+    if (sr.success && Array.isArray(sr.data)) substituteRecords = sr.data;
+  } catch (e) { console.warn('reload failed', e); }
   const noSubLeaves = (leaveRecords || []).filter(l => l.needSubstitute === false);
   if (substituteRecords.length === 0 && noSubLeaves.length === 0) { toast('无记录可导出','warning'); return; }
   // 统计每位请假教师每天的总节数（用于「节数」列）
