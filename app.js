@@ -1103,16 +1103,26 @@ async function handlePrincipalLogin() {
 }
 
 async function loadTeacherList() {
-  // 优先从 localStorage 缓存加载教师列表
+  // 优先从 localStorage 缓存加载教师列表（缓存 24 小时内有效，保证名单变更能刷新）
   let teachers = [];
   const cached = localStorage.getItem('teachers_cache');
   if (cached) {
-    teachers = JSON.parse(cached);
-  } else {
+    try {
+      const obj = JSON.parse(cached);
+      if (Array.isArray(obj)) {
+        teachers = []; // 旧格式（纯数组）→ 视为过期，重新拉取
+      } else if (Array.isArray(obj.t)) {
+        teachers = (obj.ts && Date.now() - obj.ts <= 24 * 3600 * 1000) ? obj.t : [];
+      } else {
+        teachers = [];
+      }
+    } catch { teachers = []; }
+  }
+  if (teachers.length === 0) {
     const { data } = await API.getSchedule();
     if (data && data.allTeachers) {
       teachers = data.allTeachers;
-      localStorage.setItem('teachers_cache', JSON.stringify(teachers));
+      localStorage.setItem('teachers_cache', JSON.stringify({ t: teachers, ts: Date.now() }));
     } else {
       // 从parsed_data.json直接加载
       try {
@@ -1120,7 +1130,7 @@ async function loadTeacherList() {
         const pd = await r.json();
         if (pd.allTeachers) {
           teachers = pd.allTeachers;
-          localStorage.setItem('teachers_cache', JSON.stringify(teachers));
+          localStorage.setItem('teachers_cache', JSON.stringify({ t: teachers, ts: Date.now() }));
         }
       } catch {}
     }
@@ -1139,7 +1149,7 @@ function renderAppShell() {
   const role = isAdmin ? 'admin' : (principalAuthed ? 'principal' : 'teacher');
   const roleLabel = isAdmin ? '🔐 管理员' : (principalAuthed ? '🏫 校长' : '👤 教师');
   // 计算待处理请假数量（已批准但未安排代课的）
-  const pendingSubs = leaveRecords.filter(l => l.status === 'approved').length;
+  const pendingSubs = leaveRecords.filter(l => l.status === 'approved' && l.needSubstitute !== false).length;
   const subBadge = (isAdmin && pendingSubs > 0) ? `<span class="nav-badge">${pendingSubs}</span>` : '';
   // 待处理请假数量（pending + pending_principal，用于请假登记按钮徽章）
   const pendingLeaves = leaveRecords.filter(l => l.status === 'pending' || l.status === 'pending_principal').length;
@@ -1837,8 +1847,8 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
               <td>${getTeacherClass(l.teacherName, l.leaveDate, l.period)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
               <td>${esc(l.dayOfWeek)}</td>
-              <td>${l.period ? '第'+l.period+'节' : '—'}</td>
-              <td>${esc(l.leaveType||'—')}${l.reason ? '<br><span style="font-size:12px;color:#9CA3AF;">'+esc(l.reason)+'</span>' : ''}</td>
+              <td>${l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '—')}</td>
+              <td>${esc(l.leaveType||'—')}${l.needSubstitute === false ? ' <span class="badge badge-blue">仅登记</span>' : ''}${l.reason ? '<br><span style="font-size:12px;color:#9CA3AF;">'+esc(l.reason)+'</span>' : ''}</td>
               <td><span class="badge badge-${l.status==='approved'?'green':l.status==='rejected'?'red':l.status==='pending_principal'?'blue':'yellow'}">${l.status==='pending_principal'?'待校长签字':(l.status||'待审核')}</span></td>
               <td>
                 ${isAdmin ? `<button class="btn btn-sm btn-success" onclick="approveLeave('${l.id}')" ${l.status==='pending_principal'?'disabled title="事假/病假需先经校长签字"':''}>批准</button>` : ''}
@@ -1960,16 +1970,19 @@ async function submitLeave(e) {
       // 根据课表自动判断该教师当天有哪些课
       const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
       if (teacherPeriods.length === 0) {
-        toast('该教师当天没有课程', 'warning');
-        return;
-      }
-      for (const p of teacherPeriods) {
-        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: p, reason, leaveType: leaveKind, status });
+        // 无课（如后勤老师）→ 仅登记一条，不安排代课
+        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false });
+      } else {
+        for (const p of teacherPeriods) {
+          leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: p, reason, leaveType: leaveKind, status, needSubstitute: true });
+        }
       }
     } else {
-      // 勾选的每个节次各生成一条记录
+      // 勾选的每个节次各生成一条记录；该节次无课 → 仅登记不代课
+      const hasClassPeriods = getTeacherPeriods(teacherName, dayOfWeek);
       for (const pv of periodVals) {
-        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: parseInt(pv), reason, leaveType: leaveKind, status });
+        const pNum = parseInt(pv);
+        leavesToAdd.push({ teacherName, leaveDate, dayOfWeek, period: pNum, reason, leaveType: leaveKind, status, needSubstitute: hasClassPeriods.includes(pNum) });
       }
     }
   } else {
@@ -1984,10 +1997,14 @@ async function submitLeave(e) {
       const dayOfWeek = wdayFull(dateStr);
       // 跳过周末
       if (dayOfWeek === '星期六' || dayOfWeek === '星期日') continue;
-      // 根据课表判断该教师当天有哪些课
+      // 根据课表判断该教师当天有哪些课；无课（如后勤老师）→ 仅登记一条，不安排代课
       const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
-      for (const p of teacherPeriods) {
-        leavesToAdd.push({ teacherName, leaveDate: dateStr, dayOfWeek, period: p, reason, leaveType: leaveKind, status });
+      if (teacherPeriods.length === 0) {
+        leavesToAdd.push({ teacherName, leaveDate: dateStr, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false });
+      } else {
+        for (const p of teacherPeriods) {
+          leavesToAdd.push({ teacherName, leaveDate: dateStr, dayOfWeek, period: p, reason, leaveType: leaveKind, status, needSubstitute: true });
+        }
       }
     }
   }
@@ -2480,8 +2497,8 @@ function renderSubPage(area) {
   // 教师端只看到自己的待安排代课；管理员看全部
   const currentTeacher = (sessionStorage.getItem('teacherName') || '').trim();
   const approvedLeaves = isAdmin 
-    ? leaveRecords.filter(l => l.status === 'approved')
-    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher) : []);
+    ? leaveRecords.filter(l => l.status === 'approved' && l.needSubstitute !== false)
+    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher && l.needSubstitute !== false) : []);
   const pendingCount = approvedLeaves.length;
   
   // 方案B：提取所有待安排代课的请假教师（去重，trim处理）
@@ -2514,7 +2531,7 @@ function renderSubPage(area) {
         <button class="btn btn-success" onclick="confirmSubstitutes()">✅ 确认方案</button>
         <button class="btn btn-secondary" onclick="cancelPreview()">❌ 取消预览</button>
       ` : `<button class="btn btn-secondary" onclick="exportSubExcel()" ${substituteRecords.length === 0 ? 'disabled' : ''}>📥 导出Excel</button>
-      <button class="btn btn-secondary" onclick="exportSubKaoqin()" ${substituteRecords.length === 0 ? 'disabled' : ''}>📋 按考勤表导出</button>`}
+      <button class="btn btn-secondary" onclick="exportSubKaoqin()" ${(substituteRecords.length === 0 && (leaveRecords||[]).filter(l=>l.needSubstitute===false).length === 0) ? 'disabled' : ''}>📋 按考勤表导出</button>`}
     </div>` : ''}
 
     ${previewSubstitutes.length > 0 ? renderPreviewTable() : renderSubTable()}
@@ -2703,8 +2720,8 @@ function renderSubTable() {
   // 已安排过的请假 leaveId 集合（去重）——同 leaveId 的代课任一存在即视为已安排
   const arrangedLeaveIds = new Set(substituteRecords.map(s => s.leaveId).filter(Boolean));
   const approvedLeaves = isAdmin 
-    ? leaveRecords.filter(l => l.status === 'approved' && !arrangedLeaveIds.has(l.id))
-    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher && !arrangedLeaveIds.has(l.id)) : []);
+    ? leaveRecords.filter(l => l.status === 'approved' && l.needSubstitute !== false && !arrangedLeaveIds.has(l.id))
+    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher && l.needSubstitute !== false && !arrangedLeaveIds.has(l.id)) : []);
   
   if (approvedLeaves.length > 0) {
     return `
@@ -2931,7 +2948,9 @@ function exportSubExcel() {
 
 // 按「教师考勤统计表」模板格式导出（自动填可生成项，其余留空手填）
 function exportSubKaoqin() {
-  if (substituteRecords.length === 0) { toast('无记录可导出','warning'); return; }
+  // 含「仅登记」请假（后勤/无课老师，无代课信息，仅考勤留痕）
+  const noSubLeaves = (leaveRecords || []).filter(l => l.needSubstitute === false);
+  if (substituteRecords.length === 0 && noSubLeaves.length === 0) { toast('无记录可导出','warning'); return; }
   // 统计每位请假教师每天的总节数（用于「节数」列）
   const cntMap = {};
   substituteRecords.forEach(s => {
@@ -2977,6 +2996,26 @@ function exportSubKaoqin() {
     r[13] = s.subject || '';
     r[14] = cntMap[k] || 1;
     r[15] = '';          // 备注：留空手填
+    rows.push(r);
+  });
+  // 仅登记请假（后勤/无课老师）：代课情况留空，备注标注「仅登记」
+  noSubLeaves.forEach(l => {
+    const dr = parseDate(l.leaveDate);
+    const r = arr(16,'');
+    r[0]  = idx++;
+    r[1]  = l.teacherName || '';
+    r[2]  = dr.y;  r[3] = dr.m;  r[4] = dr.dd;
+    r[5]  = l.dayOfWeek || '';
+    r[6]  = l.reason || '';
+    r[7]  = '';          // 假别：留空手填
+    r[8]  = '';          // 迟到早退旷工：留空手填
+    r[9]  = '';          // 天数：留空手填
+    r[10] = '';          // 前去代课教师：无
+    r[11] = '';          // 班级：无
+    r[12] = l.period === 'all' ? '全天' : (l.period || '');
+    r[13] = '';          // 科目：无
+    r[14] = '';          // 节数：无
+    r[15] = '仅登记';    // 备注
     rows.push(r);
   });
   const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -3073,6 +3112,16 @@ function renderImportPage(area) {
     </div>
 
     <div class="card">
+      <h3>🧑🔧 后勤/无课教师名单</h3>
+      <p class="text-muted">负责后勤等岗位、课表上没有课的老师，登记在此名单后即可请假（自动「仅登记」，不安排代课，考勤表照常导出）。</p>
+      <div class="form-group">
+        <textarea id="extra-teachers-input" class="form-textarea" rows="3" placeholder="每行一个姓名，例如：&#10;张后勤&#10;李干事">${(scheduleData && scheduleData.extraTeachers ? scheduleData.extraTeachers : []).join('\n')}</textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveExtraTeachers()">💾 保存名单</button>
+      <div id="extra-teachers-status" style="margin-top:8px;font-size:12px;color:#666;"></div>
+    </div>
+
+    <div class="card">
       <h3>📋 当前数据状态</h3>
       ${renderDataStatus()}
     </div>
@@ -3111,6 +3160,30 @@ async function clearScheduleData() {
     renderImportPage($('main-content'));
   } else {
     toast('清空失败：' + r.error, 'error');
+  }
+}
+
+async function saveExtraTeachers() {
+  const ta = $('extra-teachers-input');
+  if (!ta) return;
+  const names = (ta.value || '').split(/[\n,，、]+/).map(s => s.trim()).filter(Boolean);
+  const r = await fetch('/api/extra-teachers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd || 'admin888' },
+    body: JSON.stringify({ teachers: names })
+  });
+  const data = await r.json().catch(() => ({}));
+  if (data.success) {
+    // 同步本地 scheduleData（allTeachers 合并新名单）
+    if (scheduleData) {
+      scheduleData.extraTeachers = data.teachers || [];
+      scheduleData.allTeachers = [...new Set([...(scheduleData.allTeachers || []), ...(data.teachers || [])])].sort();
+      localStorage.setItem('teachers_cache', JSON.stringify({ t: scheduleData.allTeachers, ts: Date.now() }));
+    }
+    toast('✅ 名单已保存（' + (data.teachers || []).length + ' 人）', 'success');
+    renderImportPage($('main-content'));
+  } else {
+    toast('保存失败：' + (data.error || '未知错误'), 'error');
   }
 }
 
@@ -4128,6 +4201,7 @@ async function initApp() {
       calendar: schR.calendar || null,
       classes: schR.classes || [],
       allTeachers: schR.allTeachers || [],
+      extraTeachers: schR.extraTeachers || [],
       clubActivities: schR.clubActivities || null
     };
   } else if (schR.afterSchoolService || schR.calendar) {
@@ -4139,6 +4213,7 @@ async function initApp() {
       calendar: schR.calendar || null,
       classes: [],
       allTeachers: [],
+      extraTeachers: schR.extraTeachers || [],
       clubActivities: schR.clubActivities || null
     };
   } else {

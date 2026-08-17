@@ -364,6 +364,9 @@ async function putKV(env, key, value) {
 // ============ API 处理器 ============
 async function handleScheduleGet(env) {
   const cfg = await getKV(env, 'config') || {};
+  // 合并后勤/无课教师名单（extraTeachers 独立存储，重导课表不清除）
+  const extra = await getKV(env, 'extraTeachers') || [];
+  const allTeachers = [...new Set([...(cfg.allTeachers || []), ...extra])].sort();
   return json({
     success: true,
     data: cfg.timetable || null,
@@ -371,7 +374,8 @@ async function handleScheduleGet(env) {
     afterSchoolService: cfg.afterSchoolService || null,
     calendar: cfg.calendar || null,
     classes: cfg.classes || [],
-    allTeachers: cfg.allTeachers || [],
+    allTeachers,
+    extraTeachers: extra,
     clubActivities: cfg.clubActivities || null
   });
 }
@@ -479,6 +483,22 @@ async function handleScheduleImport(request, env) {
   return json({ success: true, message: '导入成功', stats: { classes: cfg.classes.length, teachers: cfg.allTeachers.length, slots: total } });
 }
 
+// ============ 后勤/无课教师名单（方案A：无课教师可请假，仅登记不代课）============
+async function handleExtraTeachersGet(env) {
+  const extra = await getKV(env, 'extraTeachers') || [];
+  return json({ success: true, teachers: extra });
+}
+
+async function handleExtraTeachersPost(request, env) {
+  if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
+  const body = await request.json().catch(() => ({}));
+  if (!Array.isArray(body.teachers)) return json({ success: false, error: 'teachers 必须是数组' });
+  // 整份替换（与课表导入同语义：重存 = 刷新），自动去重、去空白
+  const cleaned = [...new Set(body.teachers.map(t => String(t).trim()).filter(Boolean))].sort();
+  await putKV(env, 'extraTeachers', cleaned);
+  return json({ success: true, teachers: cleaned });
+}
+
 async function handleScheduleDelete(env) {
   if (!env.SCHOOL_SUB) return json({ success: false, error: 'KV 未配置' }, 500);
   await env.SCHOOL_SUB.delete('config');
@@ -496,7 +516,7 @@ const ALL_LEAVE_TYPES = ['事假', '病假', '婚假', '丧假', '公假', '其�
 
 async function handleLeavesPost(request, env) {
   const body = await request.json().catch(() => ({}));
-  const { teacherName, leaveDate, dayOfWeek, period, reason, leaveType } = body;
+  const { teacherName, leaveDate, dayOfWeek, period, reason, leaveType, needSubstitute } = body;
   if (!teacherName || !leaveDate) return json({ success: false, error: '缺少教师或日期' }, 400);
   const leaves = await getKV(env, 'leaves') || [];
   // 服务端去重：同一教师+同一日期+同一节次已存在的记录不再重复添加
@@ -513,7 +533,7 @@ async function handleLeavesPost(request, env) {
   const normType = ALL_LEAVE_TYPES.includes(leaveType) ? leaveType : '其他';
   // 假别分流：事假/病假 → 待校长审批（pending_principal），其余 → 直接待管理员审批（pending）
   const status = PRINCIPAL_REVIEW_TYPES.includes(normType) ? 'pending_principal' : 'pending';
-  const leave = { id, teacherName, leaveDate, dayOfWeek: normalizeDay(dayOfWeek), period: normPeriod || null, reason: reason || '', leaveType: normType, status, createdAt: new Date().toISOString() };
+  const leave = { id, teacherName, leaveDate, dayOfWeek: normalizeDay(dayOfWeek), period: normPeriod || null, reason: reason || '', leaveType: normType, needSubstitute: needSubstitute === false ? false : true, status, createdAt: new Date().toISOString() };
   leaves.push(leave);
   await putKV(env, 'leaves', leaves);
   return json({ success: true, data: leave });
@@ -742,6 +762,7 @@ async function handleSubstitutesGenerate(request, env) {
   const leavesWithSubs = new Set(existingSubs.map(s => s.leaveId).filter(Boolean));
   const pendingLeaves = leaves.filter(l => 
     (l.status === 'pending' || l.status === 'approved') && 
+    l.needSubstitute !== false &&  // 排除「仅登记」请假（后勤/无课老师，无需安排代课）
     !leavesWithSubs.has(l.id)  // 排除已有代课的请假
   );
   
@@ -989,6 +1010,11 @@ if (path === '/api/schedule' || path === '/api/schedule/') {
   
   if (path === '/api/substitutes/delete-one') {
     if (method === 'POST') return handleSubstituteDeleteOne(request, env);
+  }
+  
+  if (path === '/api/extra-teachers') {
+    if (method === 'GET') return handleExtraTeachersGet(env);
+    if (method === 'POST') return handleExtraTeachersPost(request, env);
   }
   
   // 教师隐私密码管理
