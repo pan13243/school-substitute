@@ -756,6 +756,8 @@ async function handleSubstitutesGet(env) {
 
 async function handleSubstitutesGenerate(request, env) {
   if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
+  const url = new URL(request.url);
+  const isPreview = url.searchParams.get('preview') === 'true';
   const body = await request.json().catch(() => ({}));
   const targetDate = body.targetDate || new Date().toISOString().split('T')[0];
   
@@ -787,16 +789,15 @@ async function handleSubstitutesGenerate(request, env) {
     targetDate
   });
   
-  // 【合并】保留已有代课 + 新增代课
-  const results = [...existingSubs, ...newResults];
-  
-  // 【调试】记录生成详情
-  console.log('[generateSubstitutes] pendingLeaves:', pendingLeaves.length, 'newResults:', newResults.length, 'total:', results.length);
-  for (const r of newResults.slice(0, 10)) {
-    console.log('  -', r.leaveTeacher, r.leaveDate, '第'+r.period+'节', '→', r.substituteTeacher);
+  // 【预览模式】只返回方案，不保存
+  if (isPreview) {
+    console.log('[previewSubstitutes] pendingLeaves:', pendingLeaves.length, 'newResults:', newResults.length);
+    return json({ success: true, results: newResults, summary: { total: newResults.length, arranged: newResults.length, failed: 0 } });
   }
-  if (newResults.length > 10) console.log('  ... and', newResults.length - 10, 'more');
   
+  // 【正常模式】保存到 KV
+  const results = [...existingSubs, ...newResults];
+  console.log('[generateSubstitutes] pendingLeaves:', pendingLeaves.length, 'newResults:', newResults.length, 'total:', results.length);
   await putKV(env, 'substitutes', results);
   return json({ success: true, results: newResults, summary: { total: newResults.length, arranged: newResults.length, failed: 0 } });
 }

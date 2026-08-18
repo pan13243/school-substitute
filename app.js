@@ -1027,7 +1027,15 @@ const API = {
       return await r.json();
     } catch { return { success:false, data:[] }; }
   },
+  async previewSubstitutes() {
+    // 只预览，不保存
+    const r = await fetch('/api/substitutes/generate?preview=true', {
+      method:'POST', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd}
+    });
+    return await r.json();
+  },
   async generateSubstitutes() {
+    // 预览+保存（兼容旧调用）
     const r = await fetch('/api/substitutes/generate', {
       method:'POST', headers:{'Content-Type':'application/json','x-admin-pwd':adminPwd}
     });
@@ -3055,7 +3063,8 @@ async function doGenerateSubstitutes() {
   previewSubstitutes = [];
   const loading = showLoading('正在分析代课方案...');
   try {
-    const r = await API.generateSubstitutes();
+    // 改用预览接口，只获取方案不保存
+    const r = await API.previewSubstitutes();
     loading.remove();
     console.log('[doGenerateSubstitutes] API返回:', r.summary, 'results.length:', (r.data||r.results||[]).length);
     if (r.success) {
@@ -3075,8 +3084,7 @@ async function doGenerateSubstitutes() {
       console.log('[doGenerateSubstitutes] 去重后:', uniqueResults.length, '条');
       if (uniqueResults.length > 0) {
         previewSubstitutes = uniqueResults; // 进入预览模式
-        toast(`生成完成！共 ${uniqueResults.length} 条代课安排，请检查确认`, 'success');
-        renderSubPage($('main-content'));
+        toast(`生成完成！共 ${uniqueResults.length} 条代课方案，请检查后点击「✅ 确认方案」保存`, 'success');
       } else {
         toast('未能生成代课安排：'+(r.error||r.message||'无可用数据'),'warning');
       }
