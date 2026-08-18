@@ -2642,7 +2642,17 @@ function renderSubPage(area) {
       <button class="btn btn-secondary" onclick="exportSubKaoqin()"  >📋 按考勤表导出</button>`}
     </div>` : ''}
 
-    ${previewSubstitutes.length > 0 ? renderPreviewTable() : renderSubTable()}
+    ${previewSubstitutes.length > 0 ? `
+    <div class="card" style="background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 100%);border:1px solid #3b82f6;margin-bottom:16px;">
+      <div style="padding:16px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px">👁️</div>
+        <div style="flex:1">
+          <div style="font-weight:600;color:#1e40af;font-size:15px">当前为预览模式</div>
+          <div style="color:#3b82f6;font-size:13px;margin-top:4px">请检查以下代课方案，确认无误后点击上方「✅ 确认方案」按钮保存</div>
+        </div>
+      </div>
+    </div>
+    ${renderPreviewTable()}` : renderSubTable()}
 
     ${isAdmin && !previewSubstitutes.length && currentSubTeacher ? `
     <div class="card" style="margin-top:16px;">
@@ -3076,7 +3086,10 @@ async function doGenerateSubstitutes() {
     renderSubPage($('main-content'));
   } catch(e) {
     loading.remove();
-    toast('网络错误','error');
+    previewSubstitutes = []; // 错误时确保清空预览状态
+    console.error('[doGenerateSubstitutes] 错误:', e);
+    toast('网络错误：' + (e.message || '请检查网络后重试'), 'error');
+    renderSubPage($('main-content')); // 错误后刷新页面，回到待安排列表
   }
 }
 
@@ -3182,13 +3195,14 @@ async function exportSubKaoqin() {
   // 以请假条（slip）的 duration 为准
   let slipDurMap = {};
   try {
-    const slipRes = await fetch('/api/leave-slips');
+    const slipRes = await fetch('/api/leave-slips', { headers: { 'x-admin-pwd': adminPwd || 'admin888' } });
     const slipData = slipRes.ok ? await slipRes.json() : null;
     if (slipData && Array.isArray(slipData.data)) {
       slipData.data.forEach(slip => {
         if (slip.duration != null) {
           // 该请假条关联的每条 leave 都用同一个 duration
-          (slip.leaveIds || []).forEach(lid => { slipDurMap[lid] = slip.duration; });
+          const dur = Number(slip.duration);
+          (slip.leaveIds || []).forEach(lid => { slipDurMap[lid] = dur; });
         }
       });
     }
