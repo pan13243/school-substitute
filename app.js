@@ -65,7 +65,7 @@ function getTeacherClass(teacherName, leaveDate, period) {
     if (dayData) {
       for (const [cls, slots] of Object.entries(dayData)) {
         const arr = Array.isArray(slots) ? slots : [];
-        const matched = arr.find(s => s.period == period);
+        const matched = arr.find(s => s && s.period == period);
         if (matched && matched.teacher === teacherName) return cls;
       }
     }
@@ -1719,8 +1719,9 @@ function renderTTMy(teacherName) {
   const mySlots = [];
   for (const [day, classMap] of Object.entries(tt)) {
     for (const [cn, slots] of Object.entries(classMap)) {
-      for (const s of slots) {
-        if (s.teacher === myName) mySlots.push({ day, className: cn, ...s, isAfterSchool: false });
+      const arr = Array.isArray(slots) ? slots : [];
+      for (const s of arr) {
+        if (s && s.teacher === myName) mySlots.push({ day, className: cn, ...s, isAfterSchool: false });
       }
     }
   }
@@ -1988,7 +1989,7 @@ function getTeacherPeriods(teacherName, dayOfWeek) {
   if (dayData) {
     for (const [className, slots] of Object.entries(dayData)) {
       for (const slot of slots) {
-        if (slot.teacher === teacherName && slot.period) {
+        if (slot && slot.teacher === teacherName && slot.period) {
           periods.push(parseInt(slot.period));
         }
       }
@@ -2699,8 +2700,9 @@ function renderTeacherSubTT(teacherName) {
   const mySlots = [];
   for (const [day, classMap] of Object.entries(tt)) {
     for (const [cn, slots] of Object.entries(classMap)) {
-      for (const s of slots) {
-        if (s.teacher === teacherName) mySlots.push({ day, className: cn, ...s, isAfterSchool: false });
+      const arr = Array.isArray(slots) ? slots : [];
+      for (const s of arr) {
+        if (s && s.teacher === teacherName) mySlots.push({ day, className: cn, ...s, isAfterSchool: false });
       }
     }
   }
@@ -2805,7 +2807,7 @@ function getTeacherConflict(t, dow, period) {
   const dayData = scheduleData.timetable?.[dow];
   if (dayData) {
     for (const [cls, slots] of Object.entries(dayData)) {
-      const slot = slots.find ? slots.find(s => s.period == p) : null;
+      const slot = slots.find ? slots.find(s => s && s.period == p) : null;
       if (slot && slot.teachers ? slot.teachers.includes(t) : slot.teacher === t) return cls;
     }
   }
@@ -2850,7 +2852,7 @@ function getTeacherTier(teacherName, targetClass, dow) {
   if (!slots) return 99;
   // 查该老师在 targetClass 教什么
   const mySlots = Array.isArray(slots) ? slots.filter(s =>
-    s.teachers ? s.teachers.includes(teacherName) : s.teacher === teacherName
+    s && (s.teachers ? s.teachers.includes(teacherName) : s.teacher === teacherName)
   ) : [];
   if (mySlots.length === 0) {
     // 不在 targetClass 教课 → 跨班
