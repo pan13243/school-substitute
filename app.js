@@ -77,6 +77,7 @@ function getTeacherClass(teacherName, leaveDate, period) {
       const slot = ass.find(s => s.day === dow && s.period == period);
       if (slot && slot.assignments) {
         for (const [cls, info] of Object.entries(slot.assignments)) {
+          if (!info) continue;
           // 支持双师字段：teacher / singleWeek / doubleWeek（任一匹配即算）
           const teachers = [];
           if (info.teacher) teachers.push(info.teacher);
@@ -1609,7 +1610,7 @@ function renderTTClass() {
       html += `<td>
         <div class="time-cell">${t}</div>
         <div class="${slot ? 'has-class' : 'empty-cell'}">
-          ${slot ? `<span class="subj">${esc(slot.subject)}</span><br><span class="tea">${esc(slot.teacher)}</span>` : '—'}
+          ${slot ? `<span class="subj">${esc(slot.subject||'')}</span><br><span class="tea">${esc(slot.teacher||'')}</span>` : '—'}
         </div>
       </td>`;
     }
@@ -1737,6 +1738,7 @@ function renderTTMy(teacherName) {
         ? slot.assignments 
         : Object.entries(slot.assignments).map(([className, data]) => ({ className, ...data }));
       for (const assign of assignments) {
+        if (!assign) continue;
         // 双教师场景：存储为 { singleWeek, doubleWeek }；单教师场景：{ teacher }
         // 这里把三种字段都拆成候选人名，避免单/双周老师的课在个人课表里丢失
         const candidates = [];
@@ -2004,8 +2006,9 @@ function getTeacherPeriods(teacherName, dayOfWeek) {
     const assignments = slot.assignments || {};
     for (const [cls, asn] of Object.entries(assignments)) {
       // 跳过 “单周/双周”型赋中的未指定周
+      if (!asn) continue;
       if (slot.period === 11 && asn.week && asn.week.includes('双周') === false) continue;
-      const isMine = asn.teacher === teacherName || asn.singleWeek === teacherName || asn.doubleWeek === teacherName;
+      const isMine = asn && (asn.teacher === teacherName || asn.singleWeek === teacherName || asn.doubleWeek === teacherName);
       if (isMine) {
         periods.push(parseInt(slot.period));
         break;
@@ -2716,6 +2719,7 @@ function renderTeacherSubTT(teacherName) {
         ? slot.assignments
         : Object.entries(slot.assignments).map(([className, data]) => ({ className, ...data }));
       for (const assign of assignments) {
+        if (!assign) continue;
         const candidates = [];
         if (assign.teacher) {
           assign.teacher.split(/[\n\r,，;；\s　]+/).map(t => t.trim()).filter(t => t).forEach(t => candidates.push({ name: t, week: assign.week || '通用' }));
@@ -2808,13 +2812,15 @@ function getTeacherConflict(t, dow, period) {
   if (dayData) {
     for (const [cls, slots] of Object.entries(dayData)) {
       const slot = slots.find ? slots.find(s => s && s.period == p) : null;
-      if (slot && slot.teachers ? slot.teachers.includes(t) : slot.teacher === t) return cls;
+      if (!slot) continue;
+      if (slot.teachers ? slot.teachers.includes(t) : slot.teacher === t) return cls;
     }
   }
   if (p >= 7 && scheduleData.afterSchoolService?.slots) {
     const slot = scheduleData.afterSchoolService.slots.find(s => s.day === dow && s.period == p);
     if (slot?.assignments) {
       for (const [cls, info] of Object.entries(slot.assignments)) {
+        if (!info) continue;
         const teachers = [];
         if (info.teacher) teachers.push(info.teacher);
         if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
@@ -2880,7 +2886,7 @@ function isMainSubjectTeacher(teacherName) {
   let mainCount = 0;
   for (const [cls, subs] of Object.entries(ta)) {
     for (const [subj, t] of Object.entries(subs)) {
-      if (t === teacherName && ['语文','数学','英语','科学','道德与法治','道德'].includes(subj)) mainCount++;
+      if (t && t === teacherName && ['语文','数学','英语','科学','道德与法治','道德'].includes(subj)) mainCount++;
     }
   }
   return mainCount >= 2; // 教两个班以上为主科老师
@@ -3075,6 +3081,7 @@ async function doGenerateSubstitutes() {
       const seen = new Set();
       const uniqueResults = [];
       for (const s of results) {
+        if (!s) continue;
         const key = `${s.leaveId}_${s.leaveDate}_${s.period}_${s.className}`;
         if (seen.has(key)) {
           console.warn('[doGenerateSubstitutes] 跳过重复:', s.leaveTeacher, s.leaveDate, '第'+s.period+'节', s.className);
