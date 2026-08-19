@@ -19,7 +19,6 @@ let isSubmittingLeave = false;  // 提交请假全局锁
 const PRINCIPAL_REVIEW_TYPES = ['事假', '病假'];
 // 校长审批密码（默认值，会从 KV 加载实际值）
 let principalPwd = 'principal888';
-let principalAuthed = false;
 let substituteRecords = [];
 
 // ══════════════════════════════════════════════════════
@@ -42,156 +41,6 @@ function toast(msg, type='info') {
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ══════════════════════════════════════════════════════
-//  浏览器通知服务（无需企业微信）
-// ══════════════════════════════════════════════════════
-let notificationPermission = 'default';
-
-async function requestNotificationPermission() {
-  if (!('Notification' in window)) {
-    console.warn('浏览器不支持通知');
-    return false;
-  }
-  if (Notification.permission === 'granted') {
-    notificationPermission = 'granted';
-    return true;
-  }
-  if (Notification.permission === 'denied') {
-    console.warn('浏览器通知被拒绝');
-    return false;
-  }
-  const result = await Notification.requestPermission();
-  notificationPermission = result;
-  return result === 'granted';
-}
-
-function sendBrowserNotification(title, body, url) {
-  // 检查通知权限
-  if (!('Notification' in window)) {
-    console.warn('浏览器不支持通知');
-    return;
-  }
-  if (Notification.permission !== 'granted') {
-    // 权限未授予时静默跳过
-    return;
-  }
-  // 检查标签页是否在前台（前台时浏览器通知容易被忽略，但仍发送）
-  const notif = new Notification(title, {
-    body: body,
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    tag: 'leave-' + Date.now(),
-    requireInteraction: false
-  });
-  if (url) {
-    notif.onclick = function() {
-      window.focus();
-      window.location.href = url;
-      notif.close();
-    };
-  }
-  // 10秒后自动关闭
-  setTimeout(() => notif.close(), 10000);
-}
-
-// 周期性轮询检查新请假（仅管理员/校长端）
-let leavePollingInterval = null;
-let lastSeenLeaveId = null;
-
-async function startLeavePolling() {
-  if (leavePollingInterval) return; // 已经在轮询
-  if (!isAdmin && !principalAuthed) return; // 只给管理员/校长启用
-  
-  console.log('启动请假轮询通知...');
-  
-  // 初始化 lastSeenLeaveId
-  try {
-    const res = await API.getLeaves();
-    if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-      // 按 createdAt 倒序，取最新的 ID
-      const sorted = [...res.data].sort((a, b) => 
-        new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-      );
-      lastSeenLeaveId = sorted[0].id;
-    }
-  } catch (err) {
-    console.warn('初始化轮询失败:', err);
-  }
-  
-  // 每 30 秒轮询一次
-  leavePollingInterval = setInterval(async () => {
-    if (!isAdmin && !principalAuthed) {
-      stopLeavePolling();
-      return;
-    }
-    try {
-      const res = await API.getLeaves();
-      if (!res.success || !Array.isArray(res.data)) return;
-      
-      const sorted = [...res.data].sort((a, b) => 
-        new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-      );
-      
-      if (sorted.length === 0) return;
-      
-      const newestId = sorted[0].id;
-      if (lastSeenLeaveId === null) {
-        lastSeenLeaveId = newestId;
-        return;
-      }
-      
-      // 找出 lastSeenLeaveId 之后新增的请假
-      const newLeaves = [];
-      for (const leave of sorted) {
-        if (leave.id === lastSeenLeaveId) break;
-        newLeaves.push(leave);
-      }
-      
-      if (newLeaves.length > 0) {
-        // 合并相同教师的连续请假为一条通知
-        const grouped = {};
-        for (const leave of newLeaves) {
-          const key = leave.teacherName + '|' + leave.leaveDate;
-          if (!grouped[key]) {
-            grouped[key] = {
-              teacherName: leave.teacherName,
-              leaveDate: leave.leaveDate,
-              dayOfWeek: leave.dayOfWeek,
-              leaveType: leave.leaveType,
-              periods: [],
-              reason: leave.reason
-            };
-          }
-          if (leave.period && !grouped[key].periods.includes(leave.period)) {
-            grouped[key].periods.push(leave.period);
-          }
-        }
-        
-        for (const g of Object.values(grouped)) {
-          const periodText = g.periods.length > 0 
-            ? `第${g.periods.sort((a,b)=>a-b).map(p => p === 'all' ? '全天' : p).join('、')}节` 
-            : '全天';
-          const title = `📋 ${g.teacherName} 请假`;
-          const body = `${g.leaveDate}（${g.dayOfWeek}）${periodText} | ${g.leaveType} | ${g.reason || '无原因'}`;
-          sendBrowserNotification(title, body, '/');
-        }
-      }
-      
-      lastSeenLeaveId = newestId;
-    } catch (err) {
-      console.warn('轮询请假失败:', err);
-    }
-  }, 30000); // 30秒
-}
-
-function stopLeavePolling() {
-  if (leavePollingInterval) {
-    clearInterval(leavePollingInterval);
-    leavePollingInterval = null;
-    console.log('停止请假轮询');
-  }
 }
 
 function now() {
@@ -1275,11 +1124,6 @@ function handleTeacherLogin(teacherName) {
 function handleAdminLogin() {
   const pwd = $('login-pwd').value.trim();
   if (!pwd) return toast('请输入密码','warning');
-  // 异步处理通知权限和轮询
-  _handleAdminLoginAsync(pwd);
-}
-
-async function _handleAdminLoginAsync(pwd) {
   // 验证管理员密码
   if (pwd !== 'admin888') {
     return toast('密码错误，请重新输入','error');
@@ -1292,9 +1136,6 @@ async function _handleAdminLoginAsync(pwd) {
   sessionStorage.removeItem('principalAuthed');
   currentPage = 'home';
   toast('管理员登录成功','success');
-  // 请求浏览器通知权限并启动轮询
-  await requestNotificationPermission();
-  await startLeavePolling();
   initApp();
 }
 
@@ -1313,9 +1154,6 @@ async function handlePrincipalLogin() {
         sessionStorage.setItem('principalAuthed','1');
         currentPage = 'principal';
         toast('校长登录成功','success');
-        // 请求浏览器通知权限并启动轮询
-        await requestNotificationPermission();
-        await startLeavePolling();
         initApp();
       } else {
         toast(j.error || '验证失败','error');
@@ -2347,17 +2185,6 @@ async function submitLeave(e) {
       ? `成功登记 ${successCount} 条请假（跳过 ${skipCount + dupCount} 条重复）`
       : `成功登记 ${successCount} 条请假记录`;
     toast(msg, 'success');
-    
-    // 浏览器通知：本地通知（如果当前用户是管理员/校长）
-    if (isAdmin || principalAuthed) {
-      // 本地通知自己
-      const periodText = leavesToAdd.length > 0 
-        ? (leavesToAdd[0].period === 'all' ? '全天' : `第${leavesToAdd.map(l => l.period).join('、')}节`)
-        : '';
-      const title = `✅ 请假已登记`;
-      const body = `${teacherName} | ${leavesToAdd[0]?.leaveDate || ''} ${periodText} | ${leaveKind}`;
-      sendBrowserNotification(title, body, '/');
-    }
     form.reset();
     $('leave-wday').value = wday(now());
     renderLeavePage($('main-content'));
@@ -2406,10 +2233,7 @@ async function deleteLeave(id) {
 // ══════════════════════════════════════════════════════
 //  校长审批页（请假条手写签字）
 // ══════════════════════════════════════════════════════
-// principalAuthed 在文件顶部定义，此处从 sessionStorage 恢复
-if (sessionStorage.getItem('principalAuthed') === '1') {
-  principalAuthed = true;
-}
+let principalAuthed = sessionStorage.getItem('principalAuthed') === '1';
 
 function renderPrincipalPage(area) {
   loadAndRenderPrincipalPage(area);
