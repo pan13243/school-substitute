@@ -2620,9 +2620,11 @@ let currentSubTeacher = null;
 function renderSubPage(area) {
   // 教师端只看到自己的待安排代课；管理员看全部
   const currentTeacher = (sessionStorage.getItem('teacherName') || '').trim();
+  // 已安排代课的请假不显示在待安排列表
+  const arrangedLeaveIds = new Set(substituteRecords.map(s => s.leaveId).filter(Boolean));
   const approvedLeaves = isAdmin 
-    ? leaveRecords.filter(l => l.status === 'approved' && l.needSubstitute !== false)
-    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher && l.needSubstitute !== false) : []);
+    ? leaveRecords.filter(l => l.status === 'approved' && l.needSubstitute !== false && !arrangedLeaveIds.has(l.id))
+    : (currentTeacher ? leaveRecords.filter(l => l.status === 'approved' && l.teacherName === currentTeacher && l.needSubstitute !== false && !arrangedLeaveIds.has(l.id)) : []);
   const pendingCount = approvedLeaves.length;
   
   // 方案B：提取所有待安排代课的请假教师（去重，trim处理）
