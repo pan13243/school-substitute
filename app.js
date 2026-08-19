@@ -1918,7 +1918,7 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
               <td>${fmtDate(l.leaveDate)}</td>
               <td>${esc(l.dayOfWeek)}</td>
               <td>${l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '—')}</td>
-              <td>${l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : (leaveType === 'range' ? calcLeaveDays(l.leaveDate, l.leaveDate) : 1))} 天</td>
+              <td>${l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : (l.period === 'all' || !l.period ? calcLeaveDays(l.leaveDate, l.leaveDate) : 1))} 天</td>
               <td>${esc(l.leaveType||'—')}${l.needSubstitute === false ? ' <span class="badge badge-blue">仅登记</span>' : ''}${l.reason ? '<br><span style="font-size:12px;color:#9CA3AF;">'+esc(l.reason)+'</span>' : ''}</td>
               <td><span class="badge badge-${l.status==='approved'?'green':l.status==='rejected'?'red':l.status==='pending_principal'?'blue':'yellow'}">${l.status==='pending_principal'?'待校长签字':(l.status||'待审核')}</span></td>
               <td>
