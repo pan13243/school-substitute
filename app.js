@@ -1076,20 +1076,20 @@ function renderLogin() {
         <div id="teacher-login">
           <p class="login-hint">请选择您的姓名（支持拼音首字母搜索）</p>
           <div class="teacher-search-box">
-            <input type="text" id="teacher-search-input" class="form-input" placeholder="输入拼音首字母或姓名搜索..." autocomplete="off">
+            <input type="text" id="teacher-search-input" class="form-input" placeholder="输入拼音首字母或姓名搜索..." autocomplete="off" name="teacher_search_no_autofill" data-lpignore="true" data-1p-ignore="true">
             <div id="teacher-search-dropdown" class="search-dropdown" style="display:none;"></div>
           </div>
           <input type="hidden" id="login-teacher-select" value="">
         </div>
         <div id="admin-login" style="display:none">
           <p class="login-hint">请输入管理员密码</p>
-          <input type="password" id="login-pwd" class="form-input" placeholder="输入管理员密码"
+          <input type="password" id="login-pwd" class="form-input" placeholder="输入管理员密码" autocomplete="new-password"
                  onkeydown="if(event.key==='Enter')handleAdminLogin()">
           <button class="btn btn-primary btn-block" onclick="handleAdminLogin()">登录</button>
         </div>
         <div id="principal-login" style="display:none">
           <p class="login-hint">请输入校长密码</p>
-          <input type="password" id="principal-pwd-input-login" class="form-input" placeholder="输入校长密码"
+          <input type="password" id="principal-pwd-input-login" class="form-input" placeholder="输入校长密码" autocomplete="new-password"
                  onkeydown="if(event.key==='Enter')handlePrincipalLogin()">
           <button class="btn btn-primary btn-block" onclick="handlePrincipalLogin()">进入审批</button>
         </div>
