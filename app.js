@@ -4342,6 +4342,18 @@ function renderSettingsPage(area) {
       <button class="btn btn-primary" onclick="saveNotifyCfg()">保存</button>
     </div>
 
+    <div class="card">
+      <h3>👥 教师企业微信账号配置</h3>
+      <p class="text-muted">配置教师的企业微信账号，用于发送私聊通知。格式：教师姓名=企业微信账号，每行一个。</p>
+      <div class="form-group">
+        <label>教师账号列表</label>
+        <textarea id="teacher-wechat-list" class="form-input" rows="10" placeholder="龙杰=longjie&#10;张烨=zhangye&#10;潘懂平=pandongping&#10;校长=zhangsan&#10;管理员=lisi" style="font-family:monospace;font-size:12px;"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveTeacherWechat()">保存配置</button>
+      <button class="btn btn-secondary" onclick="loadTeacherWechat()">加载现有配置</button>
+    </div>
+    <script>loadTeacherWechat();</script>
+
     ${isAdmin ? `
     <div class="card">
       <h3>🔐 教师隐私密码管理</h3>
@@ -4389,6 +4401,53 @@ async function testWxNotify() {
     else toast('发送失败：'+r.status,'error');
   } catch(e) {
     toast('网络错误','error');
+  }
+}
+
+// 加载教师企业微信账号配置
+async function loadTeacherWechat() {
+  try {
+    const r = await fetch('/api/teacher-wechat', { headers: { 'x-admin-pwd': adminPwd || 'admin888' } });
+    const obj = await r.json();
+    if (obj.success) {
+      const map = obj.data || {};
+      const lines = Object.entries(map).map(([name, account]) => `${name}=${account}`);
+      const textarea = $('teacher-wechat-list');
+      if (textarea) textarea.value = lines.join('\n');
+    }
+  } catch(e) {
+    console.error('加载教师企业微信账号失败:', e);
+  }
+}
+
+// 保存教师企业微信账号配置
+async function saveTeacherWechat() {
+  const textarea = $('teacher-wechat-list');
+  if (!textarea) return;
+  
+  const lines = textarea.value.trim().split('\n').filter(Boolean);
+  const map = {};
+  for (const line of lines) {
+    const [name, account] = line.split('=').map(s => s.trim());
+    if (name && account) {
+      map[name] = account;
+    }
+  }
+  
+  try {
+    const r = await fetch('/api/teacher-wechat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd || 'admin888' },
+      body: JSON.stringify({ teacherWechatMap: map })
+    });
+    const obj = await r.json();
+    if (obj.success) {
+      toast('教师企业微信账号已保存','success');
+    } else {
+      toast('保存失败: ' + (obj.error || '未知错误'), 'error');
+    }
+  } catch(e) {
+    toast('网络错误', 'error');
   }
 }
 

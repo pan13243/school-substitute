@@ -3,6 +3,69 @@
  * 路径: /api/* 都会进这里
  */
 
+// ============ 企业微信推送服务 ============
+const WECOM_CONFIG = {
+  corpId: 'ww3e39bcfac024ab3d',
+  agentId: '1000003',
+  secret: 'rUg_oxSrZ-8tyyXtJTxjhg4SCmK7kLj73Ha4O84UVhY'
+};
+
+// 缓存 access_token（2小时有效期）
+let cachedToken = null;
+let tokenExpireTime = 0;
+
+async function getWecomAccessToken() {
+  // 检查缓存
+  if (cachedToken && Date.now() < tokenExpireTime) {
+    return cachedToken;
+  }
+  
+  // 获取新 token
+  const url = `https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${WECOM_CONFIG.corpId}&corpsecret=${WECOM_CONFIG.secret}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  
+  if (data.errcode !== 0) {
+    console.error('获取企业微信token失败:', data);
+    return null;
+  }
+  
+  cachedToken = data.access_token;
+  tokenExpireTime = Date.now() + 7000000; // 提前5分钟过期
+  return cachedToken;
+}
+
+async function sendWecomMessage(touser, content) {
+  const token = await getWecomAccessToken();
+  if (!token) {
+    console.error('无法获取access_token');
+    return false;
+  }
+  
+  const url = `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${token}`;
+  const body = {
+    touser,
+    msgtype: 'text',
+    agentid: parseInt(WECOM_CONFIG.agentId),
+    text: { content },
+    safe: 0
+  };
+  
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  
+  const data = await res.json();
+  if (data.errcode !== 0) {
+    console.error('发送企业微信消息失败:', data);
+    return false;
+  }
+  
+  return true;
+}
+
 // ============ 算法模块（内联，避免 ESM 路径问题）============
 const MAIN_SUBJECTS = ['语文', '数学'];
 const SECONDARY_EARLY = ['英语'];
@@ -540,6 +603,34 @@ async function handleLeavesPost(request, env) {
   if (duration != null) leave.duration = duration;
   leaves.push(leave);
   await putKV(env, 'leaves', leaves);
+  
+  // 推送通知
+  const teacherWechatMap = await env.SCHOOL_SUB.get('teacherWechatMap', { type: 'json' }) || {};
+  const periodText = period === 'all' ? '全天' : `第${period}节`;
+  const message = `🔔 请假通知
+
+${teacherName}老师提交请假申请
+日期：${leaveDate} ${dayOfWeek || ''}
+节次：${periodText}
+假别：${leaveType}
+原因：${reason || '无'}
+
+请及时处理`;
+  
+  // 通知校长（事假/病假）
+  if (status === 'pending_principal') {
+    const principalAccount = teacherWechatMap['校长'] || teacherWechatMap['principal'];
+    if (principalAccount) {
+      await sendWecomMessage(principalAccount, message + '\n\n📋 需要校长审批');
+    }
+  }
+  
+  // 通知管理员
+  const adminAccount = teacherWechatMap['管理员'] || teacherWechatMap['admin'];
+  if (adminAccount) {
+    await sendWecomMessage(adminAccount, message);
+  }
+  
   return json({ success: true, data: leave });
 }
 
@@ -820,7 +911,20 @@ async function handleSubstitutesSave(request, env) {
   const existingKept = existing.filter(s => !previewLeaveIds.has(s.leaveId));
   const merged = [...existingKept, ...data];
   await putKV(env, 'substitutes', merged);
-  return json({ success: true, message: '保存成功', count: merged.length });
+  
+  // 推送通知给代课老师
+  const teacherWechatMap = await env.SCHOOL_SUB.get('teacherWechatMap', { type: 'json' }) || {};
+  const notified = new Set();
+  for (const sub of data) {
+    const teacherAccount = teacherWechatMap[sub.substituteTeacher];
+    if (teacherAccount && !notified.has(teacherAccount)) {
+      notified.add(teacherAccount);
+      const message = `🔔 代课任务通知\n\n${sub.substituteTeacher}老师，您有新的代课任务：\n\n班级：${sub.className}\n日期：${sub.leaveDate} ${sub.dayOfWeek || ''}\n节次：第${sub.period}节\n科目：${sub.subject || '待定'}\n\n请假老师：${sub.leaveTeacher}\n请假原因：${sub.reason || '未说明'}\n\n请提前做好准备`;
+      await sendWecomMessage(teacherAccount, message);
+    }
+  }
+  
+  return json({ success: true, message: '保存成功', count: merged.length, notified: notified.size });
 }
 
 // 删除单条代课记录
@@ -938,6 +1042,24 @@ async function handleTeacherPwdReset(request, env) {
   });
 }
 
+// ============ 教师企业微信账号管理 ============
+async function handleTeacherWechatGet(env) {
+  const data = await env.SCHOOL_SUB.get('teacherWechatMap', { type: 'json' }) || {};
+  return json({ success: true, data });
+}
+
+async function handleTeacherWechatSave(request, env) {
+  const body = await request.json();
+  const { teacherWechatMap } = body;
+  
+  if (!teacherWechatMap || typeof teacherWechatMap !== 'object') {
+    return json({ success: false, error: '无效的数据格式' }, 400);
+  }
+  
+  await env.SCHOOL_SUB.put('teacherWechatMap', JSON.stringify(teacherWechatMap));
+  return json({ success: true, message: '教师企业微信账号已保存' });
+}
+
 // ============ 工具函数 ============
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -976,6 +1098,11 @@ export async function onRequest(context) {
   }
   
   // 路由分发
+  if (path === '/api/teacher-wechat') {
+    if (method === 'GET') return handleTeacherWechatGet(env);
+    if (method === 'POST') return handleTeacherWechatSave(request, env);
+  }
+  
     if (path === '/api/principal-pwd') {
     if (method === 'GET') return handlePrincipalPwdGet(request, env);
     if (method === 'PUT') return handlePrincipalPwdPut(request, env);
