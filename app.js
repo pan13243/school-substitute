@@ -2909,11 +2909,22 @@ function getSubstituteOptions(currentTeacher, s) {
   }
   const dow = s.dayOfWeek;
   const period = s.period;
+  const leaveDate = s.leaveDate;
   const targetClass = s.className || '';
   const teachers = scheduleData?.allTeachers || [];
+  // 收集当天已请假的老师（过滤掉）
+  const absentTeachers = new Set();
+  if (leaveDate) {
+    for (const l of leaveRecords) {
+      if ((l.status === 'pending' || l.status === 'approved') && l.leaveDate === leaveDate) {
+        absentTeachers.add(l.teacherName);
+      }
+    }
+  }
   const result = [];
   for (const t of teachers) {
     if (t === s.leaveTeacher) continue; // 不安排自己
+    if (absentTeachers.has(t)) continue; // 当天已请假的老师过滤掉
     if (getTeacherConflict(t, dow, period)) continue; // 有课的老师过滤掉
     const tier = getTeacherTier(t, targetClass, dow);
     if (tier === 99) continue; // 跨班主科不安排
