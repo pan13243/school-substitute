@@ -2036,6 +2036,10 @@ async function submitLeave(e) {
     submitBtn.textContent = '提交中…';
   }
   try {
+  // 确保课表数据已加载
+  if (!scheduleData || !scheduleData.timetable) {
+    await API.getSchedule();
+  }
   const fd  = new FormData(form);
   const leaveType = fd.get('leaveType');
   const leaveKind = fd.get('leaveKind') || '其他'; // 假别：事假/病假/婚假/丧假/公假/其他
