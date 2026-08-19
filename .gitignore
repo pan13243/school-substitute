@@ -15,3 +15,6 @@ patch_*.mjs
 *.ps1
 wrangler.toml.deleted
 *.deleted
+
+# Cloudflare wrangler 本地缓存（禁止提交git）
+.wrangler/
