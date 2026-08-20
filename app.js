@@ -2655,6 +2655,7 @@ function renderSubPage(area) {
       <button class="btn btn-primary" onclick="doGenerateSubstitutes()">⚡ 自动生成代课安排</button>
       ${previewSubstitutes.length > 0 ? `
         <button class="btn btn-success" onclick="confirmSubstitutes()">✅ 确认方案</button>
+        <button class="btn btn-info" onclick="exportCurrentSubstitutes()">📥 导出本次安排</button>
         <button class="btn btn-secondary" onclick="cancelPreview()">❌ 取消预览</button>
       ` : `<button class="btn btn-secondary" onclick="exportSubExcel()" ${substituteRecords.length === 0 ? 'disabled' : ''}>📥 导出Excel</button>
       <button class="btn btn-secondary" onclick="exportSubKaoqin()"  >📋 按考勤表导出</button>`}
@@ -2955,6 +2956,26 @@ function cancelPreview() {
   previewSubstitutes = [];
   renderSubPage($('main-content'));
   toast('已取消预览', 'info');
+}
+
+// 导出本次预览的代课安排（仅导出当前预览的方案）
+function exportCurrentSubstitutes() {
+  if (previewSubstitutes.length === 0) { toast('暂无本次代课安排可导出','warning'); return; }
+  const data = previewSubstitutes.map(s => ({
+    '请假教师': s.leaveTeacher||'',
+    '代课教师': s.substituteTeacher||'',
+    '班级': s.className||'',
+    '科目': s.subject||'',
+    '日期': fmtDate(s.leaveDate||''),
+    '星期': s.dayOfWeek||'',
+    '节次': '第'+(s.period||'')+'节',
+    '安排方式': s.reason||'',
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '本次代课安排');
+  XLSX.writeFile(wb, `本次代课安排_${now()}.xlsx`);
+  toast('本次代课安排导出成功','success');
 }
 
 async function confirmSubstitutes() {
