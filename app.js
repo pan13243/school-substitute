@@ -109,7 +109,8 @@ const AFTER_SCHOOL_PERIOD_MAP = {
 };
 function getPeriod(timeRange) {
   if (!timeRange) return 0;
-  const m = String(timeRange).match(/(\d{1,2})[::]\d{2}/);
+  const t = String(timeRange).replace(/[：:]/g, ':');
+  const m = t.match(/(\d{1,2}):\d{2}/);
   if (m) {
     const key = m[0];
     return AFTER_SCHOOL_PERIOD_MAP[key] || 0;
