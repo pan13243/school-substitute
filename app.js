@@ -1983,9 +1983,30 @@ function updatePeriodText() {
 }
 
 // 根据课表获取教师某天的有课节次
-function getTeacherPeriods(teacherName, dayOfWeek) {
+// dateStr 可选(YYYY-MM-DD):传入后启用单/双周自动判定 + period 11 修正
+function getTeacherPeriods(teacherName, dayOfWeek, dateStr) {
   const periods = [];
   if (!scheduleData) return periods;
+  // 解析单/双周(优先查 calendar.weeks,回退按 startDate + 周数计算)
+  let parity = null;
+  if (dateStr) {
+    const cal = scheduleData.calendar;
+    if (cal && Array.isArray(cal.weeks)) {
+      for (const w of cal.weeks) {
+        if (Array.isArray(w.days) && w.days.some(d => d && d.date === dateStr)) {
+          parity = (w.parity === 'double') ? 'double' : 'single';
+          break;
+        }
+      }
+    }
+    if (!parity && cal && cal.startDate) {
+      const start = new Date(cal.startDate + 'T00:00:00');
+      const cur = new Date(dateStr + 'T00:00:00');
+      const days = Math.floor((cur - start) / (24 * 3600 * 1000));
+      const weekNum = Math.floor(days / 7) + 1;
+      parity = (weekNum % 2 === 1) ? 'single' : 'double';
+    }
+  }
 
   // 1. 扫描正课表(1-6节)
   const dayData = scheduleData.timetable?.[dayOfWeek];
@@ -2006,11 +2027,21 @@ function getTeacherPeriods(teacherName, dayOfWeek) {
     if (!slot.period || slot.period < 7 || slot.period > 11) continue;
     const assignments = slot.assignments || {};
     for (const [cls, asn] of Object.entries(assignments)) {
-      // 跳过 "单周/双周"型赋中的未指定周
       if (!asn) continue;
-      if (slot.period === 11 && asn.week && asn.week.includes('双周') === false) continue;
-      const isMine = asn && (asn.teacher === teacherName || asn.singleWeek === teacherName || asn.doubleWeek === teacherName);
-      if (isMine) {
+      const isSingleDouble = asn.singleWeek && asn.doubleWeek;
+      let matches = false;
+      if (!isSingleDouble) {
+        // 通用周:asn.teacher 直接匹配
+        matches = asn.teacher === teacherName;
+      } else if (parity) {
+        // 单/双周型:按当前周次匹配对应侧的教师
+        if (parity === 'single' && asn.singleWeek === teacherName) matches = true;
+        if (parity === 'double' && asn.doubleWeek === teacherName) matches = true;
+      } else {
+        // 无日期可用:为兼容旧调用,退化为双侧都计入(避免漏判)
+        matches = (asn.singleWeek === teacherName || asn.doubleWeek === teacherName);
+      }
+      if (matches) {
         periods.push(parseInt(slot.period));
         break;
       }
@@ -2058,7 +2089,7 @@ async function submitLeave(e) {
     if (pv0.includes('all')) durationVal = 1;
     else {
       const dayOfWeek0 = wdayFull(fd.get('leaveDate'));
-      const classN0 = getTeacherPeriods(teacherName, dayOfWeek0).filter(p => pv0.map(Number).includes(p)).length;
+      const classN0 = getTeacherPeriods(teacherName, dayOfWeek0, fd.get('leaveDate')).filter(p => pv0.map(Number).includes(p)).length;
       if (classN0 >= 4) durationVal = 1;
       else if (classN0 === 0) durationVal = 1; // 勾选节次都没课 → 全天计
       else if (classN0 === 1) durationVal = 0.3;
@@ -2088,7 +2119,7 @@ async function submitLeave(e) {
       leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false }));
     } else if (periodVals.includes('all')) {
       // 根据课表自动判断该教师当天有哪些课
-      const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
+      const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek, leaveDate);
       if (teacherPeriods.length === 0) {
         // 无课(如后勤老师)→ 仅登记一条,不安排代课
         leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false }));
@@ -2099,7 +2130,7 @@ async function submitLeave(e) {
       }
     } else {
       // 勾选的每个节次各生成一条记录;该节次无课 → 仅登记不代课
-      const hasClassPeriods = getTeacherPeriods(teacherName, dayOfWeek);
+      const hasClassPeriods = getTeacherPeriods(teacherName, dayOfWeek, leaveDate);
       for (const pv of periodVals) {
         const pNum = parseInt(pv);
         leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: pNum, reason, leaveType: leaveKind, status, needSubstitute: hasClassPeriods.includes(pNum) }));
@@ -2118,7 +2149,7 @@ async function submitLeave(e) {
       // 跳过周末
       if (dayOfWeek === '星期六' || dayOfWeek === '星期日') continue;
       // 根据课表判断该教师当天有哪些课;无课(如后勤老师)→ 仅登记一条,不安排代课
-      const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek);
+      const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek, dateStr);
       if (teacherPeriods.length === 0) {
         leavesToAdd.push(attachDuration({ teacherName, leaveDate: dateStr, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false }));
       } else {
