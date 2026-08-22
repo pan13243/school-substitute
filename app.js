@@ -1346,24 +1346,35 @@ function renderHomePage(area) {
         <div class="stat-num">${teas.length}</div>
         <div class="stat-label">教师</div>
       </div>
-      ${isAdmin ? `
-      <div class="stat-card">
-        <div class="stat-icon">📚</div>
-        <div class="stat-num">${cls.length * 30}</div>
-        <div class="stat-label">周总课时</div>
-      </div>` : ''}
-      ${!principalAuthed ? `
-      <div class="stat-card" onclick="${isAdmin ? 'showAdminLeaveHistory()' : 'showMyLeaves()'}" style="cursor:pointer;">
-        <div class="stat-icon">🏖️</div>
-        <div class="stat-num">${isAdmin ? leaveRecords.length : myLeaves.length}</div>
-        <div class="stat-label">请假记录</div>
+      <div class="stat-card" onclick="switchPage('tt')" style="cursor:pointer;">
+        <div class="stat-icon">📅</div>
+        <div class="stat-num">—</div>
+        <div class="stat-label">课表查询</div>
       </div>
-      <div class="stat-card" onclick="${isAdmin ? 'showAdminSubstituteHistory()' : 'showMySubstitutes()'}" style="cursor:pointer;">
-        <div class="stat-icon">✅</div>
-        <div class="stat-num">${isAdmin ? substituteRecords.length : mySubstitutes.length}</div>
-        <div class="stat-label">代课记录</div>
-      </div>` : ''}
     </div>
+
+    ${hasData ? `
+    <div class="home-big-card" onclick="switchPage('leave')">
+      <div class="home-big-icon">🏖️</div>
+      <div class="home-big-text">
+        <div class="home-big-title">请假登记</div>
+        <div class="home-big-sub">点击填写请假申请</div>
+      </div>
+    </div>` : ''}
+
+    ${!principalAuthed ? `
+    <div class="home-pair">
+      <div class="home-half-card" onclick="${isAdmin ? 'showAdminLeaveHistory()' : 'showMyLeaves()'}">
+        <div class="home-half-icon">🏖️</div>
+        <div class="home-half-num">${isAdmin ? leaveRecords.length : myLeaves.length}</div>
+        <div class="home-half-label">请假记录</div>
+      </div>
+      <div class="home-half-card" onclick="${isAdmin ? 'showAdminSubstituteHistory()' : 'showMySubstitutes()'}">
+        <div class="home-half-icon">✅</div>
+        <div class="home-half-num">${isAdmin ? substituteRecords.length : mySubstitutes.length}</div>
+        <div class="home-half-label">代课记录</div>
+      </div>
+    </div>` : ''}
 
     ${!hasData && isAdmin ? `
     <div class="alert alert-warn">
@@ -1371,11 +1382,7 @@ function renderHomePage(area) {
     </div>` : ''}
 
     ${hasData ? `
-    <div class="quick-actions">
-      <button class="action-card" onclick="switchPage('leave')">
-        <span class="action-icon">🏖️</span>
-        <span class="action-label">请假登记</span>
-      </button>
+    <div class="quick-actions admin-quick">
       ${isAdmin ? `
       <button class="action-card" onclick="switchPage('sub')">
         <span class="action-icon">✅</span>
@@ -1398,15 +1405,14 @@ function renderHomePage(area) {
         <span class="action-icon">📋</span>
         <span class="action-label">校长审批</span>
       </button>` : ''}
-      <button class="action-card" onclick="switchPage('tt')">
-        <span class="action-icon">📅</span>
-        <span class="action-label">课表查询</span>
-      </button>
-      ${(!isAdmin && !principalAuthed) ? `
+    </div>` : ''}
+
+    ${(!isAdmin && !principalAuthed) ? `
+    <div class="home-privacy-row">
       <button class="action-card" onclick="showSetPrivacyPwdModal()">
         <span class="action-icon">🔐</span>
         <span class="action-label">隐私设置</span>
-      </button>` : ''}
+      </button>
     </div>` : ''}
 
   </div>`;

@@ -321,6 +321,43 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
   .topbar { display: none; } /* 手机端隐藏桌面顶栏 */
 }
 
+/* ── 手机端主页布局（v69）────────────────────── */
+.home-big-card {
+  display: flex; align-items: center; gap: 16px;
+  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  color: #fff; padding: 22px 20px; border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(59,130,246,.25);
+  cursor: pointer; margin-bottom: 14px; transition: transform .15s;
+}
+.home-big-card:hover { transform: translateY(-2px); }
+.home-big-icon { font-size: 40px; line-height: 1; }
+.home-big-text { display: flex; flex-direction: column; }
+.home-big-title { font-size: 20px; font-weight: 700; }
+.home-big-sub { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+.home-pair {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 14px;
+}
+.home-half-card {
+  background: #fff; border: 1px solid var(--gray-100);
+  border-radius: var(--radius-lg); padding: 18px 12px;
+  text-align: center; cursor: pointer; transition: all .15s;
+  box-shadow: var(--shadow);
+}
+.home-half-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--blue); }
+.home-half-icon { font-size: 32px; margin-bottom: 6px; }
+.home-half-num { font-size: 24px; font-weight: 800; color: var(--blue-dark); line-height: 1.1; }
+.home-half-label { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+
+.home-privacy-row { display: flex; }
+.home-privacy-row .action-card { width: 100%; }
+
+/* 桌面端：隐藏手机端专用组件（统计区课表查询 / 大卡 / 双卡 / 隐私独立行） */
+@media (min-width: 601px) {
+  .home-big-card, .home-pair, .home-privacy-row { display: none; }
+}
+
 /* ── 滚动条美化 ───────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
