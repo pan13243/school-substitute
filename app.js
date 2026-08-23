@@ -4620,9 +4620,15 @@ async function initApp() {
 
   document.body.innerHTML = renderAppShell();
 
-  // 加载数据
-  const [schR, leavesR, subsR, slipsR] = await Promise.all([
-    API.getSchedule(), API.getLeaves(), API.getSubstitutes(), API.getLeaveSlips()
+  // 加载数据(带5秒超时,防止单个请求卡死;校长模式跳过leaves/slips由loadAndRenderPrincipalPage单独处理)
+  const timeout = (ms, p) => Promise.race([p, new Promise((_, r) => setTimeout(() => r({success:false, error:'timeout'}), ms))]);
+  let schR = {success:false, data:null}, leavesR = {success:false, data:[]}, subsR = {success:false, data:[]}, slipsR = {success:false, data:[]};
+  await Promise.all([
+    timeout(5000, API.getSchedule()).then(r => schR = r),
+    // 校长身份:leaves/slips由loadAndRenderPrincipalPage单独带密码请求,这里跳过避免401白等
+    principalAuthed ? null : timeout(5000, API.getLeaves()).then(r => leavesR = r),
+    principalAuthed ? null : timeout(5000, API.getSubstitutes()).then(r => subsR = r),
+    principalAuthed ? null : timeout(5000, API.getLeaveSlips()).then(r => slipsR = r)
   ]);
 
   if (schR.success && schR.data && Object.keys(schR.data).length > 0) {
@@ -4666,7 +4672,12 @@ async function initApp() {
     checkAndNotifyNewSubstitutes(myName);
   }
 
-  switchPage('home');
+  // 角色感知跳转,避免校长恢复后被强制切到首页
+  if (principalAuthed) {
+    switchPage('principal');
+  } else {
+    switchPage('home');
+  }
 }
 
 // ══════════════════════════════════════════════════════
