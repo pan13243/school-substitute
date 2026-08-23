@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daiketiao-v83';
+const CACHE_NAME = 'daiketiao-v84';
 const urlsToCache = [
   '/',
   '/index.html',

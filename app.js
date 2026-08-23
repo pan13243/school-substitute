@@ -76,21 +76,39 @@ function getTeacherClass(teacherName, leaveDate, period) {
     if (Array.isArray(ass)) {
       const slot = ass.find(s => s.day === dow && s.period == period);
       if (slot && slot.assignments) {
+        // 计算单/双周(参考 getMyPeriods 逻辑)
+        let parity = null;
+        const cal = scheduleData.calendar;
+        if (cal && cal.startDate) {
+          const start = new Date(cal.startDate + 'T00:00:00');
+          const cur = new Date(leaveDate + 'T00:00:00');
+          const days = Math.floor((cur - start) / (24 * 3600 * 1000));
+          const weekNum = Math.floor(days / 7) + 1;
+          parity = (weekNum % 2 === 1) ? 'single' : 'double';
+        }
         for (const [cls, info] of Object.entries(slot.assignments)) {
           if (!info) continue;
-          // 支持双师字段:teacher / singleWeek / doubleWeek(任一匹配即算)
-          const teachers = [];
-          if (info.teacher) teachers.push(info.teacher);
-          // singleWeek/doubleWeek 可能是字符串或数组
-          if (info.singleWeek) {
-            if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
-            else teachers.push(info.singleWeek);
+          const isSingleDouble = info.singleWeek && info.doubleWeek;
+          let matches = false;
+          if (isSingleDouble && parity) {
+            // 单/双周型:按当前周次匹配对应侧的教师
+            if (parity === 'single' && info.singleWeek === teacherName) matches = true;
+            if (parity === 'double' && info.doubleWeek === teacherName) matches = true;
+          } else {
+            // 通用字段:teacher / singleWeek / doubleWeek 任一匹配
+            const teachers = [];
+            if (info.teacher) teachers.push(info.teacher);
+            if (info.singleWeek) {
+              if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
+              else teachers.push(info.singleWeek);
+            }
+            if (info.doubleWeek) {
+              if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
+              else teachers.push(info.doubleWeek);
+            }
+            matches = teachers.includes(teacherName);
           }
-          if (info.doubleWeek) {
-            if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
-            else teachers.push(info.doubleWeek);
-          }
-          if (teachers.includes(teacherName)) return cls;
+          if (matches) return cls;
         }
       }
     }
