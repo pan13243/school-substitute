@@ -356,6 +356,20 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
 /* 桌面端：隐藏手机端专用组件（统计区课表查询 / 大卡 / 双卡 / 隐私独立行） */
 @media (min-width: 601px) {
   .home-big-card, .home-pair, .home-privacy-row { display: none; }
+
+  /* 教师PC端：已批准请假记录大卡片 */
+  .home-approved-card {
+    display: flex; align-items: center; gap: 16px;
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: #fff; padding: 20px 20px; border-radius: var(--radius-lg);
+    box-shadow: 0 4px 12px rgba(16,185,129,.25);
+    cursor: pointer; margin-bottom: 14px; transition: transform .15s;
+  }
+  .home-approved-card:hover { transform: translateY(-2px); }
+  .home-approved-icon { font-size: 40px; line-height: 1; }
+  .home-approved-text { display: flex; flex-direction: column; }
+  .home-approved-title { font-size: 20px; font-weight: 700; }
+  .home-approved-sub { font-size: 13px; opacity: .85; margin-top: 4px; }
 }
 
 /* ── 滚动条美化 ───────────────────────────────────── */
