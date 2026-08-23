@@ -1265,10 +1265,11 @@ function renderAppShell() {
       <nav class="sidebar">
         <div class="sidebar-section">
           <div class="sidebar-section-title">📋 功能菜单</div>
+          ${!principalAuthed ? `
           <button class="nav-btn" data-page="home"    onclick="switchPage('home')">🏠 首页</button>
           <button class="nav-btn" data-page="tt"      onclick="switchPage('tt')">📅 课表查询</button>
           <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记${leaveBadge}</button>
-
+          ` : ''}
           ${principalAuthed ? `<button class="nav-btn" data-page="principal" onclick="switchPage('principal')">✍️ 校长审批${principalBadge}</button>` : ''}
           ${isAdmin ? `
           <div class="sidebar-section-title" style="margin-top:16px">⚙️ 管理员</div>
