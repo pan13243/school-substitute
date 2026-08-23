@@ -1381,15 +1381,6 @@ function renderHomePage(area) {
       </div>
     </div>` : ''}
 
-    ${(!isAdmin && !principalAuthed && currentTeacher) ? `
-    <div class="home-approved-card" onclick="showMyApprovedLeaves()">
-      <div class="home-approved-icon">🏖️</div>
-      <div class="home-approved-text">
-        <div class="home-approved-title">已批准请假记录</div>
-        <div class="home-approved-sub">${myLeaves.filter(l => l.status === 'approved').length} 条</div>
-      </div>
-    </div>` : ''}
-
     ${!principalAuthed ? `
     <div class="home-pair">
       <div class="home-half-card" onclick="${isAdmin ? 'showAdminLeaveHistory()' : 'showMyLeaves()'}">
