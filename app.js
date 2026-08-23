@@ -1322,8 +1322,8 @@ function renderHomePage(area) {
   // 获取当前教师姓名(教师端)
   const currentTeacher = sessionStorage.getItem('teacherName') || '';
 
-  // 教师端:只显示自己的请假和代课
-  const myLeaves = currentTeacher ? leaveRecords.filter(l => l.teacherName === currentTeacher) : [];
+  // 教师端:只显示自己的已批准请假
+  const myLeaves = currentTeacher ? leaveRecords.filter(l => l.teacherName === currentTeacher && l.status === 'approved') : [];
   const mySubstitutes = currentTeacher ? substituteRecords.filter(s => s.leaveTeacher === currentTeacher || s.substituteTeacher === currentTeacher) : [];
 
   // 教师端显示欢迎语,管理员端显示系统概览
