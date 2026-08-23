@@ -2304,14 +2304,15 @@ async function loadAndRenderPrincipalPage(area) {
   if (!principalAuthed) return; // 未登录时不发请求
   
   try {
-    // 校长页需要查看全部请假条,带20秒超时防止卡死(leave-slips后端较慢)
+    // 校长页需要查看全部请假条,带30秒超时防止卡死(KV冷启动较慢)
     const timeout = (ms, p) => Promise.race([p, new Promise((_, r) => setTimeout(() => r({success:false, error:'timeout'}), ms))]);
     const [sr, lr] = await Promise.all([
-      timeout(20000, fetch('/api/leave-slips', { headers: { 'x-principal-pwd': principalPwd || '' } }).then(r => r.json()).catch(() => ({ success: false, data: [] }))),
-      timeout(20000, API.getLeaves())
+      timeout(30000, fetch('/api/leave-slips', { headers: { 'x-principal-pwd': principalPwd || '' } }).then(r => r.json()).catch(() => ({ success: false, data: [] }))),
+      timeout(30000, API.getLeaves())
     ]);
-    // PC 端专属:检测到 401(密码失效)时,清空 principal sessionStorage 并强制重登
-    if (!sr.success && window.innerWidth >= 601 && principalPwd) {
+    // PC 端专属:检测到 401(密码错误)时,清空 principal sessionStorage 并强制重登
+    // 注意:超时/网络错误(sr.error==='timeout' 或 !sr 且无 error)不触发重登,只提示网络问题
+    if (!sr.success && sr.error === '无权限查看请假条' && window.innerWidth >= 601 && principalPwd) {
       console.warn('[PC] 校长密码失效,清空登录态要求重新登录');
       sessionStorage.removeItem('role');
       sessionStorage.removeItem('principalAuthed');
@@ -2320,6 +2321,12 @@ async function loadAndRenderPrincipalPage(area) {
       principalPwd = '';
       _renderPrincipalPageBody(area);
       toast('校长密码已变更,请重新登录', 'warning');
+      return;
+    }
+    // 超时/网络错误单独提示
+    if (!sr.success && sr.error === 'timeout') {
+      console.warn('加载请假条超时,请刷新重试');
+      toast('网络超时,请刷新重试', 'warning');
       return;
     }
     if (sr.success) slipRecords = sr.data || [];
