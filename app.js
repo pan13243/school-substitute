@@ -2310,6 +2310,18 @@ async function loadAndRenderPrincipalPage(area) {
       timeout(20000, fetch('/api/leave-slips', { headers: { 'x-principal-pwd': principalPwd || '' } }).then(r => r.json()).catch(() => ({ success: false, data: [] }))),
       timeout(20000, API.getLeaves())
     ]);
+    // PC 端专属:检测到 401(密码失效)时,清空 principal sessionStorage 并强制重登
+    if (!sr.success && window.innerWidth >= 601 && principalPwd) {
+      console.warn('[PC] 校长密码失效,清空登录态要求重新登录');
+      sessionStorage.removeItem('role');
+      sessionStorage.removeItem('principalAuthed');
+      sessionStorage.removeItem('principalPwd');
+      principalAuthed = false;
+      principalPwd = '';
+      _renderPrincipalPageBody(area);
+      toast('校长密码已变更,请重新登录', 'warning');
+      return;
+    }
     if (sr.success) slipRecords = sr.data || [];
     if (lr.success) leaveRecords = lr.data || [];
     // 数据加载完成后重新渲染
