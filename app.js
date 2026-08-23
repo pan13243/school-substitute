@@ -328,25 +328,6 @@ async function showMyLeaves() {
   }, '请假记录');
 }
 
-// 教师端:显示自己的已批准请假记录(只读弹窗)
-async function showMyApprovedLeaves() {
-  const currentTeacher = sessionStorage.getItem('teacherName');
-  if (!currentTeacher) return;
-
-  await showPrivacyVerifyModal(currentTeacher, () => {
-    const myApprovedLeaves = leaveRecords.filter(l => l.teacherName === currentTeacher && l.status === 'approved');
-
-    const content = myApprovedLeaves.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无已批准请假记录</p>' :
-      `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>班级</th><th>节次</th><th>假别</th><th>原因</th></tr></thead><tbody>` +
-      myApprovedLeaves.map(l => {
-        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.dayOfWeek)}</td><td>${getTeacherClass(currentTeacher, l.leaveDate, l.period)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'-')}</td><td>${esc(l.reason||'-')}</td></tr>`;
-      }).join('') +
-      `</tbody></table>`;
-
-    showModal('已批准请假记录', content);
-  }, '已批准请假记录');
-}
-
 // 教师端:显示自己的代课记录(只读弹窗)
 async function showMySubstitutes() {
   const currentTeacher = sessionStorage.getItem('teacherName');
