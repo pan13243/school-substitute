@@ -2354,10 +2354,7 @@ function _renderPrincipalPageBody(area) {
     <div class="card">
       <div class="card-header">
         <h3>🕐 待审批请假条 (${pendingSlips.length})</h3>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm" onclick="showChangePrincipalPwdModal()">🔑 修改密码</button>
-          <button class="btn btn-sm" onclick="principalAuthed=false;sessionStorage.removeItem('principalAuthed');renderPrincipalPage($('main-content'))">退出校长模式</button>
-        </div>
+        <button class="btn btn-sm" onclick="principalAuthed=false;sessionStorage.removeItem('principalAuthed');renderPrincipalPage($('main-content'))">退出校长模式</button>
       </div>
       ${pendingSlips.length === 0 ? '<p class="text-muted">暂无待审批的请假条</p>' : `
       <div class="table-wrap">
