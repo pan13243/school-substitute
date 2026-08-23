@@ -2280,16 +2280,22 @@ function renderPrincipalPage(area) {
 }
 
 async function loadAndRenderPrincipalPage(area) {
+  // 先渲染登录界面,避免空白等待
+  _renderPrincipalPageBody(area);
+  if (!principalAuthed) return; // 未登录时不发请求
+  
   try {
-    // 校长页需要查看全部请假条。带 admin-pwd 后即可获取所有数据(后端校验身份后返回全部)
+    // 校长页需要查看全部请假条,带5秒超时防止卡死
+    const timeout = (ms, p) => Promise.race([p, new Promise((_, r) => setTimeout(() => r({success:false, error:'timeout'}), ms))]);
     const [sr, lr] = await Promise.all([
-      fetch('/api/leave-slips', { headers: { 'x-principal-pwd': principalPwd || '' } }).then(r => r.json()).catch(() => ({ success: false, data: [] })),
-      API.getLeaves()
+      timeout(5000, fetch('/api/leave-slips', { headers: { 'x-principal-pwd': principalPwd || '' } }).then(r => r.json()).catch(() => ({ success: false, data: [] }))),
+      timeout(5000, API.getLeaves())
     ]);
     if (sr.success) slipRecords = sr.data || [];
     if (lr.success) leaveRecords = lr.data || [];
+    // 数据加载完成后重新渲染
+    _renderPrincipalPageBody(area);
   } catch (e) { console.warn('加载请假条/请假记录失败', e); }
-  _renderPrincipalPageBody(area);
 }
 
 function _renderPrincipalPageBody(area) {
