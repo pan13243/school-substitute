@@ -1401,7 +1401,7 @@ function renderHomePage(area) {
         <span class="action-label">重置校长密码</span>
       </button>` : ''}
       ${principalAuthed ? `
-      <button class="action-card" onclick="switchPage('principal')">
+      <button class="action-card principal-big-card" onclick="switchPage('principal')">
         <span class="action-icon">📋</span>
         <span class="action-label">校长审批</span>
       </button>` : ''}

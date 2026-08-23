@@ -469,3 +469,21 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
   background: #EFF6FF;
   color: #2563EB;
 }
+
+/* ── 手机端校长审批大卡（v71）────────────────────── */
+@media (max-width: 600px) {
+  .principal-big-card {
+    grid-column: 1 / -1 !important;
+    display: flex !important; align-items: center !important; gap: 16px !important;
+    background: linear-gradient(135deg, #F59E0B, #D97706) !important;
+    color: #fff !important; padding: 22px 20px !important; border-radius: var(--radius-lg) !important;
+    box-shadow: 0 4px 12px rgba(245,158,11,.35) !important;
+    border: none !important; width: 100% !important; text-align: left !important;
+    transition: transform .15s !important;
+  }
+  .principal-big-card:hover { transform: translateY(-2px) !important; }
+  .principal-big-card .action-icon { font-size: 40px !important; line-height: 1 !important; }
+  .principal-big-card .action-label {
+    font-size: 20px !important; font-weight: 700 !important; color: #fff !important;
+  }
+}
