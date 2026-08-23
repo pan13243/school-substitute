@@ -1353,7 +1353,7 @@ function renderHomePage(area) {
       </div>
     </div>
 
-    ${hasData ? `
+    ${hasData && !principalAuthed ? `
     <div class="home-big-card" onclick="switchPage('leave')">
       <div class="home-big-icon">🏖️</div>
       <div class="home-big-text">
