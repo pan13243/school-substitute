@@ -1903,14 +1903,15 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
 
     ${(() => {
       // 管理员只显示待处理的请假记录(pending / pending_principal)
+      // 教师端只显示待批准的记录(未 approved)
       const pendingLeaves = isAdmin
         ? leaveRecords.filter(l => l.status === 'pending' || l.status === 'pending_principal')
-        : displayLeaves;
-      const showLeaves = isAdmin ? pendingLeaves : displayLeaves;
+        : displayLeaves.filter(l => l.status !== 'approved');
+      const showLeaves = pendingLeaves;
       return `
     <div class="card">
       <div class="card-header">
-        <h3>${isAdmin ? '⏳ 待处理请假' : '📋 请假记录'} (${showLeaves.length})</h3>
+        <h3>${isAdmin ? '⏳ 待处理请假' : '⏳ 待批准请假'} (${showLeaves.length})</h3>
         ${isAdmin ? `<button class="btn btn-sm btn-danger" onclick="clearAllLeaves()">清空</button>` : ''}
       </div>
       ${showLeaves.length > 0 ? `
