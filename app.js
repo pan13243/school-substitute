@@ -2283,7 +2283,7 @@ async function loadAndRenderPrincipalPage(area) {
   try {
     // 校长页需要查看全部请假条。带 admin-pwd 后即可获取所有数据(后端校验身份后返回全部)
     const [sr, lr] = await Promise.all([
-      fetch('/api/leave-slips', { headers: { 'x-admin-pwd': adminPwd || 'admin888' } }).then(r => r.json()).catch(() => ({ success: false, data: [] })),
+      fetch('/api/leave-slips', { headers: { 'x-principal-pwd': principalPwd || '' } }).then(r => r.json()).catch(() => ({ success: false, data: [] })),
       API.getLeaves()
     ]);
     if (sr.success) slipRecords = sr.data || [];
