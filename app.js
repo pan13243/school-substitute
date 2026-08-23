@@ -1171,6 +1171,7 @@ async function handlePrincipalLogin() {
         principalAuthed = true;
         sessionStorage.setItem('role','principal');
         sessionStorage.setItem('principalAuthed','1');
+        sessionStorage.setItem('principalPwd', principalPwd); // 存密码供 initApp 恢复
         currentPage = 'principal';
         toast('校长登录成功','success');
         initApp();
@@ -2303,11 +2304,11 @@ async function loadAndRenderPrincipalPage(area) {
   if (!principalAuthed) return; // 未登录时不发请求
   
   try {
-    // 校长页需要查看全部请假条,带5秒超时防止卡死
+    // 校长页需要查看全部请假条,带20秒超时防止卡死(leave-slips后端较慢)
     const timeout = (ms, p) => Promise.race([p, new Promise((_, r) => setTimeout(() => r({success:false, error:'timeout'}), ms))]);
     const [sr, lr] = await Promise.all([
-      timeout(5000, fetch('/api/leave-slips', { headers: { 'x-principal-pwd': principalPwd || '' } }).then(r => r.json()).catch(() => ({ success: false, data: [] }))),
-      timeout(5000, API.getLeaves())
+      timeout(20000, fetch('/api/leave-slips', { headers: { 'x-principal-pwd': principalPwd || '' } }).then(r => r.json()).catch(() => ({ success: false, data: [] }))),
+      timeout(20000, API.getLeaves())
     ]);
     if (sr.success) slipRecords = sr.data || [];
     if (lr.success) leaveRecords = lr.data || [];
@@ -4624,15 +4625,9 @@ async function initApp() {
     // 恢复校长身份:先从 API 加载真实密码
     isAdmin = false;
     principalAuthed = true;
-    const storedPwd = sessionStorage.getItem('principalAuthed');
+    const storedPwd = sessionStorage.getItem('principalPwd');
     if (storedPwd) {
-      try {
-        const r = await fetch('/api/principal-pwd', { headers: { 'x-principal-pwd': 'restore' } });
-        if (r.ok) {
-          const j = await r.json();
-          if (j.success) principalPwd = j.data.password;
-        }
-      } catch {}
+      principalPwd = storedPwd;
     }
     currentPage = 'principal';
   } else if (role === 'teacher') {
