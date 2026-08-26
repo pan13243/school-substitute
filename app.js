@@ -2976,16 +2976,17 @@ function getTeacherTier(teacherName, targetClass, dow) {
   return 4; // 同班副科
 }
 
-// 判断是否为跨班主科老师(教两个班以上的语文/数学/英语)
+// 判断是否为跨班主科老师(教两个班以上的语文/数学/科学/道德)
+// 英语为独立学科,不算主科也不算副科,跨班可安排代课(优先级=2)
 function isMainSubjectTeacher(teacherName) {
   const ta = scheduleData?.teacherAssignment || {};
   let mainCount = 0;
   for (const [cls, subs] of Object.entries(ta)) {
     for (const [subj, t] of Object.entries(subs)) {
-      if (t && t === teacherName && ['语文','数学','英语','科学','道德与法治','道德'].includes(subj)) mainCount++;
+      if (t && t === teacherName && ['语文','数学','科学','道德与法治','道德'].includes(subj)) mainCount++;
     }
   }
-  return mainCount >= 2; // 教两个班以上为主科老师
+  return mainCount >= 2; // 教两个班以上的语文/数学/科学/道法为主科老师
 }
 
 // 当前选中老师的档位(用于保持选中状态)
