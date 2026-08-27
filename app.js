@@ -717,16 +717,17 @@ window.toggleSigPicker = function(btn, scope, name) {
   row.parentElement.insertBefore(host, row.nextSibling);
   btn.textContent = '📂 收起签名库';
   // 优先从缓存立即渲染,避免等 API 延迟;同时静默拉最新
-  const name = sigScopeName(scope);
-  const key = _sigCacheKey(scope, name);
+  // 注意:函数参数 name 已存在(onclick 传入的教师名),不重复声明
+  const sigName = sigScopeName(scope);
+  const key = _sigCacheKey(scope, sigName);
   if (!_sigCache[key]) {
     host.innerHTML = '<div style="font-size:12px;color:#9CA3AF;padding:8px;">加载中...</div>';
-    loadSigLib(scope, name).then(lib => {
+    loadSigLib(scope, sigName).then(lib => {
       if (host) host.innerHTML = renderSigPickerHTML(scope, lib);
     });
   } else {
     host.innerHTML = renderSigPickerHTML(scope, _sigCache[key]);
-    loadSigLib(scope, name); // 静默刷新
+    loadSigLib(scope, sigName); // 静默刷新
   }
 };
 
@@ -746,10 +747,11 @@ window.saveSigToLib = async function(btn, scope, canvasId, name) {
   const ok = await addToSigLib(scope, sigScopeName(scope), sigName.trim(), dataUrl);
   toast(ok ? '✓ 已保存到签名库' : '保存失败', ok ? 'success' : 'error');
   // 若签名库面板已打开,直接用最新缓存刷新(避免再等一次 API)
-  const name = sigScopeName(scope);
+  // 注意:函数参数 name 已存在(onclick 传入的教师名),不重复声明;sigName 已被 prompt 占用
+  const scopeName = sigScopeName(scope);
   if (modal.querySelector('.sig-lib-host')) {
     const host = modal.querySelector('.sig-lib-host');
-    if (host) host.innerHTML = renderSigPickerHTML(scope, _sigCache[_sigCacheKey(scope, name)] || []);
+    if (host) host.innerHTML = renderSigPickerHTML(scope, _sigCache[_sigCacheKey(scope, scopeName)] || []);
   }
 };
 
