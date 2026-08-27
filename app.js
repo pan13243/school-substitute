@@ -559,6 +559,9 @@ function getSigLibKey(scope) {
 
 // 签名库上下文(模块级,避免 onclick 字符串转义问题)
 let _sigCtx = { scope: 'teacher', name: '' };
+// 签名库内存缓存,按 scope|name 缓存,避免每次打开都请求 API
+const _sigCache = {};
+function _sigCacheKey(scope, name) { return scope + '|' + (name || ''); }
 function setSigCtx(scope, name) { _sigCtx = { scope, name: name || '' }; }
 function sigScopeName(scope) {
   if (scope === 'principal') return '';
@@ -577,18 +580,19 @@ function sigHeaders() {
   return h;
 }
 
-// 读取签名库(异步,云端 KV)
+// 读取签名库(异步,云端 KV),结果缓存到 _sigCache
 async function loadSigLib(scope, name) {
+  const key = _sigCacheKey(scope, name);
   try {
     const params = scope === 'principal' ? '?scope=principal' : ('?scope=teacher&name=' + encodeURIComponent(name || ''));
     const r = await fetch('/api/signatures' + params, { headers: sigHeaders() });
     const j = await r.json();
-    if (j.success) return Array.isArray(j.data) ? j.data : [];
+    if (j.success) { _sigCache[key] = Array.isArray(j.data) ? j.data : []; return _sigCache[key]; }
   } catch (e) { console.warn('读取签名库失败', e); }
   return [];
 }
 
-// 保存一条签名(异步,云端 KV)
+// 保存一条签名(异步,云端 KV),同步更新缓存
 async function addToSigLib(scope, name, sigName, dataUrl) {
   try {
     const r = await fetch('/api/signatures', {
@@ -597,11 +601,15 @@ async function addToSigLib(scope, name, sigName, dataUrl) {
       body: JSON.stringify({ scope, name: name || '', action: 'add', sigName, dataUrl })
     });
     const j = await r.json();
+    if (j.success) {
+      const key = _sigCacheKey(scope, name || '');
+      _sigCache[key] = Array.isArray(j.data) ? j.data : (_sigCache[key] || []);
+    }
     return !!j.success;
   } catch (e) { console.warn('保存签名失败', e); return false; }
 }
 
-// 删除一条签名(异步,云端 KV)
+// 删除一条签名(异步,云端 KV),同步更新缓存
 async function removeFromSigLib(scope, name, id) {
   try {
     const r = await fetch('/api/signatures', {
@@ -610,6 +618,10 @@ async function removeFromSigLib(scope, name, id) {
       body: JSON.stringify({ scope, name: name || '', action: 'delete', id })
     });
     const j = await r.json();
+    if (j.success) {
+      const key = _sigCacheKey(scope, name || '');
+      if (_sigCache[key]) _sigCache[key] = _sigCache[key].filter(e => e.id !== id);
+    }
     return !!j.success;
   } catch (e) { console.warn('删除签名失败', e); return false; }
 }
@@ -665,21 +677,27 @@ async function refreshSigLibUI(scope, name) {
 }
 
 // 供 HTML onclick 调用:选中已保存签名 -> 渲染到当前打开的签字板
-window.onPickSavedSig = async function(scope, id) {
-  const lib = await loadSigLib(scope, sigScopeName(scope));
-  const entry = lib.find(e => e.id === id);
-  if (!entry) return;
-  const canvas = document.querySelector('.modal-overlay canvas#slip-canvas') || document.querySelector('.modal-overlay canvas#principal-canvas');
-  if (!canvas) return;
-  paintSignatureOnCanvas(canvas, entry.dataUrl);
-  if (canvas._sigPad) canvas._sigPad.setInk(true);
-  toast('✓ 已加载签名:"' + entry.name + '"', 'success');
+window.onPickSavedSig = function(scope, id) {
+  // 优先从缓存快速渲染(无网络延迟),同时静默刷新最新数据
+  const name = sigScopeName(scope);
+  const key = _sigCacheKey(scope, name);
+  const cached = _sigCache[key];
+  const entry = cached ? cached.find(e => e.id === id) : null;
+  if (entry) {
+    const canvas = document.querySelector('.modal-overlay canvas#slip-canvas') || document.querySelector('.modal-overlay canvas#principal-canvas');
+    if (canvas) { paintSignatureOnCanvas(canvas, entry.dataUrl); if (canvas._sigPad) canvas._sigPad.setInk(true); }
+    toast('✓ 已加载签名:"' + entry.name + '"', 'success');
+  }
+  // 静默刷新(保证点击到最新保存的签名)
+  loadSigLib(scope, name);
 };
 
 window.onDeleteSavedSig = async function(scope, id) {
   if (!confirm('确认删除此签名?')) return;
   await removeFromSigLib(scope, sigScopeName(scope), id);
-  await refreshSigLibUI(scope, sigScopeName(scope));
+  const name = sigScopeName(scope);
+  const host = document.querySelector('.sig-lib-host');
+  if (host) host.innerHTML = renderSigPickerHTML(scope, _sigCache[_sigCacheKey(scope, name)] || []);
 };
 
 window.toggleSigPicker = function(btn, scope, name) {
@@ -698,10 +716,18 @@ window.toggleSigPicker = function(btn, scope, name) {
   const row = btn.parentElement;
   row.parentElement.insertBefore(host, row.nextSibling);
   btn.textContent = '📂 收起签名库';
-  // 异步加载签名库
-  loadSigLib(scope, sigScopeName(scope)).then(lib => {
-    if (host) host.innerHTML = renderSigPickerHTML(scope, lib);
-  });
+  // 优先从缓存立即渲染,避免等 API 延迟;同时静默拉最新
+  const name = sigScopeName(scope);
+  const key = _sigCacheKey(scope, name);
+  if (!_sigCache[key]) {
+    host.innerHTML = '<div style="font-size:12px;color:#9CA3AF;padding:8px;">加载中...</div>';
+    loadSigLib(scope, name).then(lib => {
+      if (host) host.innerHTML = renderSigPickerHTML(scope, lib);
+    });
+  } else {
+    host.innerHTML = renderSigPickerHTML(scope, _sigCache[key]);
+    loadSigLib(scope, name); // 静默刷新
+  }
 };
 
 window.saveSigToLib = async function(btn, scope, canvasId, name) {
@@ -719,9 +745,11 @@ window.saveSigToLib = async function(btn, scope, canvasId, name) {
   if (!sigName) return;
   const ok = await addToSigLib(scope, sigScopeName(scope), sigName.trim(), dataUrl);
   toast(ok ? '✓ 已保存到签名库' : '保存失败', ok ? 'success' : 'error');
-  // 若签名库面板已打开,刷新
+  // 若签名库面板已打开,直接用最新缓存刷新(避免再等一次 API)
+  const name = sigScopeName(scope);
   if (modal.querySelector('.sig-lib-host')) {
-    await refreshSigLibUI(scope, sigScopeName(scope));
+    const host = modal.querySelector('.sig-lib-host');
+    if (host) host.innerHTML = renderSigPickerHTML(scope, _sigCache[_sigCacheKey(scope, name)] || []);
   }
 };
 
