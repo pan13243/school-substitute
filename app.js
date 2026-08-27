@@ -2927,10 +2927,13 @@ function renderPreviewTable() {
 }
 
 // 判断老师t在dow/period是否有课,有课返回班级名,无课返回null
-function getTeacherConflict(t, dow, period) {
+function getTeacherConflict(t, dow, period, leaveDate) {
   if (!t || !dow || !scheduleData) return null;
   const p = parseInt(period);
-  const dayData = scheduleData.timetable?.[dow];
+  // day 格式归一化:leave.dayOfWeek 可能为「星期二」(长)或「周二」(短),timetable/afterSchoolService
+  // 的 slot.day 也可能两种混用 —— 两端都 normDay 一下保证匹配。
+  const targetDow = normDay(dow);
+  const dayData = scheduleData.timetable?.[targetDow];
   if (dayData) {
     for (const [cls, slots] of Object.entries(dayData)) {
       const slot = slots.find ? slots.find(s => s && s.period == p) : null;
@@ -2939,14 +2942,39 @@ function getTeacherConflict(t, dow, period) {
     }
   }
   if (p >= 7 && scheduleData.afterSchoolService?.slots) {
-    const slot = scheduleData.afterSchoolService.slots.find(s => s.day === dow && s.period == p);
+    const slot = scheduleData.afterSchoolService.slots.find(s => normDay(s.day) === targetDow && s.period == p);
     if (slot?.assignments) {
+      // 单/双周过滤:用校历 dayMap 查请假当天 parity,只有当前周次对应的教师才算冲突
+      const parity = leaveDate ? (scheduleData.calendar?.dayMap?.[leaveDate]?.parity || null) : null;
       for (const [cls, info] of Object.entries(slot.assignments)) {
         if (!info) continue;
         const teachers = [];
         if (info.teacher) teachers.push(info.teacher);
-        if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
-        if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
+        if (info.singleWeek && info.doubleWeek) {
+          // 轮换制:有 parity 时只取对应侧;无 parity 则都视为冲突(保守)
+          if (parity === 'single') {
+            if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
+            else teachers.push(info.singleWeek);
+          } else if (parity === 'double') {
+            if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
+            else teachers.push(info.doubleWeek);
+          } else {
+            if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
+            else teachers.push(info.singleWeek);
+            if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
+            else teachers.push(info.doubleWeek);
+          }
+        } else {
+          // 单一固定:有 parity 时按匹配侧;无 parity 都计入
+          if (info.singleWeek) {
+            if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
+            else if (!parity || parity === 'single') teachers.push(info.singleWeek);
+          }
+          if (info.doubleWeek) {
+            if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
+            else if (!parity || parity === 'double') teachers.push(info.doubleWeek);
+          }
+        }
         if (teachers.includes(t)) return cls;
       }
     }
@@ -3048,7 +3076,7 @@ function getSubstituteOptions(currentTeacher, s) {
   for (const t of teachers) {
     if (t === s.leaveTeacher) continue; // 不安排自己
     if (absentTeachers.has(t)) continue; // 当天已请假的老师过滤掉
-    if (getTeacherConflict(t, dow, period)) continue; // 有课的老师过滤掉
+    if (getTeacherConflict(t, dow, period, leaveDate)) continue; // 有课的老师过滤掉(含课后服务单/双周过滤)
     const tier = getTeacherTier(t, targetClass, dow);
     if (tier === 99) continue; // 跨班主科不安排
     const curTier = t === currentTeacher ? tier : getCurrentTier(currentTeacher, targetClass, dow);
