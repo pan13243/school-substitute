@@ -1083,7 +1083,9 @@ async function handleSignaturesGet(request, env) {
   }
   const currentTeacher = request.headers.get('x-teacher-name') || '';
   const isAdmin = authAdmin(request.headers);
-  if (!isAdmin && currentTeacher !== name) {
+  // 不再用 header 中的 name 与查询 name 做相等比对(中文名经 Workers/Latin1 解码会乱码,
+  // 且浏览器禁止非 ISO-8859-1 的 header 值),改为: 具备任一身份凭证即可,存储键以查询参数 name 为准。
+  if (!isAdmin && !currentTeacher) {
     return json({ success: false, error: '无权查看' }, 403);
   }
   const lib = (store.teacherSigs && store.teacherSigs[name]) || [];
@@ -1111,7 +1113,10 @@ async function handleSignaturesPost(request, env) {
   // teacher scope
   const currentTeacher = request.headers.get('x-teacher-name') || '';
   const isAdmin = authAdmin(request.headers);
-  if (!name || (!isAdmin && currentTeacher !== name)) {
+  const isPrincipal = await authPrincipal(request.headers, env);
+  // 不再用 header 中的 name 与 body.name 做相等比对(中文名经 Workers/Latin1 解码会乱码,
+  // 且浏览器禁止非 ISO-8859-1 的 header 值),改为: 具备任一身份凭证即可,存储键以 body.name 为准。
+  if (!name || (!isAdmin && !isPrincipal && !currentTeacher)) {
     return json({ success: false, error: '无权操作' }, 403);
   }
   store.teacherSigs = store.teacherSigs || {};

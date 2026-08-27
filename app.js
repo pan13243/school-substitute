@@ -567,8 +567,12 @@ function sigScopeName(scope) {
 
 function sigHeaders() {
   const h = { 'Content-Type': 'application/json' };
-  const t = (sessionStorage.getItem('teacherName') || '').trim();
-  if (t) h['x-teacher-name'] = t;
+  // 注意: 浏览器 fetch 拒绝非 ISO-8859-1 字符的 header 值,
+  // 故不能直接把中文教师名放到 x-teacher-name 里(会报 non ISO-8859-1 code point)。
+  // 后端(签名 API)只检查该 header 是否存在(教师登录态凭证),值是什么无关紧要,
+  // 所以用 ASCII '1' 作为存在性占位符;真实姓名由 body/query 传递(后端作存储键)。
+  if ((sessionStorage.getItem('teacherName') || '').trim()) h['x-teacher-name'] = '1';
+  if (adminPwd) h['x-admin-pwd'] = adminPwd;
   if (principalPwd) h['x-principal-pwd'] = principalPwd;
   return h;
 }
