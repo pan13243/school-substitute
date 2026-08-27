@@ -363,7 +363,7 @@ async function showMySubstitutes() {
         const isMyLeave = s.leaveTeacher === currentTeacher;
         const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
         const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
-        const dow = s.leaveDate ? wday(s.leaveDate) : '-';
+        const dow = s.leaveDate ? wdayFull(s.leaveDate) : '-';
         return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${dow}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'-')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'-')}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
