@@ -358,12 +358,13 @@ async function showMySubstitutes() {
     );
 
     const content = mySubstitutes.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无代课记录</p>' :
-      `<table class="data-table"><thead><tr><th>类型</th><th>日期</th><th>班级</th><th>科目</th><th>节次</th><th>对方教师</th></tr></thead><tbody>` +
+      `<table class="data-table"><thead><tr><th>类型</th><th>日期</th><th>星期</th><th>班级</th><th>科目</th><th>节次</th><th>对方教师</th></tr></thead><tbody>` +
       mySubstitutes.map(s => {
         const isMyLeave = s.leaveTeacher === currentTeacher;
         const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
         const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
-        return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'-')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'-')}</td></tr>`;
+        const dow = s.leaveDate ? wday(s.leaveDate) : '-';
+        return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${dow}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'-')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'-')}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
 
