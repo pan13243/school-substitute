@@ -557,35 +557,57 @@ function getSigLibKey(scope) {
   return scope === 'principal' ? 'principalSigs' : 'teacherSigs';
 }
 
-function loadSigLib(scope) {
+// 签名库上下文(模块级,避免 onclick 字符串转义问题)
+let _sigCtx = { scope: 'teacher', name: '' };
+function setSigCtx(scope, name) { _sigCtx = { scope, name: name || '' }; }
+function sigScopeName(scope) {
+  if (scope === 'principal') return '';
+  return (_sigCtx.name || (sessionStorage.getItem('teacherName') || '').trim());
+}
+
+function sigHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  const t = (sessionStorage.getItem('teacherName') || '').trim();
+  if (t) h['x-teacher-name'] = t;
+  if (principalPwd) h['x-principal-pwd'] = principalPwd;
+  return h;
+}
+
+// 读取签名库(异步,云端 KV)
+async function loadSigLib(scope, name) {
   try {
-    const raw = localStorage.getItem(getSigLibKey(scope));
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
-  } catch { return []; }
+    const params = scope === 'principal' ? '?scope=principal' : ('?scope=teacher&name=' + encodeURIComponent(name || ''));
+    const r = await fetch('/api/signatures' + params, { headers: sigHeaders() });
+    const j = await r.json();
+    if (j.success) return Array.isArray(j.data) ? j.data : [];
+  } catch (e) { console.warn('读取签名库失败', e); }
+  return [];
 }
 
-function saveSigLib(scope, arr) {
-  try { localStorage.setItem(getSigLibKey(scope), JSON.stringify(arr)); } catch {}
+// 保存一条签名(异步,云端 KV)
+async function addToSigLib(scope, name, sigName, dataUrl) {
+  try {
+    const r = await fetch('/api/signatures', {
+      method: 'POST',
+      headers: sigHeaders(),
+      body: JSON.stringify({ scope, name: name || '', action: 'add', sigName, dataUrl })
+    });
+    const j = await r.json();
+    return !!j.success;
+  } catch (e) { console.warn('保存签名失败', e); return false; }
 }
 
-function addToSigLib(scope, name, dataUrl) {
-  const lib = loadSigLib(scope);
-  const entry = {
-    id: 'sig_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-    name: name || ('签名 ' + (lib.length + 1)),
-    dataUrl,
-    createdAt: Date.now()
-  };
-  lib.unshift(entry); // 最新的在前
-  if (lib.length > SIG_LIB_MAX) lib.length = SIG_LIB_MAX;
-  saveSigLib(scope, lib);
-  return entry;
-}
-
-function removeFromSigLib(scope, id) {
-  const lib = loadSigLib(scope).filter(e => e.id !== id);
-  saveSigLib(scope, lib);
+// 删除一条签名(异步,云端 KV)
+async function removeFromSigLib(scope, name, id) {
+  try {
+    const r = await fetch('/api/signatures', {
+      method: 'POST',
+      headers: sigHeaders(),
+      body: JSON.stringify({ scope, name: name || '', action: 'delete', id })
+    });
+    const j = await r.json();
+    return !!j.success;
+  } catch (e) { console.warn('删除签名失败', e); return false; }
 }
 
 // 将已有签名渲染到签字板上(供"选择签名"使用)
@@ -612,10 +634,9 @@ function paintSignatureOnCanvas(canvas, dataUrl) {
   img.src = dataUrl;
 }
 
-// 拼接"选择签名"下拉面板 HTML(open=false 时返回按钮,点击后切换)
-function renderSigPickerHTML(scope) {
-  const lib = loadSigLib(scope);
-  if (lib.length === 0) {
+// 纯渲染:根据已加载的 lib 生成 HTML(不再内部读取)
+function renderSigPickerHTML(scope, lib) {
+  if (!lib || lib.length === 0) {
     return `<span style="font-size:12px; color:#9CA3AF;">暂无保存的签名</span>`;
   }
   const items = lib.map(e => `
@@ -630,35 +651,35 @@ function renderSigPickerHTML(scope) {
   return `<div class="sig-lib-list" style="max-height:200px; overflow-y:auto; padding:4px;">${items}</div>`;
 }
 
+// 异步刷新签名库面板(在 DOM 中查找 .sig-lib-host 并填充)
+async function refreshSigLibUI(scope, name) {
+  const host = document.querySelector('.sig-lib-host');
+  if (!host) return;
+  host.innerHTML = '<div style="font-size:12px;color:#9CA3AF;padding:8px;">加载中...</div>';
+  const lib = await loadSigLib(scope, name);
+  if (host) host.innerHTML = renderSigPickerHTML(scope, lib);
+}
+
 // 供 HTML onclick 调用:选中已保存签名 -> 渲染到当前打开的签字板
-window.onPickSavedSig = function(scope, id) {
-  const lib = loadSigLib(scope);
+window.onPickSavedSig = async function(scope, id) {
+  const lib = await loadSigLib(scope, sigScopeName(scope));
   const entry = lib.find(e => e.id === id);
   if (!entry) return;
-  // 查找当前 modal 中的 canvas(优先 slip-canvas,其次 principal-canvas)
   const canvas = document.querySelector('.modal-overlay canvas#slip-canvas') || document.querySelector('.modal-overlay canvas#principal-canvas');
   if (!canvas) return;
   paintSignatureOnCanvas(canvas, entry.dataUrl);
-  // 直接设置 hasInk,不再依赖事件模拟(修复小概率浏览器不响应导致"请先签名"误报)
   if (canvas._sigPad) canvas._sigPad.setInk(true);
   toast('✓ 已加载签名:"' + entry.name + '"', 'success');
 };
 
-window.onDeleteSavedSig = function(scope, id) {
+window.onDeleteSavedSig = async function(scope, id) {
   if (!confirm('确认删除此签名?')) return;
-  removeFromSigLib(scope, id);
-  // 刷新当前 modal 内的签名库面板
-  const host = document.querySelector('.sig-lib-host');
-  if (host) {
-    host.innerHTML = renderSigPickerHTML(scope);
-  } else {
-    // 备选:弹窗重新渲染(此处只静态刷新宿主区块,不重建 modal)
-    const list = document.querySelector('.sig-lib-list');
-    if (list) list.outerHTML = renderSigPickerHTML(scope);
-  }
+  await removeFromSigLib(scope, sigScopeName(scope), id);
+  await refreshSigLibUI(scope, sigScopeName(scope));
 };
 
-window.toggleSigPicker = function(btn, scope) {
+window.toggleSigPicker = function(btn, scope, name) {
+  setSigCtx(scope, name);
   const modal = btn.closest('.modal-overlay') || document;
   let host = modal.querySelector('.sig-lib-host');
   if (host) {
@@ -669,34 +690,35 @@ window.toggleSigPicker = function(btn, scope) {
   host = document.createElement('div');
   host.className = 'sig-lib-host';
   host.style.cssText = 'margin-top:8px; padding:8px; background:#F9FAFB; border:1px solid #E5E7EB; border-radius:6px;';
-  host.innerHTML = renderSigPickerHTML(scope);
-  // 插在按钮行的下方
+  host.innerHTML = '<div style="font-size:12px;color:#9CA3AF;padding:8px;">加载中...</div>';
   const row = btn.parentElement;
   row.parentElement.insertBefore(host, row.nextSibling);
   btn.textContent = '📂 收起签名库';
+  // 异步加载签名库
+  loadSigLib(scope, sigScopeName(scope)).then(lib => {
+    if (host) host.innerHTML = renderSigPickerHTML(scope, lib);
+  });
 };
 
-window.saveSigToLib = function(btn, scope, canvasId) {
+window.saveSigToLib = async function(btn, scope, canvasId, name) {
+  setSigCtx(scope, name);
   const modal = btn.closest('.modal-overlay');
   const canvas = modal.querySelector('#' + canvasId);
   if (!canvas) return;
-  // 读取画板内容:通过 toDataUrl 反推 hasInk 不可靠,直接看 canvas 是否有内容
-  // 妥协方案:在 initSignaturePad 中提供 hasInk 外部读取。这里临时变通:判断 canvas 像素是否存在非透明像素。
   const ctx = canvas.getContext('2d');
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
   let hasInk = false;
   for (let i = 3; i < data.length; i += 4) { if (data[i] > 0) { hasInk = true; break; } }
   if (!hasInk) { toast('请先在签字板上签名', 'error'); return; }
   const dataUrl = canvas.toDataURL('image/png');
-  const defaultName = scope === 'principal' ? '校长签字' : '本人签字';
-  const name = prompt('给这个签名起个名字:', defaultName);
-  if (!name) return;
-  const lib = loadSigLib(scope);
-  if (lib.length >= SIG_LIB_MAX) {
-    if (!confirm('签名库已满(' + SIG_LIB_MAX + ' 个),将覆盖最旧的。是否继续?')) return;
+  const sigName = prompt('给这个签名起个名字:', scope === 'principal' ? '校长签字' : '本人签字');
+  if (!sigName) return;
+  const ok = await addToSigLib(scope, sigScopeName(scope), sigName.trim(), dataUrl);
+  toast(ok ? '✓ 已保存到签名库' : '保存失败', ok ? 'success' : 'error');
+  // 若签名库面板已打开,刷新
+  if (modal.querySelector('.sig-lib-host')) {
+    await refreshSigLibUI(scope, sigScopeName(scope));
   }
-  addToSigLib(scope, name.trim(), dataUrl);
-  toast('✓ 已保存到签名库', 'success');
 };
 
 // 教师提交请假条弹窗(事假/病假)
@@ -772,8 +794,8 @@ function showLeaveSlipModal({ leaveIds, teacherName, leaveType, reason, startDat
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
               <button type="button" id="slip-clear" class="btn btn-sm">✖ 清空重签</button>
-              <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="toggleSigPicker(this,'teacher')">📂 选择签名</button>
-              <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="saveSigToLib(this,'teacher','slip-canvas')">💾 保存到签名库</button>
+              <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="toggleSigPicker(this,'teacher','${esc(teacherName)}')">📂 选择签名</button>
+              <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="saveSigToLib(this,'teacher','slip-canvas','${esc(teacherName)}')">💾 保存到签名库</button>
             </div>
           </div>
         </div>
@@ -2606,8 +2628,8 @@ function showPrincipalApproveModal(slipId) {
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
             <button type="button" id="principal-clear" class="btn btn-sm">✖ 清空重签</button>
-            <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="toggleSigPicker(this,'principal')">📂 选择签名</button>
-            <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="saveSigToLib(this,'principal','principal-canvas')">💾 保存到签名库</button>
+            <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="toggleSigPicker(this,'principal','')">📂 选择签名</button>
+            <button type="button" class="btn btn-sm" style="background:#F3F4F6; color:#374151;" onclick="saveSigToLib(this,'principal','principal-canvas','')">💾 保存到签名库</button>
           </div>
           <div style="margin-top:10px;">
             <label style="font-size:13px; color:#374151; margin-bottom:4px; display:block;">审批人姓名 *</label>

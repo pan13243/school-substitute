@@ -945,6 +945,7 @@ async function handleSubstituteDeleteOne(request, env) {
 
 // ============ 教师隐私密码管理 ============
 const TEACHER_PWD_KV_KEY = 'teacher_privacy_passwords';
+const SIGNATURES_KV_KEY = 'signatures';
 
 // 获取教师隐私密码
 async function handleTeacherPwdGet(request, env) {
@@ -1062,6 +1063,69 @@ async function handleTeacherWechatSave(request, env) {
   return json({ success: true, message: '教师企业微信账号已保存' });
 }
 
+// ============ 签名库管理(云端 KV,按教师姓名/校长存储) ============
+async function loadSignaturesStore(env) {
+  return await getKV(env, SIGNATURES_KV_KEY) || { teacherSigs: {}, principalSigs: [] };
+}
+async function saveSignaturesStore(env, store) {
+  await putKV(env, SIGNATURES_KV_KEY, store);
+}
+async function handleSignaturesGet(request, env) {
+  const url = new URL(request.url);
+  const scope = url.searchParams.get('scope') || 'teacher';
+  const name = url.searchParams.get('name') || '';
+  const store = await loadSignaturesStore(env);
+  if (scope === 'principal') {
+    if (!(await authPrincipal(request.headers, env))) {
+      return json({ success: false, error: '无权限查看请假条' }, 401);
+    }
+    return json({ success: true, data: store.principalSigs || [] });
+  }
+  const currentTeacher = request.headers.get('x-teacher-name') || '';
+  const isAdmin = authAdmin(request.headers);
+  if (!isAdmin && currentTeacher !== name) {
+    return json({ success: false, error: '无权查看' }, 403);
+  }
+  const lib = (store.teacherSigs && store.teacherSigs[name]) || [];
+  return json({ success: true, data: lib });
+}
+async function handleSignaturesPost(request, env) {
+  const body = await request.json().catch(() => ({}));
+  const { scope, name, id, action, dataUrl, sigName } = body;
+  const store = await loadSignaturesStore(env);
+  const SIG_MAX = 10;
+  if (scope === 'principal') {
+    if (!(await authPrincipal(request.headers, env))) {
+      return json({ success: false, error: '无权限' }, 401);
+    }
+    store.principalSigs = store.principalSigs || [];
+    if (action === 'delete') {
+      store.principalSigs = store.principalSigs.filter(s => s.id !== id);
+    } else {
+      store.principalSigs.unshift({ id: 'sig_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), name: sigName || '校长签字', dataUrl, createdAt: Date.now() });
+      if (store.principalSigs.length > SIG_MAX) store.principalSigs.length = SIG_MAX;
+    }
+    await saveSignaturesStore(env, store);
+    return json({ success: true, data: store.principalSigs });
+  }
+  // teacher scope
+  const currentTeacher = request.headers.get('x-teacher-name') || '';
+  const isAdmin = authAdmin(request.headers);
+  if (!name || (!isAdmin && currentTeacher !== name)) {
+    return json({ success: false, error: '无权操作' }, 403);
+  }
+  store.teacherSigs = store.teacherSigs || {};
+  store.teacherSigs[name] = store.teacherSigs[name] || [];
+  if (action === 'delete') {
+    store.teacherSigs[name] = store.teacherSigs[name].filter(s => s.id !== id);
+  } else {
+    store.teacherSigs[name].unshift({ id: 'sig_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), name: sigName || '本人签字', dataUrl, createdAt: Date.now() });
+    if (store.teacherSigs[name].length > SIG_MAX) store.teacherSigs[name].length = SIG_MAX;
+  }
+  await saveSignaturesStore(env, store);
+  return json({ success: true, data: store.teacherSigs[name] });
+}
+
 // ============ 工具函数 ============
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -1157,6 +1221,12 @@ if (path === '/api/schedule' || path === '/api/schedule/') {
     if (method === 'GET') return handleTeacherPwdGet(request, env);
     if (method === 'POST') return handleTeacherPwdPost(request, env);
     if (method === 'DELETE') return handleTeacherPwdReset(request, env);
+  }
+
+  // 签名库管理(云端)
+  if (path === '/api/signatures') {
+    if (method === 'GET') return handleSignaturesGet(request, env);
+    if (method === 'POST') return handleSignaturesPost(request, env);
   }
   
   // 调试接口：查看数据状态
