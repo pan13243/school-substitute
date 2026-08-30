@@ -198,6 +198,24 @@ function getClassForLeave(l) {
     }
     return '-';
   }
+  // 补课场景(数据没存 makeupDay 但 dayOfWeek 已是工作日):用 dayOfWeek 反查课表
+  if (l.leaveDate && l.dayOfWeek) {
+    const weekdayMap = { '星期一': 1, '星期二': 2, '星期三': 3, '星期四': 4, '星期五': 5 };
+    const targetDow = weekdayMap[l.dayOfWeek];
+    const base = new Date(l.leaveDate + 'T00:00:00');
+    const curDow = base.getDay();
+    if (targetDow && (curDow === 0 || curDow === 6)) {
+      const diff = targetDow - curDow;
+      const makeupDate = new Date(base);
+      makeupDate.setDate(base.getDate() + diff);
+      const yyyy = makeupDate.getFullYear();
+      const mm = String(makeupDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(makeupDate.getDate()).padStart(2, '0');
+      const makeupDateStr = `${yyyy}-${mm}-${dd}`;
+      const result = getTeacherClass(l.teacherName, makeupDateStr, l.period, l.makeupParity || null);
+      if (result && result !== '-') return result;
+    }
+  }
   return getTeacherClass(l.teacherName, l.leaveDate, l.period);
 }
 
