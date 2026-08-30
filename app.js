@@ -61,7 +61,8 @@ function wdayFull(d) { const map = {'周日':'星期日','周一':'星期一','�
 function getTeacherClass(teacherName, leaveDate, period, forcedParity) {
   if (!teacherName || !scheduleData) return '-';
   if (period !== null && period !== undefined && period !== '' && period !== 'all') {
-    if (Number(period) < 1 && Number(period) > 11) return '-';
+    const p = Number(period);
+    if (p < 1 || p > 11) return '-';
   }
   const dow = leaveDate ? wdayFull(leaveDate) : null;
   if (!dow) return '-';
@@ -81,22 +82,26 @@ function getTeacherClass(teacherName, leaveDate, period, forcedParity) {
     }
   }
 
+  // 判断是查全天还是单节
+  const wantAll = period === 'all' || period === null || period === undefined || period === '';
+
   // 正课表(period 1-6):timetable[day][className][slots]
-  if (period === 'all' || Number(period) <= 6) {
-    if (period === 'all') {
-      // 查全天:遍历所有节次
-      const dayData = scheduleData.timetable && scheduleData.timetable[dow];
-      if (dayData) {
+  if (wantAll || Number(period) <= 6) {
+    const dayData = scheduleData.timetable && scheduleData.timetable[dow];
+    if (dayData) {
+      if (wantAll) {
+        // 查该教师当天所有正课节次对应的班级(去重)
+        const classSet = new Set();
         for (const [cls, slots] of Object.entries(dayData)) {
           const arr = Array.isArray(slots) ? slots : [];
           for (const s of arr) {
-            if (s && s.teacher === teacherName) return cls;
+            if (s && s.teacher === teacherName) {
+              classSet.add(cls);
+            }
           }
         }
-      }
-    } else {
-      const dayData = scheduleData.timetable && scheduleData.timetable[dow];
-      if (dayData) {
+        if (classSet.size > 0) return [...classSet].join('、');
+      } else {
         for (const [cls, slots] of Object.entries(dayData)) {
           const arr = Array.isArray(slots) ? slots : [];
           const matched = arr.find(s => s && s.period == period);
@@ -107,12 +112,13 @@ function getTeacherClass(teacherName, leaveDate, period, forcedParity) {
   }
 
   // 课后服务段(period 7-11):afterSchoolService.slots[].assignments
-  // period=null 时:遍历该日所有课后服务节次
+  // wantAll 时:遍历该日所有课后服务节次
   const ass = scheduleData.afterSchoolService && scheduleData.afterSchoolService.slots;
   if (Array.isArray(ass)) {
-    const targetSlots = (period === null || period === undefined || period === '') ?
-      ass.filter(s => s.day === dow) :
-      ass.filter(s => s.day === dow && s.period == period);
+    const targetSlots = wantAll
+      ? ass.filter(s => s.day === dow)
+      : ass.filter(s => s.day === dow && s.period == period);
+    const classSet = new Set();
     for (const slot of targetSlots) {
       if (!slot || !slot.assignments) continue;
       for (const [cls, info] of Object.entries(slot.assignments)) {
@@ -120,14 +126,15 @@ function getTeacherClass(teacherName, leaveDate, period, forcedParity) {
         const isSingleDouble = info.singleWeek && info.doubleWeek;
         if (isSingleDouble) {
           // 单双周轮值:必须精确匹配 parity
-          if (parity === 'single' && info.singleWeek === teacherName) return cls;
-          if (parity === 'double' && info.doubleWeek === teacherName) return cls;
+          if (parity === 'single' && info.singleWeek === teacherName) classSet.add(cls);
+          if (parity === 'double' && info.doubleWeek === teacherName) classSet.add(cls);
         } else if (info.teacher === teacherName) {
           // 固定教师
-          return cls;
+          classSet.add(cls);
         }
       }
     }
+    if (classSet.size > 0) return [...classSet].join('、');
   }
   return '-';
 }
@@ -153,7 +160,7 @@ function getPeriod(timeRange) {
 }
 
 // 周末补课请假专用：查补到那一天的班级（补周X时查 weekday 班而不是 weekend）
-// makeupParity 为 '单'/'双' 时，先用 period=null 查出所有，再用 parity 过滤
+// makeupParity 为 '单'/'双' 时，用 period=null 查出该日所有班级并按 parity 过滤
 function getClassForLeave(l) {
   if (!l) return '-';
   if (l.makeupDay) {
@@ -167,15 +174,13 @@ function getClassForLeave(l) {
       const makeupDate = new Date(base);
       makeupDate.setDate(base.getDate() + diff);
       const makeupDateStr = makeupDate.toISOString().split('T')[0];
-      // 如果指定了单/双周，用 period=null 查出所有再用 parity 过滤
+      // 指定了单/双周:查该日所有班级(getTeacherClass 会按 forcedParity 过滤)
       if (l.makeupParity) {
-        const allClasses = getTeacherClass(l.teacherName, makeupDateStr, null);
-        if (allClasses && allClasses !== '-') {
-          // allClasses 可能含多个班级（逗号分隔），返回第一个匹配的
-          return allClasses;
-        }
+        const allClasses = getTeacherClass(l.teacherName, makeupDateStr, null, l.makeupParity);
+        if (allClasses && allClasses !== '-') return allClasses;
         return '-';
       }
+      // 未指定单/双周:按 makeupDateStr 自动算 parity,查指定节次
       const result = getTeacherClass(l.teacherName, makeupDateStr, l.period);
       if (result && result !== '-') return result;
     }
@@ -2304,16 +2309,16 @@ async function submitLeave(e) {
 
     // 选了"无课(仅登记)"→ 直接生成一条仅登记记录
     if (periodVals.includes('none')) {
-      leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false, makeupDay }));
+      leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false, makeupDay, makeupParity }));
     } else if (periodVals.includes('all')) {
       // 根据课表自动判断该教师当天有哪些课
       const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek, leaveDate);
       if (teacherPeriods.length === 0) {
         // 无课(如后勤老师)→ 仅登记一条,不安排代课
-        leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false, makeupDay }));
+        leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false, makeupDay, makeupParity }));
       } else {
         for (const p of teacherPeriods) {
-          leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: p, reason, leaveType: leaveKind, status, needSubstitute: true, makeupDay }));
+          leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: p, reason, leaveType: leaveKind, status, needSubstitute: true, makeupDay, makeupParity }));
         }
       }
     } else {
