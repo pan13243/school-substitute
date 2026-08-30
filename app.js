@@ -52,6 +52,19 @@ function p2(n) { return String(n).padStart(2,'0'); }
 function wday(d) { return ['周日','周一','周二','周三','周四','周五','周六'][new Date(d).getDay()]; }
 function wdayCn(d) { return wday(d).replace('周',''); }
 // 转换为完整形式'星期一'以匹配系统数据
+// 补课请假显示"六补五(双周)"格式
+function formatWeekday(record) {
+  if (!record) return '-';
+  if (record.makeupDay) {
+    const origDay = record.leaveDate ? wdayFull(record.leaveDate) : record.dayOfWeek || '';
+    const origShort = origDay.replace('星期','').replace('周','');
+    const makeupShort = record.makeupDay.replace('星期','').replace('周','');
+    const parity = record.makeupParity === '单' ? '（单周）' : record.makeupParity === '双' ? '（双周）' : '';
+    return origShort + '补' + makeupShort + parity;
+  }
+  return record.dayOfWeek || '-';
+}
+
 function wdayFull(d) { const map = {'周日':'星期日','周一':'星期一','周二':'星期二','周三':'星期三','周四':'星期四','周五':'星期五','周六':'星期六'}; return map[wday(d)] || wday(d); }
 
 // 根据教师名、请假日期、节次查对应班级(用于请假记录列表显示)
@@ -469,7 +482,7 @@ function showAdminLeaveHistory() {
           <td>${esc(l.teacherName)}</td>
           <td>${getClassForLeave(l)}</td>
           <td>${fmtDate(l.leaveDate)}</td>
-          <td>${esc(l.makeupDay || l.dayOfWeek || '-')}</td>
+          <td>${formatWeekday(l)}</td>
           <td>${l.period ? '第'+l.period+'节' : '-'}</td>
           <td>${esc(l.reason || '-')}</td>
           <td>${statusMap[l.status] || l.status}</td>
@@ -2068,7 +2081,7 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
               <td>${esc(l.teacherName)}</td>
               <td>${getClassForLeave(l)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
-              <td>${esc(l.makeupDay || l.dayOfWeek)}</td>
+              <td>${formatWeekday(l)}</td>
               <td>${l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '-')}</td>
               <td>${l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : (l.period === 'all' || !l.period ? calcLeaveDays(l.leaveDate, l.leaveDate) : 1))} 天</td>
               <td>${esc(l.leaveType||'-')}${l.needSubstitute === false ? ' <span class="badge badge-blue">仅登记</span>' : ''}${l.reason ? '<br><span style="font-size:12px;color:#9CA3AF;">'+esc(l.reason)+'</span>' : ''}</td>
@@ -3065,7 +3078,7 @@ function renderPreviewTable() {
             <td>${esc(s.className||'')}</td>
             <td>${esc(s.subject||'-')}</td>
             <td>${fmtDate(s.leaveDate||'')}</td>
-            <td>${esc(s.dayOfWeek||'')}</td>
+            <td>${formatWeekday(s)}</td>
             <td>第${s.period||''}节</td>
             <td><button class="btn btn-sm btn-danger" onclick="removePreviewItem(${idx})">删除</button></td>
           </tr>`).join('')}
@@ -3329,7 +3342,7 @@ function renderSubTable() {
               <td>${esc(l.teacherName)}</td>
               <td>${getClassForLeave(l)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
-              <td>${esc(l.dayOfWeek)}</td>
+              <td>${formatWeekday(l)}</td>
               <td>第${l.period}节</td>
               <td>${esc(l.reason||'-')}</td>
             </tr>`).join('')}
