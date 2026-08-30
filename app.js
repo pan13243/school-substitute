@@ -62,6 +62,21 @@ function formatWeekday(record) {
     const parity = record.makeupParity === '单' ? '（单周）' : record.makeupParity === '双' ? '（双周）' : '';
     return origShort + '补' + makeupShort + parity;
   }
+  // 补课场景(数据没存 makeupDay 但 dayOfWeek 已是工作日 且 leaveDate 是周末):
+  // 用 leaveDate 反推原星期 + dayOfWeek 作为补的星期
+  if (record.leaveDate && record.dayOfWeek) {
+    const weekdayMap = { '星期一': 1, '星期二': 2, '星期三': 3, '星期四': 4, '星期五': 5 };
+    const targetDow = weekdayMap[record.dayOfWeek];
+    if (targetDow) {
+      const base = new Date(record.leaveDate + 'T00:00:00');
+      const curDow = base.getDay();
+      if (curDow === 0 || curDow === 6) {
+        const origShort = ['日','一','二','三','四','五','六'][curDow];
+        const makeupShort = record.dayOfWeek.replace('星期','').replace('周','');
+        return origShort + '补' + makeupShort;
+      }
+    }
+  }
   return record.dayOfWeek || '-';
 }
 
