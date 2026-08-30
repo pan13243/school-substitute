@@ -436,7 +436,7 @@ async function showMyLeaves() {
       `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>班级</th><th>节次</th><th>假别</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
       myLeaves.map(l => {
         const st = l.status==='approved' ? '✅已批准' : (l.status==='pending_principal' ? '⏳待校长签字' : (l.status==='rejected' ? '❌已拒绝' : '⏳待审批'));
-        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.makeupDay || l.dayOfWeek)}</td><td>${getClassForLeave(l)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'-')}</td><td>${esc(l.reason||'-')}</td><td>${st}</td></tr>`;
+        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${formatWeekday(l)}</td><td>${getClassForLeave(l)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'-')}</td><td>${esc(l.reason||'-')}</td><td>${st}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
 
@@ -461,7 +461,7 @@ async function showMySubstitutes() {
         const isMyLeave = s.leaveTeacher === currentTeacher;
         const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
         const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
-        const dow = s.makeupDay || (s.leaveDate ? wdayFull(s.leaveDate) : '-');
+        const dow = formatWeekday(s);
         return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${dow}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'-')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'-')}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
@@ -484,7 +484,7 @@ function showAdminSubstituteHistory() {
       records.map(s => `
         <tr>
           <td>${fmtDate(s.leaveDate)}</td>
-          <td>${esc(s.dayOfWeek || '-')}</td>
+          <td>${formatWeekday(s)}</td>
           <td>${esc(s.leaveTeacher)}</td>
           <td>${esc(s.substituteTeacher)}</td>
           <td>${esc(s.className)}</td>
@@ -3432,7 +3432,7 @@ function renderSubTable() {
             <td>${esc(s.className||'')}</td>
             <td>${esc(s.subject||'-')}</td>
             <td>${fmtDate(s.leaveDate||'')}</td>
-            <td>${esc(s.dayOfWeek||'')}</td>
+            <td>${formatWeekday(s)}</td>
             <td>第${s.period||''}节</td>
             <td>${esc(s.reason||'')}</td>
             <td>
