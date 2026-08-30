@@ -2214,15 +2214,15 @@ function getTeacherPeriods(teacherName, dayOfWeek, dateStr, forcedParity) {
     const assignments = slot.assignments || {};
     for (const [cls, asn] of Object.entries(assignments)) {
       if (!asn) continue;
-      const isSingleDouble = asn.singleWeek && asn.doubleWeek;
+      const isSingleDouble = Boolean(typeof asn.singleWeek === 'string' && asn.singleWeek && typeof asn.doubleWeek === 'string' && asn.doubleWeek);
       let matches = false;
       if (!isSingleDouble) {
         // 通用周:asn.teacher 直接匹配
         matches = asn.teacher === teacherName;
       } else if (parity) {
-        // 单/双周型:按当前周次匹配对应侧的教师
-        if (parity === 'single' && asn.singleWeek === teacherName) matches = true;
-        if (parity === 'double' && asn.doubleWeek === teacherName) matches = true;
+        // 单/双周型:按当前周次匹配对应侧的教师(支持中文'单/双'和英文'single/double')
+        if ((parity === 'single' || parity === '单') && asn.singleWeek === teacherName) matches = true;
+        if ((parity === 'double' || parity === '双') && asn.doubleWeek === teacherName) matches = true;
       } else {
         // 无日期可用:为兼容旧调用,退化为双侧都计入(避免漏判)
         matches = (asn.singleWeek === teacherName || asn.doubleWeek === teacherName);
