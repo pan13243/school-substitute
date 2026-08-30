@@ -391,7 +391,7 @@ async function showMyLeaves() {
       `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>班级</th><th>节次</th><th>假别</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
       myLeaves.map(l => {
         const st = l.status==='approved' ? '✅已批准' : (l.status==='pending_principal' ? '⏳待校长签字' : (l.status==='rejected' ? '❌已拒绝' : '⏳待审批'));
-        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay, l.makeupParity) : l.dayOfWeek)}</td><td>${getClassForLeave(l)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'-')}</td><td>${esc(l.reason||'-')}</td><td>${st}</td></tr>`;
+        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.makeupDay || l.dayOfWeek)}</td><td>${getClassForLeave(l)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'-')}</td><td>${esc(l.reason||'-')}</td><td>${st}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
 
@@ -416,7 +416,7 @@ async function showMySubstitutes() {
         const isMyLeave = s.leaveTeacher === currentTeacher;
         const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
         const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
-        const dow = s.makeupDay ? formatMakeupDay(wdayFull(s.leaveDate), s.makeupDay, s.makeupParity) : (s.leaveDate ? wdayFull(s.leaveDate) : '-');
+        const dow = s.makeupDay || (s.leaveDate ? wdayFull(s.leaveDate) : '-');
         return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${dow}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'-')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'-')}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
@@ -470,7 +470,7 @@ function showAdminLeaveHistory() {
           <td>${esc(l.teacherName)}</td>
           <td>${getClassForLeave(l)}</td>
           <td>${fmtDate(l.leaveDate)}</td>
-          <td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay, l.makeupParity) : (l.dayOfWeek || '-'))}</td>
+          <td>${esc(l.makeupDay || l.dayOfWeek || '-')}</td>
           <td>${l.period ? '第'+l.period+'节' : '-'}</td>
           <td>${esc(l.reason || '-')}</td>
           <td>${statusMap[l.status] || l.status}</td>
@@ -2069,7 +2069,7 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
               <td>${esc(l.teacherName)}</td>
               <td>${getClassForLeave(l)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
-              <td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay, l.makeupParity) : l.dayOfWeek)}</td>
+              <td>${esc(l.makeupDay || l.dayOfWeek)}</td>
               <td>${l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '-')}</td>
               <td>${l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : (l.period === 'all' || !l.period ? calcLeaveDays(l.leaveDate, l.leaveDate) : 1))} 天</td>
               <td>${esc(l.leaveType||'-')}${l.needSubstitute === false ? ' <span class="badge badge-blue">仅登记</span>' : ''}${l.reason ? '<br><span style="font-size:12px;color:#9CA3AF;">'+esc(l.reason)+'</span>' : ''}</td>
@@ -2087,12 +2087,7 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
   </div>`;
 }
 
-function formatMakeupDay(dayOfWeek, makeupDay, makeupParity) {
-  // 将"星期六"+"星期三" → "六补三"（不显示单/双周后缀,保持和工作日一样的格式）
-  const shortDay = (dayOfWeek || '').replace('星期', '').replace('周', '');
-  const shortMakeup = (makeupDay || '').replace('星期', '').replace('周', '');
-  return shortDay + '补' + shortMakeup;
-}
+// 旧的 formatMakeupDay 已删除:补课请假记录的星期栏直接显示 makeupDay(如"星期五"),不拼接"补"字
 
 function updateLeaveWday(el) {
   const w = $('leave-wday');
@@ -3615,7 +3610,7 @@ async function exportSubKaoqin() {
     r[0]  = idx++;
     r[1]  = s.leaveTeacher || '';
     r[2]  = fmtDate(s.leaveDate);  // 时间:YYYY/M/D 一格
-    r[3]  = s.makeupDay ? formatMakeupDay(s.dayOfWeek, s.makeupDay, s.makeupParity) : (s.dayOfWeek || '');
+    r[3]  = s.makeupDay || (s.dayOfWeek || '');
     r[4]  = s.reason || '';
     r[5]  = s.leaveType || '';     // 假别:自动填
     r[6]  = '';                    // 迟到早退旷工:留空手填
