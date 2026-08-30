@@ -173,15 +173,14 @@ function getClassForLeave(l) {
       const diff = targetDow - curDow;
       const makeupDate = new Date(base);
       makeupDate.setDate(base.getDate() + diff);
-      const makeupDateStr = makeupDate.toISOString().split('T')[0];
-      // 指定了单/双周:查该日所有班级(getTeacherClass 会按 forcedParity 过滤)
-      if (l.makeupParity) {
-        const allClasses = getTeacherClass(l.teacherName, makeupDateStr, null, l.makeupParity);
-        if (allClasses && allClasses !== '-') return allClasses;
-        return '-';
-      }
-      // 未指定单/双周:按 makeupDateStr 自动算 parity,查指定节次
-      const result = getTeacherClass(l.teacherName, makeupDateStr, l.period);
+      // 用本地日期格式化(避免 toISOString 的 UTC 时区偏移,例如 6-19 CST 00:00 会变 6-18)
+      const yyyy = makeupDate.getFullYear();
+      const mm = String(makeupDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(makeupDate.getDate()).padStart(2, '0');
+      const makeupDateStr = `${yyyy}-${mm}-${dd}`;
+      // 查指定节次(单/双周按时传,未指定则让 getTeacherClass 按 makeupDateStr 自动算 parity)
+      const forcedP = l.makeupParity || null;
+      const result = getTeacherClass(l.teacherName, makeupDateStr, l.period, forcedP);
       if (result && result !== '-') return result;
     }
     return '-';
