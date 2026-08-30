@@ -2088,11 +2088,10 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
 }
 
 function formatMakeupDay(dayOfWeek, makeupDay, makeupParity) {
-  // 将"星期六"+"星期三" → "六补三"或"六补三(单)"
+  // 将"星期六"+"星期三" → "六补三"（不显示单/双周后缀,保持和工作日一样的格式）
   const shortDay = (dayOfWeek || '').replace('星期', '').replace('周', '');
   const shortMakeup = (makeupDay || '').replace('星期', '').replace('周', '');
-  const parity = (makeupParity || '').replace('单', '单').replace('双', '双');
-  return shortDay + '补' + shortMakeup + (parity ? '(' + parity + ')' : '');
+  return shortDay + '补' + shortMakeup;
 }
 
 function updateLeaveWday(el) {
