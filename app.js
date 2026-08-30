@@ -136,6 +136,33 @@ function getPeriod(timeRange) {
   return 0;
 }
 
+// 周末补课请假专用：查补到那一天的班级（补周X时查 weekday 班而不是 weekend）
+function getClassForLeave(l) {
+  if (!l) return '-';
+  if (l.makeupDay) {
+    // 周末补课: 临时构造一个补周X的日期（同周的补周几），查 makeupDay 那天的班级
+    const dow = l.makeupDay;  // '星期一' ~ '星期五'
+    // 计算 makeupDay 在 leaveDate 同周的对应日期
+    const weekdayMap = { '星期一': 1, '星期二': 2, '星期三': 3, '星期四': 4, '星期五': 5 };
+    const targetDow = weekdayMap[dow];
+    if (targetDow && l.leaveDate) {
+      const base = new Date(l.leaveDate + 'T00:00:00');
+      // 当前是周几(0=日,1=一,...,6=六)
+      const curDow = base.getDay();
+      // 补到本周的 targetDow (周一~五)
+      const diff = targetDow - curDow;
+      const makeupDate = new Date(base);
+      makeupDate.setDate(base.getDate() + diff);
+      const makeupDateStr = makeupDate.toISOString().split('T')[0];
+      const result = getTeacherClass(l.teacherName, makeupDateStr, l.period);
+      if (result && result !== '-') return result;
+    }
+    // makeupDay 查不到,返回 -
+    return '-';
+  }
+  return getTeacherClass(l.teacherName, l.leaveDate, l.period);
+}
+
 // 手机端返回栏(每个页面顶部显示)
 function mobileBackBar(title) {
   if (currentPage === 'home' || currentPage === 'login') return '';
@@ -338,7 +365,7 @@ async function showMyLeaves() {
       `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>班级</th><th>节次</th><th>假别</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
       myLeaves.map(l => {
         const st = l.status==='approved' ? '✅已批准' : (l.status==='pending_principal' ? '⏳待校长签字' : (l.status==='rejected' ? '❌已拒绝' : '⏳待审批'));
-        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.dayOfWeek)}</td><td>${getTeacherClass(currentTeacher, l.leaveDate, l.period)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'-')}</td><td>${esc(l.reason||'-')}</td><td>${st}</td></tr>`;
+        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay) : l.dayOfWeek)}</td><td>${getClassForLeave(l)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'-')}</td><td>${esc(l.reason||'-')}</td><td>${st}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
 
@@ -415,9 +442,9 @@ function showAdminLeaveHistory() {
         const statusMap = { 'pending': '<span style="color:#F59E0B;">待审批</span>', 'pending_principal': '<span style="color:#EF4444;">待校长签字</span>', 'approved': '<span style="color:#10B981;">已批准</span>', 'rejected': '<span style="color:#EF4444;">已拒绝</span>' };
         return `<tr>
           <td>${esc(l.teacherName)}</td>
-          <td>${getTeacherClass(l.teacherName, l.leaveDate, l.period)}</td>
+          <td>${getClassForLeave(l)}</td>
           <td>${fmtDate(l.leaveDate)}</td>
-          <td>${esc(l.dayOfWeek || '-')}</td>
+          <td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay) : (l.dayOfWeek || '-'))}</td>
           <td>${l.period ? '第'+l.period+'节' : '-'}</td>
           <td>${esc(l.reason || '-')}</td>
           <td>${statusMap[l.status] || l.status}</td>
@@ -2009,7 +2036,7 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
             ${showLeaves.map(l => `
             <tr class="${l.status==='approved'?'row-approved':''}">
               <td>${esc(l.teacherName)}</td>
-              <td>${getTeacherClass(l.teacherName, l.leaveDate, l.period)}</td>
+              <td>${getClassForLeave(l)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
               <td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay) : l.dayOfWeek)}</td>
               <td>${l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '-')}</td>
@@ -2475,7 +2502,7 @@ function _renderPrincipalPageBody(area) {
             ${pendingSlips.map(s => {
               // 从 slip.leaveIds 反查 leave 记录，取班级和节次
               const slipLeaves = (leaveRecords || []).filter(l => (s.leaveIds || []).includes(l.id));
-              const classes = slipLeaves.map(l => getTeacherClass(l.teacherName, l.leaveDate, l.period)).filter(Boolean);
+              const classes = slipLeaves.map(l => getClassForLeave(l)).filter(c => c && c !== '-');
               const classStr = classes.length > 0 ? classes.join('、') : '-';
               const periodStr = slipLeaves.length === 0 ? '-' : slipLeaves.map(l => l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '-')).join('、');
               return `<tr>
@@ -2500,7 +2527,7 @@ function _renderPrincipalPageBody(area) {
           <tbody>
             ${doneSlips.map(s => {
               const slipLeaves = (leaveRecords || []).filter(l => (s.leaveIds || []).includes(l.id));
-              const classes = slipLeaves.map(l => getTeacherClass(l.teacherName, l.leaveDate, l.period)).filter(Boolean);
+              const classes = slipLeaves.map(l => getClassForLeave(l)).filter(c => c && c !== '-');
               const classStr = classes.length > 0 ? classes.join('、') : '-';
               const periodStr = slipLeaves.length === 0 ? '-' : slipLeaves.map(l => l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '-')).join('、');
               return `<tr>
@@ -3266,7 +3293,7 @@ function renderSubTable() {
             ${approvedLeaves.map(l => `
             <tr>
               <td>${esc(l.teacherName)}</td>
-              <td>${getTeacherClass(l.teacherName, l.leaveDate, l.period)}</td>
+              <td>${getClassForLeave(l)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
               <td>${esc(l.dayOfWeek)}</td>
               <td>第${l.period}节</td>
