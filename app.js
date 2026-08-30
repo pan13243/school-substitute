@@ -3306,7 +3306,7 @@ function exportCurrentSubstitutes() {
     '班级': s.className||'',
     '科目': s.subject||'',
     '日期': fmtDate(s.leaveDate||''),
-    '星期': s.dayOfWeek||'',
+    '星期': formatWeekday(s),
     '节次': '第'+(s.period||'')+'节',
     '安排方式': s.reason||'',
   }));
@@ -3573,7 +3573,7 @@ function exportSubExcel() {
     '班级': s.className||'',
     '科目': s.subject||'',
     '日期': fmtDate(s.leaveDate||''),
-    '星期': s.dayOfWeek||'',
+    '星期': formatWeekday(s),
     '节次': '第'+(s.period||'')+'节',
     '安排方式': s.reason||'',
   }));
@@ -3658,7 +3658,7 @@ async function exportSubKaoqin() {
     r[0]  = idx++;
     r[1]  = s.leaveTeacher || '';
     r[2]  = fmtDate(s.leaveDate);  // 时间:YYYY/M/D 一格
-    r[3]  = s.makeupDay || (s.dayOfWeek || '');
+    r[3]  = formatWeekday(s);
     r[4]  = s.reason || '';
     r[5]  = s.leaveType || '';     // 假别:自动填
     r[6]  = '';                    // 迟到早退旷工:留空手填
@@ -3676,7 +3676,7 @@ async function exportSubKaoqin() {
     r[0]  = idx++;
     r[1]  = l.teacherName || '';
     r[2]  = fmtDate(l.leaveDate);
-    r[3]  = l.dayOfWeek || '';
+    r[3]  = formatWeekday(l);
     r[4]  = l.reason || '';
     r[5]  = l.leaveType || '';
     r[6]  = '';
