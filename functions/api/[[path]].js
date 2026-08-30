@@ -585,7 +585,7 @@ const ALL_LEAVE_TYPES = ['事假', '病假', '婚假', '丧假', '公假', '其�
 
 async function handleLeavesPost(request, env) {
   const body = await request.json().catch(() => ({}));
-  const { teacherName, leaveDate, dayOfWeek, period, reason, leaveType, needSubstitute, duration } = body;
+  const { teacherName, leaveDate, dayOfWeek, period, reason, leaveType, needSubstitute, duration, makeupDay, makeupParity } = body;
   if (!teacherName || !leaveDate) return json({ success: false, error: '缺少教师或日期' }, 400);
   const leaves = await getKV(env, 'leaves') || [];
   // 服务端去重：同一教师+同一日期+同一节次已存在的记录不再重复添加
@@ -603,6 +603,9 @@ async function handleLeavesPost(request, env) {
   // 假别分流：事假/病假 → 待校长审批（pending_principal），其余 → 直接待管理员审批（pending）
   const status = PRINCIPAL_REVIEW_TYPES.includes(normType) ? 'pending_principal' : 'pending';
   const leave = { id, teacherName, leaveDate, dayOfWeek: normalizeDay(dayOfWeek), period: normPeriod || null, reason: reason || '', leaveType: normType, needSubstitute: needSubstitute === false ? false : true, status, createdAt: new Date().toISOString() };
+  // 补课字段(周末请假时记录补周几和单/双周,用于列表显示"六补五(双周)"格式)
+  if (makeupDay) leave.makeupDay = makeupDay;
+  if (makeupParity) leave.makeupParity = makeupParity;
   // 写入请假时长（0.3/0.5/1/2...天）；null 表示未传，老数据打印/考勤导出用 calcLeaveDays 兜底
   if (duration != null) leave.duration = duration;
   leaves.push(leave);
