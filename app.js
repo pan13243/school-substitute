@@ -55,60 +55,76 @@ function wdayCn(d) { return wday(d).replace('周',''); }
 function wdayFull(d) { const map = {'周日':'星期日','周一':'星期一','周二':'星期二','周三':'星期三','周四':'星期四','周五':'星期五','周六':'星期六'}; return map[wday(d)] || wday(d); }
 
 // 根据教师名、请假日期、节次查对应班级(用于请假记录列表显示)
-function getTeacherClass(teacherName, leaveDate, period) {
-  if (!teacherName || !scheduleData || period === undefined || period === null || period === '') return '-';
+// 查询教师在指定日期/节次/周次对应的班级
+// period 为 null 时:查该日所有节次,按 forcedParity('单'/'双')过滤课后服务轮值
+// forcedParity 为 null 时:按 leaveDate 所在周自动判断单/双周
+function getTeacherClass(teacherName, leaveDate, period, forcedParity) {
+  if (!teacherName || !scheduleData) return '-';
+  if (period !== null && period !== undefined && period !== '' && period !== 'all') {
+    if (Number(period) < 1 && Number(period) > 11) return '-';
+  }
   const dow = leaveDate ? wdayFull(leaveDate) : null;
   if (!dow) return '-';
+
+  // 计算 parity:优先用 forcedParity(教师手动选择),否则按 leaveDate 自动算
+  let parity = null;
+  if (forcedParity === '单') parity = 'single';
+  else if (forcedParity === '双') parity = 'double';
+  if (!parity) {
+    const cal = scheduleData.calendar;
+    if (cal && cal.startDate) {
+      const start = new Date(cal.startDate + 'T00:00:00');
+      const cur = new Date(leaveDate + 'T00:00:00');
+      const days = Math.floor((cur - start) / (24 * 3600 * 1000));
+      const weekNum = Math.floor(days / 7) + 1;
+      parity = (weekNum % 2 === 1) ? 'single' : 'double';
+    }
+  }
+
   // 正课表(period 1-6):timetable[day][className][slots]
   if (period === 'all' || Number(period) <= 6) {
-    const dayData = scheduleData.timetable && scheduleData.timetable[dow];
-    if (dayData) {
-      for (const [cls, slots] of Object.entries(dayData)) {
-        const arr = Array.isArray(slots) ? slots : [];
-        const matched = arr.find(s => s && s.period == period);
-        if (matched && matched.teacher === teacherName) return cls;
+    if (period === 'all') {
+      // 查全天:遍历所有节次
+      const dayData = scheduleData.timetable && scheduleData.timetable[dow];
+      if (dayData) {
+        for (const [cls, slots] of Object.entries(dayData)) {
+          const arr = Array.isArray(slots) ? slots : [];
+          for (const s of arr) {
+            if (s && s.teacher === teacherName) return cls;
+          }
+        }
+      }
+    } else {
+      const dayData = scheduleData.timetable && scheduleData.timetable[dow];
+      if (dayData) {
+        for (const [cls, slots] of Object.entries(dayData)) {
+          const arr = Array.isArray(slots) ? slots : [];
+          const matched = arr.find(s => s && s.period == period);
+          if (matched && matched.teacher === teacherName) return cls;
+        }
       }
     }
   }
-  // 课后服务段(period 7-11):afterSchoolService.slots[].assignments[className] = {teacher, week}
-  if (period !== 'all' && Number(period) >= 7) {
-    const ass = scheduleData.afterSchoolService && scheduleData.afterSchoolService.slots;
-    if (Array.isArray(ass)) {
-      const slot = ass.find(s => s.day === dow && s.period == period);
-      if (slot && slot.assignments) {
-        // 计算单/双周(参考 getMyPeriods 逻辑)
-        let parity = null;
-        const cal = scheduleData.calendar;
-        if (cal && cal.startDate) {
-          const start = new Date(cal.startDate + 'T00:00:00');
-          const cur = new Date(leaveDate + 'T00:00:00');
-          const days = Math.floor((cur - start) / (24 * 3600 * 1000));
-          const weekNum = Math.floor(days / 7) + 1;
-          parity = (weekNum % 2 === 1) ? 'single' : 'double';
-        }
-        for (const [cls, info] of Object.entries(slot.assignments)) {
-          if (!info) continue;
-          const isSingleDouble = info.singleWeek && info.doubleWeek;
-          let matches = false;
-          if (isSingleDouble && parity) {
-            // 单/双周型:按当前周次匹配对应侧的教师
-            if (parity === 'single' && info.singleWeek === teacherName) matches = true;
-            if (parity === 'double' && info.doubleWeek === teacherName) matches = true;
-          } else {
-            // 通用字段:teacher / singleWeek / doubleWeek 任一匹配
-            const teachers = [];
-            if (info.teacher) teachers.push(info.teacher);
-            if (info.singleWeek) {
-              if (Array.isArray(info.singleWeek)) teachers.push(...info.singleWeek);
-              else teachers.push(info.singleWeek);
-            }
-            if (info.doubleWeek) {
-              if (Array.isArray(info.doubleWeek)) teachers.push(...info.doubleWeek);
-              else teachers.push(info.doubleWeek);
-            }
-            matches = teachers.includes(teacherName);
-          }
-          if (matches) return cls;
+
+  // 课后服务段(period 7-11):afterSchoolService.slots[].assignments
+  // period=null 时:遍历该日所有课后服务节次
+  const ass = scheduleData.afterSchoolService && scheduleData.afterSchoolService.slots;
+  if (Array.isArray(ass)) {
+    const targetSlots = (period === null || period === undefined || period === '') ?
+      ass.filter(s => s.day === dow) :
+      ass.filter(s => s.day === dow && s.period == period);
+    for (const slot of targetSlots) {
+      if (!slot || !slot.assignments) continue;
+      for (const [cls, info] of Object.entries(slot.assignments)) {
+        if (!info) continue;
+        const isSingleDouble = info.singleWeek && info.doubleWeek;
+        if (isSingleDouble) {
+          // 单双周轮值:必须精确匹配 parity
+          if (parity === 'single' && info.singleWeek === teacherName) return cls;
+          if (parity === 'double' && info.doubleWeek === teacherName) return cls;
+        } else if (info.teacher === teacherName) {
+          // 固定教师
+          return cls;
         }
       }
     }
@@ -137,27 +153,32 @@ function getPeriod(timeRange) {
 }
 
 // 周末补课请假专用：查补到那一天的班级（补周X时查 weekday 班而不是 weekend）
+// makeupParity 为 '单'/'双' 时，先用 period=null 查出所有，再用 parity 过滤
 function getClassForLeave(l) {
   if (!l) return '-';
   if (l.makeupDay) {
-    // 周末补课: 临时构造一个补周X的日期（同周的补周几），查 makeupDay 那天的班级
     const dow = l.makeupDay;  // '星期一' ~ '星期五'
-    // 计算 makeupDay 在 leaveDate 同周的对应日期
     const weekdayMap = { '星期一': 1, '星期二': 2, '星期三': 3, '星期四': 4, '星期五': 5 };
     const targetDow = weekdayMap[dow];
     if (targetDow && l.leaveDate) {
       const base = new Date(l.leaveDate + 'T00:00:00');
-      // 当前是周几(0=日,1=一,...,6=六)
       const curDow = base.getDay();
-      // 补到本周的 targetDow (周一~五)
       const diff = targetDow - curDow;
       const makeupDate = new Date(base);
       makeupDate.setDate(base.getDate() + diff);
       const makeupDateStr = makeupDate.toISOString().split('T')[0];
+      // 如果指定了单/双周，用 period=null 查出所有再用 parity 过滤
+      if (l.makeupParity) {
+        const allClasses = getTeacherClass(l.teacherName, makeupDateStr, null);
+        if (allClasses && allClasses !== '-') {
+          // allClasses 可能含多个班级（逗号分隔），返回第一个匹配的
+          return allClasses;
+        }
+        return '-';
+      }
       const result = getTeacherClass(l.teacherName, makeupDateStr, l.period);
       if (result && result !== '-') return result;
     }
-    // makeupDay 查不到,返回 -
     return '-';
   }
   return getTeacherClass(l.teacherName, l.leaveDate, l.period);
@@ -365,7 +386,7 @@ async function showMyLeaves() {
       `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>班级</th><th>节次</th><th>假别</th><th>原因</th><th>状态</th></tr></thead><tbody>` +
       myLeaves.map(l => {
         const st = l.status==='approved' ? '✅已批准' : (l.status==='pending_principal' ? '⏳待校长签字' : (l.status==='rejected' ? '❌已拒绝' : '⏳待审批'));
-        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay) : l.dayOfWeek)}</td><td>${getClassForLeave(l)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'-')}</td><td>${esc(l.reason||'-')}</td><td>${st}</td></tr>`;
+        return `<tr><td>${fmtDate(l.leaveDate)}</td><td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay, l.makeupParity) : l.dayOfWeek)}</td><td>${getClassForLeave(l)}</td><td>${l.period ? '第'+l.period+'节' : '全天'}</td><td>${esc(l.leaveType||'-')}</td><td>${esc(l.reason||'-')}</td><td>${st}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
 
@@ -390,7 +411,7 @@ async function showMySubstitutes() {
         const isMyLeave = s.leaveTeacher === currentTeacher;
         const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
         const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
-        const dow = s.makeupDay ? formatMakeupDay(wdayFull(s.leaveDate), s.makeupDay) : (s.leaveDate ? wdayFull(s.leaveDate) : '-');
+        const dow = s.makeupDay ? formatMakeupDay(wdayFull(s.leaveDate), s.makeupDay, s.makeupParity) : (s.leaveDate ? wdayFull(s.leaveDate) : '-');
         return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${dow}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'-')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'-')}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
@@ -444,7 +465,7 @@ function showAdminLeaveHistory() {
           <td>${esc(l.teacherName)}</td>
           <td>${getClassForLeave(l)}</td>
           <td>${fmtDate(l.leaveDate)}</td>
-          <td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay) : (l.dayOfWeek || '-'))}</td>
+          <td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay, l.makeupParity) : (l.dayOfWeek || '-'))}</td>
           <td>${l.period ? '第'+l.period+'节' : '-'}</td>
           <td>${esc(l.reason || '-')}</td>
           <td>${statusMap[l.status] || l.status}</td>
@@ -1979,6 +2000,11 @@ function renderLeavePage(area) {
                   <option value="星期四">补周四</option>
                   <option value="星期五">补周五</option>
                 </select>
+                <select id="makeup-parity" class="form-select" style="display:none; width:90px;" onchange="updateMakeupDisplay()">
+                  <option value="">- 周次 -</option>
+                  <option value="单">单周</option>
+                  <option value="双">双周</option>
+                </select>
               </div>
             </div>
             <div class="form-group">
@@ -2038,7 +2064,7 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
               <td>${esc(l.teacherName)}</td>
               <td>${getClassForLeave(l)}</td>
               <td>${fmtDate(l.leaveDate)}</td>
-              <td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay) : l.dayOfWeek)}</td>
+              <td>${esc(l.makeupDay ? formatMakeupDay(l.dayOfWeek, l.makeupDay, l.makeupParity) : l.dayOfWeek)}</td>
               <td>${l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '-')}</td>
               <td>${l.duration != null ? l.duration : (leaveDurationMap[l.id] != null ? leaveDurationMap[l.id] : (l.period === 'all' || !l.period ? calcLeaveDays(l.leaveDate, l.leaveDate) : 1))} 天</td>
               <td>${esc(l.leaveType||'-')}${l.needSubstitute === false ? ' <span class="badge badge-blue">仅登记</span>' : ''}${l.reason ? '<br><span style="font-size:12px;color:#9CA3AF;">'+esc(l.reason)+'</span>' : ''}</td>
@@ -2056,27 +2082,31 @@ ${[7,8,9,10,11].map(p => { const names = {"7":"课后服务1","8":"课后服务2
   </div>`;
 }
 
-function formatMakeupDay(dayOfWeek, makeupDay) {
-  // 将"星期六"+"星期三" → "六补三"
+function formatMakeupDay(dayOfWeek, makeupDay, makeupParity) {
+  // 将"星期六"+"星期三" → "六补三"或"六补三(单)"
   const shortDay = (dayOfWeek || '').replace('星期', '').replace('周', '');
   const shortMakeup = (makeupDay || '').replace('星期', '').replace('周', '');
-  return shortDay + '补' + shortMakeup;
+  const parity = (makeupParity || '').replace('单', '单').replace('双', '双');
+  return shortDay + '补' + shortMakeup + (parity ? '(' + parity + ')' : '');
 }
 
 function updateLeaveWday(el) {
   const w = $('leave-wday');
   const m = $('makeup-day');
+  const p = $('makeup-parity');
   if (w) w.value = wday(el.value);
-  // 周末时显示"补周几"下拉框
+  // 周末时显示"补周几"和"单/双周"下拉框
   if (m) {
     const d = new Date(el.value + 'T00:00:00');
     const day = d.getDay();
     if (day === 0 || day === 6) {
       m.style.display = '';
       m.value = '';
+      if (p) { p.style.display = ''; p.value = ''; }
     } else {
       m.style.display = 'none';
       m.value = '';
+      if (p) { p.style.display = 'none'; p.value = ''; }
     }
   }
 }
@@ -2084,13 +2114,15 @@ function updateLeaveWday(el) {
 function updateMakeupDisplay() {
   const w = $('leave-wday');
   const m = $('makeup-day');
+  const p = $('makeup-parity');
   if (!w || !m) return;
   const makeup = m.value;
+  const parity = p ? p.value : '';
   if (makeup) {
-    // 显示如"六补三"
+    // 显示如"六补三(单)"或"六补三"
     const shortDay = w.value.replace('星期', '').replace('周', '');
     const shortMakeup = makeup.replace('星期', '').replace('周', '');
-    w.value = shortDay + '补' + shortMakeup;
+    w.value = shortDay + '补' + shortMakeup + (parity ? '(' + parity + ')' : '');
   }
 }
 
@@ -2263,6 +2295,7 @@ async function submitLeave(e) {
     const periodVals = fd.getAll('period');
     const dayOfWeek = wdayFull(leaveDate);
     const makeupDay = $('makeup-day')?.value || null;  // 补周几
+    const makeupParity = $('makeup-parity')?.value || null;  // 单周还是双周补课
 
     if (periodVals.length === 0) {
       toast('请至少选择一个请假节次', 'warning');
@@ -2288,7 +2321,7 @@ async function submitLeave(e) {
       const hasClassPeriods = getTeacherPeriods(teacherName, dayOfWeek, leaveDate);
       for (const pv of periodVals) {
         const pNum = parseInt(pv);
-        leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: pNum, reason, leaveType: leaveKind, status, needSubstitute: hasClassPeriods.includes(pNum), makeupDay }));
+        leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: pNum, reason, leaveType: leaveKind, status, needSubstitute: hasClassPeriods.includes(pNum), makeupDay, makeupParity }));
       }
     }
   } else {
@@ -3578,7 +3611,7 @@ async function exportSubKaoqin() {
     r[0]  = idx++;
     r[1]  = s.leaveTeacher || '';
     r[2]  = fmtDate(s.leaveDate);  // 时间:YYYY/M/D 一格
-    r[3]  = s.makeupDay ? formatMakeupDay(s.dayOfWeek, s.makeupDay) : (s.dayOfWeek || '');
+    r[3]  = s.makeupDay ? formatMakeupDay(s.dayOfWeek, s.makeupDay, s.makeupParity) : (s.dayOfWeek || '');
     r[4]  = s.reason || '';
     r[5]  = s.leaveType || '';     // 假别:自动填
     r[6]  = '';                    // 迟到早退旷工:留空手填

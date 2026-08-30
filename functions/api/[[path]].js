@@ -334,6 +334,7 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
           leaveType: leave.leaveType || '',  // 同步请假假别到代课记录（考勤表导出用）
           duration: leave.duration != null ? leave.duration : null,  // 同步请假时长
           makeupDay: leave.makeupDay || null,  // 同步补课日
+          makeupParity: leave.makeupParity || null,  // 同步补课周次
           status: 'arranged'
         });
         if (!teacherSchedule[substitute]) teacherSchedule[substitute] = {};
@@ -404,6 +405,7 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
             period: slot.period,
             reason: leave.reason || '课后服务自动安排',
             makeupDay: leave.makeupDay || null,  // 同步补课日
+            makeupParity: leave.makeupParity || null,  // 同步补课周次
             status: 'arranged',
             createdAt: new Date().toISOString()
           });
