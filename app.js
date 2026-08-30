@@ -2470,16 +2470,23 @@ function _renderPrincipalPageBody(area) {
       ${pendingSlips.length === 0 ? '<p class="text-muted">暂无待审批的请假条</p>' : `
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>教师</th><th>事由</th><th>请假时间</th><th>提交时间</th><th>操作</th></tr></thead>
+          <thead><tr><th>教师</th><th>班级</th><th>节次</th><th>事由</th><th>请假时间</th><th>提交时间</th><th>操作</th></tr></thead>
           <tbody>
-            ${pendingSlips.map(s => `
-            <tr>
+            ${pendingSlips.map(s => {
+              // 从 slip.leaveIds 反查 leave 记录，取班级和节次
+              const slipLeaves = (leaveRecords || []).filter(l => (s.leaveIds || []).includes(l.id));
+              const classes = slipLeaves.map(l => getTeacherClass(l.teacherName, l.leaveDate, l.period)).filter(Boolean);
+              const classStr = classes.length > 0 ? classes.join('、') : '-';
+              const periodStr = slipLeaves.length === 0 ? '-' : slipLeaves.map(l => l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '-')).join('、');
+              return `<tr>
               <td>${esc(s.teacherName)}</td>
+              <td>${classStr}</td>
+              <td>${periodStr}</td>
               <td>${esc(s.reason)}</td>
               <td>${fmtDate(s.startDate)} ~ ${fmtDate(s.endDate)}</td>
               <td>${new Date(s.createdAt).toLocaleString('zh-CN',{hour12:false})}</td>
               <td><button class="btn btn-sm btn-primary" onclick="showPrincipalApproveModal('${s.id}')">签字审批</button></td>
-            </tr>`).join('')}
+            </tr>`; }).join('')}
           </tbody>
         </table>
       </div>`}
@@ -2489,16 +2496,22 @@ function _renderPrincipalPageBody(area) {
       <h3>📋 已处理 (${doneSlips.length})</h3>
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>教师</th><th>事由</th><th>时间</th><th>结果</th><th>操作</th></tr></thead>
+          <thead><tr><th>教师</th><th>班级</th><th>节次</th><th>事由</th><th>时间</th><th>结果</th><th>操作</th></tr></thead>
           <tbody>
-            ${doneSlips.map(s => `
-            <tr>
+            ${doneSlips.map(s => {
+              const slipLeaves = (leaveRecords || []).filter(l => (s.leaveIds || []).includes(l.id));
+              const classes = slipLeaves.map(l => getTeacherClass(l.teacherName, l.leaveDate, l.period)).filter(Boolean);
+              const classStr = classes.length > 0 ? classes.join('、') : '-';
+              const periodStr = slipLeaves.length === 0 ? '-' : slipLeaves.map(l => l.period === 'all' ? '全天' : (l.period ? '第'+l.period+'节' : '-')).join('、');
+              return `<tr>
               <td>${esc(s.teacherName)}</td>
+              <td>${classStr}</td>
+              <td>${periodStr}</td>
               <td>${esc(s.reason)}</td>
               <td>${fmtDate(s.startDate)} ~ ${fmtDate(s.endDate)}</td>
               <td><span class="badge badge-${s.status==='approved'?'green':'red'}">${s.status==='approved'?'✅ 已同意':'❌ 已拒绝'}</span></td>
               <td><button class="btn btn-sm btn-danger" onclick="deletePrincipalSlip('${s.id}')">🗑 删除</button></td>
-            </tr>`).join('')}
+            </tr>`; }).join('')}
           </tbody>
         </table>
       </div>
