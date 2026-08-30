@@ -2169,7 +2169,7 @@ function updatePeriodText() {
 
 // 根据课表获取教师某天的有课节次
 // dateStr 可选(YYYY-MM-DD):传入后启用单/双周自动判定 + period 11 修正
-function getTeacherPeriods(teacherName, dayOfWeek, dateStr) {
+function getTeacherPeriods(teacherName, dayOfWeek, dateStr, forcedParity) {
   const periods = [];
   if (!scheduleData) return periods;
   // 解析单/双周(优先查 calendar.weeks,回退按 startDate + 周数计算)
@@ -2192,6 +2192,7 @@ function getTeacherPeriods(teacherName, dayOfWeek, dateStr) {
       parity = (weekNum % 2 === 1) ? 'single' : 'double';
     }
   }
+  if (forcedParity) parity = forcedParity;  // 补课场景:明确指定单/双周
 
   // 1. 扫描正课表(1-6节)
   const dayData = scheduleData.timetable?.[dayOfWeek];
@@ -2292,9 +2293,11 @@ async function submitLeave(e) {
     // 单日请假
     const leaveDate = fd.get('leaveDate');
     const periodVals = fd.getAll('period');
-    const dayOfWeek = wdayFull(leaveDate);
+    const rawDayOfWeek = wdayFull(leaveDate);
     const makeupDay = $('makeup-day')?.value || null;  // 补周几
-    const makeupParity = $('makeup-parity')?.value || null;  // 单周还是双周补课
+    const makeupParity = $('makeup-parity')?.value || null;  // 单/双周
+    // 补课场景:用 makeupDay 查课表(否则 leaveDate=周末,查不到)
+    const dayOfWeek = makeupDay || rawDayOfWeek;
 
     if (periodVals.length === 0) {
       toast('请至少选择一个请假节次', 'warning');
@@ -2305,8 +2308,8 @@ async function submitLeave(e) {
     if (periodVals.includes('none')) {
       leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false, makeupDay, makeupParity }));
     } else if (periodVals.includes('all')) {
-      // 根据课表自动判断该教师当天有哪些课
-      const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek, leaveDate);
+      // 根据课表自动判断该教师当天有哪些课(补课场景:传 makeupParity)
+      const teacherPeriods = getTeacherPeriods(teacherName, dayOfWeek, leaveDate, makeupParity);
       if (teacherPeriods.length === 0) {
         // 无课(如后勤老师)→ 仅登记一条,不安排代课
         leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: 'all', reason, leaveType: leaveKind, status, needSubstitute: false, makeupDay, makeupParity }));
@@ -2316,8 +2319,8 @@ async function submitLeave(e) {
         }
       }
     } else {
-      // 勾选的每个节次各生成一条记录;该节次无课 → 仅登记不代课
-      const hasClassPeriods = getTeacherPeriods(teacherName, dayOfWeek, leaveDate);
+      // 勾选的每个节次各生成一条记录;该节次无课 → 仅登记不代课(补课场景:传 makeupParity)
+      const hasClassPeriods = getTeacherPeriods(teacherName, dayOfWeek, leaveDate, makeupParity);
       for (const pv of periodVals) {
         const pNum = parseInt(pv);
         leavesToAdd.push(attachDuration({ teacherName, leaveDate, dayOfWeek, period: pNum, reason, leaveType: leaveKind, status, needSubstitute: hasClassPeriods.includes(pNum), makeupDay, makeupParity }));
