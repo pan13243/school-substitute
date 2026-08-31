@@ -3564,15 +3564,13 @@ async function deleteSubstituteFromModal(id) {
 
 function exportSubExcel() {
   if (substituteRecords.length === 0) { toast('无记录可导出','warning'); return; }
-  const leaveMap = {};
-  (leaveRecords||[]).forEach(l => leaveMap[l.id] = l);
   const data = substituteRecords.map(s => ({
     '请假教师': s.leaveTeacher||'',
     '代课教师': s.substituteTeacher||'',
     '班级': s.className||'',
     '科目': s.subject||'',
     '日期': fmtDate(s.leaveDate||''),
-    '星期': formatWeekdayForExport(s),
+    '星期': formatWeekday(s),
     '节次': '第'+(s.period||'')+'节',
     '安排方式': s.reason||'',
   }));
@@ -3657,7 +3655,7 @@ async function exportSubKaoqin() {
     r[0]  = idx++;
     r[1]  = s.leaveTeacher || '';
     r[2]  = fmtDate(s.leaveDate);  // 时间:YYYY/M/D 一格
-    r[3]  = formatWeekdayForExport(s);
+    r[3]  = formatWeekday(s);
     r[4]  = s.reason || '';
     r[5]  = s.leaveType || '';     // 假别:自动填
     r[6]  = '';                    // 迟到早退旷工:留空手填
