@@ -81,6 +81,21 @@ function formatWeekday(record) {
   return record.dayOfWeek || '-';
 }
 
+// 代课记录专用:从关联的请假记录取 leaveDate 计算原星期,保证显示「六补五」而非「五补五」
+function formatSubstituteWeekday(s) {
+  if (!s) return '-';
+  const leaveMap = Object.fromEntries((leaveRecords || []).filter(l => l.id).map(l => [l.id, l]));
+  const leave = s.leaveId ? leaveMap[s.leaveId] : null;
+  if (leave && leave.makeupDay) {
+    const origDay = leave.leaveDate ? wdayFull(leave.leaveDate) : leave.dayOfWeek || '';
+    const origShort = origDay.replace('星期','').replace('周','');
+    const makeupShort = leave.makeupDay.replace('星期','').replace('周','');
+    const parity = leave.makeupParity === '单' ? '（单周）' : leave.makeupParity === '双' ? '（双周）' : '';
+    return origShort + '补' + makeupShort + parity;
+  }
+  return formatSubstituteWeekday(s);
+}
+
 
 function getTeacherClass(teacherName, leaveDate, period, forcedParity) {
   if (!teacherName || !scheduleData) return '-';
@@ -457,7 +472,7 @@ async function showMySubstitutes() {
         const isMyLeave = s.leaveTeacher === currentTeacher;
         const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
         const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
-        const dow = formatWeekday(s);
+        const dow = formatSubstituteWeekday(s);
         return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${dow}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'-')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'-')}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
@@ -480,7 +495,7 @@ function showAdminSubstituteHistory() {
       records.map(s => `
         <tr>
           <td>${fmtDate(s.leaveDate)}</td>
-          <td>${formatWeekday(s)}</td>
+          <td>${formatSubstituteWeekday(s)}</td>
           <td>${esc(s.leaveTeacher)}</td>
           <td>${esc(s.substituteTeacher)}</td>
           <td>${esc(s.className)}</td>
@@ -3085,19 +3100,6 @@ function renderTeacherSubTT(teacherName) {
 }
 
 function renderPreviewTable() {
-  // 代课预览用:从请假记录取 leaveDate 计算原星期,以匹配「六补五(双周)」格式
-  const leaveMap = Object.fromEntries((leaveRecords || []).filter(l => l.id).map(l => [l.id, l]));
-  function subPreviewWeekday(s) {
-    const leave = s.leaveId ? leaveMap[s.leaveId] : null;
-    if (leave && leave.makeupDay) {
-      const origDay = leave.leaveDate ? wdayFull(leave.leaveDate) : leave.dayOfWeek || '';
-      const origShort = origDay.replace('星期', '').replace('周', '');
-      const makeupShort = leave.makeupDay.replace('星期', '').replace('周', '');
-      const parity = leave.makeupParity === '单' ? '（单周）' : leave.makeupParity === '双' ? '（双周）' : '';
-      return origShort + '补' + makeupShort + parity;
-    }
-    return formatWeekday(s);
-  }
   return `
   <div class="card preview-card">
     <div class="card-header">
@@ -3122,7 +3124,7 @@ function renderPreviewTable() {
             <td>${esc(s.className||'')}</td>
             <td>${esc(s.subject||'-')}</td>
             <td>${fmtDate(s.leaveDate||'')}</td>
-            <td>${subPreviewWeekday(s)}</td>
+            <td>${formatSubstituteWeekday(s)}</td>
             <td>第${s.period||''}节</td>
             <td><button class="btn btn-sm btn-danger" onclick="removePreviewItem(${idx})">删除</button></td>
           </tr>`).join('')}
@@ -3317,7 +3319,7 @@ function exportCurrentSubstitutes() {
     '班级': s.className||'',
     '科目': s.subject||'',
     '日期': fmtDate(s.leaveDate||''),
-    '星期': formatWeekday(s),
+    '星期': formatSubstituteWeekday(s),
     '节次': '第'+(s.period||'')+'节',
     '安排方式': s.reason||'',
   }));
@@ -3443,7 +3445,7 @@ function renderSubTable() {
             <td>${esc(s.className||'')}</td>
             <td>${esc(s.subject||'-')}</td>
             <td>${fmtDate(s.leaveDate||'')}</td>
-            <td>${formatWeekday(s)}</td>
+            <td>${formatSubstituteWeekday(s)}</td>
             <td>第${s.period||''}节</td>
             <td>${esc(s.reason||'')}</td>
             <td>
@@ -3584,7 +3586,7 @@ function exportSubExcel() {
     '班级': s.className||'',
     '科目': s.subject||'',
     '日期': fmtDate(s.leaveDate||''),
-    '星期': formatWeekday(s),
+    '星期': formatSubstituteWeekday(s),
     '节次': '第'+(s.period||'')+'节',
     '安排方式': s.reason||'',
   }));
@@ -3669,7 +3671,7 @@ async function exportSubKaoqin() {
     r[0]  = idx++;
     r[1]  = s.leaveTeacher || '';
     r[2]  = fmtDate(s.leaveDate);  // 时间:YYYY/M/D 一格
-    r[3]  = formatWeekday(s);
+    r[3]  = formatSubstituteWeekday(s);
     r[4]  = s.reason || '';
     r[5]  = s.leaveType || '';     // 假别:自动填
     r[6]  = '';                    // 迟到早退旷工:留空手填
@@ -5199,7 +5201,7 @@ function checkAndNotifyNewSubstitutes(teacherName) {
   const notifyCfg = JSON.parse(localStorage.getItem('notify_cfg') || '{}');
   if (notifyCfg.wecom_webhook) {
     newSubs.forEach(s => {
-      const msg = `【代课提醒】${teacherName}老师,您被安排代课:\n请假教师:${s.leaveTeacher}\n日期:${s.leaveDate}(${formatWeekday(s)||''})\n班级:${s.className}\n科目:${s.subject||''}\n节次:第${s.period}节`;
+      const msg = `【代课提醒】${teacherName}老师,您被安排代课:\n请假教师:${s.leaveTeacher}\n日期:${s.leaveDate}(${formatSubstituteWeekday(s)||''})\n班级:${s.className}\n科目:${s.subject||''}\n节次:第${s.period}节`;
       fetch(notifyCfg.wecom_webhook, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -5220,7 +5222,7 @@ function showSubstituteNotification(teacherName, subs) {
       <div style="background:#FEF3C7; border-left:3px solid #F59E0B; padding:10px 12px; margin-bottom:8px; border-radius:4px;">
         <div style="font-size:13px; color:#1F2937;">
           <div><strong>请假教师:</strong>${esc(s.leaveTeacher||'-')}</div>
-          <div><strong>日期:</strong>${esc(s.leaveDate)} ${esc(formatWeekday(s)||'')}</div>
+          <div><strong>日期:</strong>${esc(s.leaveDate)} ${esc(formatSubstituteWeekday(s)||'')}</div>
           <div><strong>班级:</strong>${esc(s.className||'-')}</div>
           <div><strong>科目:</strong>${esc(s.subject||'-')}</div>
           <div><strong>节次:</strong>第${s.period}节</div>
