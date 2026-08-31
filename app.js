@@ -93,7 +93,7 @@ function formatSubstituteWeekday(s) {
     const parity = leave.makeupParity === '单' ? '（单周）' : leave.makeupParity === '双' ? '（双周）' : '';
     return origShort + '补' + makeupShort + parity;
   }
-  return formatSubstituteWeekday(s);
+  return formatWeekday(s);
 }
 
 
