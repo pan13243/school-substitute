@@ -3085,6 +3085,19 @@ function renderTeacherSubTT(teacherName) {
 }
 
 function renderPreviewTable() {
+  // 代课预览用:从请假记录取 leaveDate 计算原星期,以匹配「六补五(双周)」格式
+  const leaveMap = Object.fromEntries((leaveRecords || []).filter(l => l.id).map(l => [l.id, l]));
+  function subPreviewWeekday(s) {
+    const leave = s.leaveId ? leaveMap[s.leaveId] : null;
+    if (leave && leave.makeupDay) {
+      const origDay = leave.leaveDate ? wdayFull(leave.leaveDate) : leave.dayOfWeek || '';
+      const origShort = origDay.replace('星期', '').replace('周', '');
+      const makeupShort = leave.makeupDay.replace('星期', '').replace('周', '');
+      const parity = leave.makeupParity === '单' ? '（单周）' : leave.makeupParity === '双' ? '（双周）' : '';
+      return origShort + '补' + makeupShort + parity;
+    }
+    return formatWeekday(s);
+  }
   return `
   <div class="card preview-card">
     <div class="card-header">
@@ -3109,7 +3122,7 @@ function renderPreviewTable() {
             <td>${esc(s.className||'')}</td>
             <td>${esc(s.subject||'-')}</td>
             <td>${fmtDate(s.leaveDate||'')}</td>
-            <td>${formatWeekday(s)}</td>
+            <td>${subPreviewWeekday(s)}</td>
             <td>第${s.period||''}节</td>
             <td><button class="btn btn-sm btn-danger" onclick="removePreviewItem(${idx})">删除</button></td>
           </tr>`).join('')}
