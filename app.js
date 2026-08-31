@@ -80,12 +80,7 @@ function formatWeekday(record) {
   return record.dayOfWeek || '-';
 }
 
-function wdayFull(d) { const map = {'周日':'星期日','周一':'星期一','周二':'星期二','周三':'星期三','周四':'星期四','周五':'星期五','周六':'星期六'}; return map[wday(d)] || wday(d); }
 
-// 根据教师名、请假日期、节次查对应班级(用于请假记录列表显示)
-// 查询教师在指定日期/节次/周次对应的班级
-// period 为 null 时:查该日所有节次,按 forcedParity('单'/'双')过滤课后服务轮值
-// forcedParity 为 null 时:按 leaveDate 所在周自动判断单/双周
 function getTeacherClass(teacherName, leaveDate, period, forcedParity) {
   if (!teacherName || !scheduleData) return '-';
   if (period !== null && period !== undefined && period !== '' && period !== 'all') {
@@ -3300,13 +3295,15 @@ function cancelPreview() {
 // 导出本次已确认的代课安排
 function exportCurrentSubstitutes() {
   if (lastConfirmedSubstitutes.length === 0) { toast('暂无本次代课安排可导出','warning'); return; }
+  const leaveMap = {};
+  (leaveRecords||[]).forEach(l => leaveMap[l.id] = l);
   const data = lastConfirmedSubstitutes.map(s => ({
     '请假教师': s.leaveTeacher||'',
     '代课教师': s.substituteTeacher||'',
     '班级': s.className||'',
     '科目': s.subject||'',
     '日期': fmtDate(s.leaveDate||''),
-    '星期': formatWeekday(s),
+    '星期': formatWeekday(leaveMap[s.leaveId] || s),
     '节次': '第'+(s.period||'')+'节',
     '安排方式': s.reason||'',
   }));
@@ -3567,13 +3564,15 @@ async function deleteSubstituteFromModal(id) {
 
 function exportSubExcel() {
   if (substituteRecords.length === 0) { toast('无记录可导出','warning'); return; }
+  const leaveMap = {};
+  (leaveRecords||[]).forEach(l => leaveMap[l.id] = l);
   const data = substituteRecords.map(s => ({
     '请假教师': s.leaveTeacher||'',
     '代课教师': s.substituteTeacher||'',
     '班级': s.className||'',
     '科目': s.subject||'',
     '日期': fmtDate(s.leaveDate||''),
-    '星期': formatWeekday(s),
+    '星期': formatWeekdayForExport(s),
     '节次': '第'+(s.period||'')+'节',
     '安排方式': s.reason||'',
   }));
@@ -3658,7 +3657,7 @@ async function exportSubKaoqin() {
     r[0]  = idx++;
     r[1]  = s.leaveTeacher || '';
     r[2]  = fmtDate(s.leaveDate);  // 时间:YYYY/M/D 一格
-    r[3]  = formatWeekday(s);
+    r[3]  = formatWeekdayForExport(s);
     r[4]  = s.reason || '';
     r[5]  = s.leaveType || '';     // 假别:自动填
     r[6]  = '';                    // 迟到早退旷工:留空手填
@@ -3676,7 +3675,7 @@ async function exportSubKaoqin() {
     r[0]  = idx++;
     r[1]  = l.teacherName || '';
     r[2]  = fmtDate(l.leaveDate);
-    r[3]  = formatWeekday(l);
+    r[3]  = formatWeekday(leaveMap[s.leaveId] || s);
     r[4]  = l.reason || '';
     r[5]  = l.leaveType || '';
     r[6]  = '';
