@@ -5102,11 +5102,11 @@ function showSlipPrintModal(slipId) {
           </tr>
           <tr>
             <td style="padding:6px 10px;"><b>开始时间:</b></td>
-            <td style="padding:6px 10px; border-bottom:1px solid #333;">${fmtDate(slip.startDate)}</td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${fmtDate(slip.startDate)}（${wday(slip.startDate)}）</td>
           </tr>
           <tr>
             <td style="padding:6px 10px;"><b>结束时间:</b></td>
-            <td style="padding:6px 10px; border-bottom:1px solid #333;">${fmtDate(slip.endDate)}</td>
+            <td style="padding:6px 10px; border-bottom:1px solid #333;">${fmtDate(slip.endDate)}（${wday(slip.endDate)}）</td>
           </tr>
           <tr>
             <td style="padding:6px 10px;"><b>提交时间:</b></td>
