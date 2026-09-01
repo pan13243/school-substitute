@@ -5046,8 +5046,8 @@ async function showSlipDetailModal(slipId) {
           <tr><td style="padding:6px 0; color:#6B7280; width:80px;">教师姓名</td><td style="padding:6px 0; font-weight:500;">${esc(slip.teacherName)}</td></tr>
           <tr><td style="padding:6px 0; color:#6B7280;">请假类型</td><td style="padding:6px 0;">${esc(slip.reason)}</td></tr>
           <tr><td style="padding:6px 0; color:#6B7280;">请假时长</td><td style="padding:6px 0;">${slip.duration != null ? slip.duration + ' 天' : calcLeaveDays(slip.startDate, slip.endDate) + ' 天'}</td></tr>
-          <tr><td style="padding:6px 0; color:#6B7280;">开始时间</td><td style="padding:6px 0;">${fmtDate(slip.startDate)}</td></tr>
-          <tr><td style="padding:6px 0; color:#6B7280;">结束时间</td><td style="padding:6px 0;">${fmtDate(slip.endDate)}</td></tr>
+          <tr><td style="padding:6px 0; color:#6B7280;">开始时间</td><td style="padding:6px 0;">${fmtDate(slip.startDate)}（${wday(slip.startDate)}）</td></tr>
+          <tr><td style="padding:6px 0; color:#6B7280;">结束时间</td><td style="padding:6px 0;">${fmtDate(slip.endDate)}（${wday(slip.endDate)}）</td></tr>
           <tr><td style="padding:6px 0; color:#6B7280;">提交时间</td><td style="padding:6px 0;">${new Date(slip.createdAt).toLocaleString('zh-CN',{hour12:false})}</td></tr>
           ${slip.principalName ? '<tr><td style="padding:6px 0; color:#6B7280;">审批校长</td><td style="padding:6px 0;">'+esc(slip.principalName)+'</td></tr>' : ''}
           ${slip.principalSignedAt ? '<tr><td style="padding:6px 0; color:#6B7280;">审批时间</td><td style="padding:6px 0;">'+new Date(slip.principalSignedAt).toLocaleString('zh-CN',{hour12:false})+'</td></tr>' : ''}
