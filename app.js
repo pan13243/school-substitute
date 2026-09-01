@@ -2603,7 +2603,7 @@ function _renderPrincipalPageBody(area) {
               <td>${classStr}</td>
               <td>${periodStr}</td>
               <td>${esc(s.reason)}</td>
-              <td>${fmtDate(s.startDate)} ~ ${fmtDate(s.endDate)}</td>
+              <td>${fmtDate(s.startDate)}（${wday(s.startDate)}）~ ${fmtDate(s.endDate)}（${wday(s.endDate)}）</td>
               <td>${new Date(s.createdAt).toLocaleString('zh-CN',{hour12:false})}</td>
               <td><button class="btn btn-sm btn-primary" onclick="showPrincipalApproveModal('${s.id}')">签字审批</button></td>
             </tr>`; }).join('')}
@@ -2628,7 +2628,7 @@ function _renderPrincipalPageBody(area) {
               <td>${classStr}</td>
               <td>${periodStr}</td>
               <td>${esc(s.reason)}</td>
-              <td>${fmtDate(s.startDate)} ~ ${fmtDate(s.endDate)}</td>
+              <td>${fmtDate(s.startDate)}（${wday(s.startDate)}）~ ${fmtDate(s.endDate)}（${wday(s.endDate)}）</td>
               <td><span class="badge badge-${s.status==='approved'?'green':'red'}">${s.status==='approved'?'✅ 已同意':'❌ 已拒绝'}</span></td>
               <td><button class="btn btn-sm btn-danger" onclick="deletePrincipalSlip('${s.id}')">🗑 删除</button></td>
             </tr>`; }).join('')}
