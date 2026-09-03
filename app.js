@@ -4069,6 +4069,13 @@ function parseCalendarWorkbook(wb) {
 
   const CN_MONTH = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'十一':11,'十二':12 };
   const WEEKDAYS = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+  const cn2int = (s) => {
+    if (!s) return 0;
+    const d = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 };
+    if (s === '十') return 10;
+    if (s.indexOf('十') >= 0) { const p = s.split('十'); const t = p[0] ? d[p[0]] : 1; const o = p[1] ? d[p[1]] : 0; return t * 10 + o; }
+    return d[s] || 0;
+  };
 
   const weeks = [];
   const dayMap = {};
@@ -4085,17 +4092,17 @@ function parseCalendarWorkbook(wb) {
 
     // col0: 月份("三"/"四"...,跨月行也会出现)
     const monthStr = String(r[0] || '').trim();
-    if (monthStr && CN_MONTH[monthStr]) {
-      const mm = CN_MONTH[monthStr];
-      if (prevMonthNum && mm < prevMonthNum) currentYear++; // 跨年(秋季学期 12→1 月)
-      currentMonth = mm;
-      prevMonthNum = mm;
+    {
+      const ym = monthStr.match(/(\d{4})年(\d{1,2})月/);
+      if (ym) { currentYear = parseInt(ym[1]); currentMonth = parseInt(ym[2]); prevMonthNum = currentMonth; }
+      else { const md = parseInt(monthStr); if (!isNaN(md) && md > 0) { if (prevMonthNum && md < prevMonthNum) currentYear++; currentMonth = md; prevMonthNum = md; } }
     }
 
-    // col1: 周次(数字)→ 新的一周;空 → 跨月行,并入当前周
+    // col1: 周次(数字或中文数字 一/二/…/二十一)→ 新的一周;空 → 跨月行,并入当前周
     const weekStr = String(r[1] || '').trim();
-    if (weekStr && /^\d+$/.test(weekStr)) {
-      const weekNum = parseInt(weekStr);
+    const wn = cn2int(weekStr);
+    if (weekStr && wn) {
+      const weekNum = wn;
       currentWeek = { weekNum, parity: weekNum % 2 === 1 ? 'single' : 'double', days: [] };
       weeks.push(currentWeek);
     }
@@ -4659,10 +4666,54 @@ async function handleTextImport() {
   }
 }
 
+async function normClass(s) {
+  s = String(s || '').trim();
+  const m = s.match(/([一二三四五六七])\s*[（(]?\s*(\d+)\s*[）)]?/);
+  return m ? (m[1] + '（' + m[2] + '）') : s;
+}
+function normalizeImportClasses(data) {
+  if (data && data.timetable) {
+    for (const day of Object.keys(data.timetable)) {
+      const cm = data.timetable[day]; const nc = {};
+      for (const [cls, periods] of Object.entries(cm)) nc[normClass(cls)] = periods;
+      data.timetable[day] = nc;
+    }
+  }
+  if (data && data.afterSchoolService && data.afterSchoolService.slots) {
+    for (const slot of data.afterSchoolService.slots) {
+      if (slot.assignments) {
+        const na = {};
+        for (const [cls, val] of Object.entries(slot.assignments)) na[normClass(cls)] = val;
+        slot.assignments = na;
+      }
+    }
+  }
+  if (Array.isArray(data && data.classes)) data.classes = [...new Set(data.classes.map(normClass))];
+  return data;
+}
+async function loadScheduleData() {
+  try {
+    const r = await API.getSchedule();
+    if (r && r.success) {
+      scheduleData = {
+        timetable: r.data || null,
+        teacherAssignment: r.teacherAssignment || null,
+        afterSchoolService: r.afterSchoolService || null,
+        calendar: r.calendar || null,
+        classes: r.classes || [],
+        allTeachers: r.allTeachers || [],
+        clubActivities: r.clubActivities || null
+      };
+    }
+  } catch (e) { console.error('loadScheduleData failed', e); }
+}
 async function doImport(data) {
   if (!data.timetable && !data.classes && !data.calendar && !data.afterSchoolService && !data.clubActivities) {
     toast('数据格式不正确,缺少 timetable/classes/calendar/afterSchoolService/clubActivities','error'); return;
   }
+  // 规范化班级名括号(半角()->全角（）, 六1->六（1）),并去掉冗余字段让后端按课表重算,避免重复班级
+  data = normalizeImportClasses(data);
+  delete data.classes; delete data.allTeachers; delete data.teacherAssignment;
   const loading = showLoading('正在导入...');
   try {
     const r = await API.importSchedule(data);
