@@ -1724,11 +1724,11 @@ function renderTTClass() {
   // 获取某天的节次时间
   const getTime = (day, p) => day === '星期五' ? (fridayTimeMap[p] || '-') : (timeMap[p] || '-');
   // 某天的课后服务最大节次(周五只到第8节社团活动,无 9-11节)
-  const maxAfterSchoolPeriod = (day) => day === '星期五' ? 8 : 11;
+  const maxAfterSchoolPeriod = (day) => day === '星期五' ? 9 : 11;
   // 课后服务时间映射(周一~周四,课后服务时间一致)
   const afterSchoolTimeMap = { 7:'15:40-16:20', 8:'16:25-17:05', 9:'17:10-17:50', 10:'19:30-20:30', 11:'13:00-13:50' };
   // 星期五课后服务时间映射(只有两节)
-  const fridayAfterSchoolTimeMap = { 7:'14:40-15:20', 8:'15:25-16:50' };
+  const fridayAfterSchoolTimeMap = { 7:'14:40-15:20', 8:'15:25-16:05', 9:'16:10-16:50' };
   // 课后服务时间:周五用 fridayAfterSchoolTimeMap,其余用 afterSchoolTimeMap
   const getAfterSchoolTime = (day, period) => day === '星期五' ? (fridayAfterSchoolTimeMap[period] || '-') : (afterSchoolTimeMap[period] || '-');
 
@@ -1827,7 +1827,7 @@ function renderTTClass() {
       const t = getTime(d, p);
       const asn = getAfterSchoolTeacher(d, p);
       // 星期五第8节特殊处理:只显示时间,不显示具体安排
-      if (d === '星期五' && p === 8) {
+      if (d === '星期四' && (p === 8 || p === 9)) {
         html += `<td class="afterschool-cell special-club">
           <div class="time-cell">${t}</div>
           <span class="subj">特色社团活动</span>
@@ -1895,7 +1895,7 @@ function renderTTMy(teacherName) {
   // 课后服务时间映射(周一~周四)
   const afterSchoolTimeMap = { 7:'15:40-16:20', 8:'16:25-17:05', 9:'17:10-17:50', 10:'19:30-20:30', 11:'13:00-13:50' };
   // 星期五课后服务时间映射(只有两节)
-  const fridayAfterSchoolTimeMap = { 7:'14:40-15:20', 8:'15:25-16:50' };
+  const fridayAfterSchoolTimeMap = { 7:'14:40-15:20', 8:'15:25-16:05', 9:'16:10-16:50' };
   // 课后服务名称
   const afterSchoolName = { 7:'课后服务1', 8:'课后服务2', 9:'课后服务3', 10:'晚自习', 11:'午休' };
   // 课后服务时间取:根据星期取对应映射,没有再回退原 slot.time
@@ -3016,7 +3016,7 @@ function renderTeacherSubTT(teacherName) {
   const fridayTimeMap = { 1:'8:20-9:00', 2:'9:10-9:50', 3:'10:30-11:10', 4:'11:20-12:00', 5:'13:00-13:40', 6:'13:50-14:30', 7:'14:40-15:20', 8:'15:25-16:50' };
   const getTime = (day, p) => day === '星期五' ? (fridayTimeMap[p] || '-') : (timeMap[p] || '-');
   const afterSchoolTimeMap = { 7:'15:40-16:20', 8:'16:25-17:05', 9:'17:10-17:50', 10:'19:30-20:30', 11:'13:00-13:50' };
-  const fridayAfterSchoolTimeMap = { 7:'14:40-15:20', 8:'15:25-16:50' };
+  const fridayAfterSchoolTimeMap = { 7:'14:40-15:20', 8:'15:25-16:05', 9:'16:10-16:50' };
   const afterSchoolName = { 7:'课后服务1', 8:'课后服务2', 9:'课后服务3', 10:'晚自习', 11:'午休' };
   const getAfterSchoolTime = (day, period, fallback) => day === '星期五' ? (fridayAfterSchoolTimeMap[period] || fallback || '-') : (afterSchoolTimeMap[period] || fallback || '-');
 
@@ -4603,7 +4603,7 @@ function parseAfterSchoolSheet(ws, sheetName) {
     '15:25': 8,   // 周五课后服务
     '15:40': 7,
     '16:25': 8,
-    '16:30': 9,   // 周五课后服务
+    '16:10': 9,   // 周五课后服务
     '17:10': 9,
     '19:30': 10
   };
