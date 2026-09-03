@@ -4577,8 +4577,8 @@ function parseAfterSchoolSheet(ws, sheetName) {
   for (let i = 0; i < header.length; i++) {
     // 匹配 "一1", "一(1)", "一(1)", "一 1" 等格式
     if (/[一二三四五六]/.test(header[i]) && /\d/.test(header[i])) {
-      // 归一化名称为 "一（1）" 格式(全角括号),与 parseOriginalTimetableV2 对齐,避免半角/全角混用导致 classes 翻倍
-      const m = header[i].match(/^([一二三四五六七])\s*[((]\s*(\d+)\s*[))]\s*$/);
+      // 归一化名称为 "一（1）" 格式(全角括号),与 parseOriginalTimetableV2 对齐,避免半角/全角/无括号混用导致 classes 翻倍
+      const m = header[i].match(/^([一二三四五六七])\s*[（(]?\s*(\d+)\s*[）)]?\s*$/);
       if (m) {
         classCols.push({ idx: i, name: `${m[1]}（${m[2]}）` });
       } else {
