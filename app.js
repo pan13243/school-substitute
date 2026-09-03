@@ -4325,8 +4325,8 @@ function parseOriginalTimetableV2(ws) {
     { period: 2, subjectRow: 7, teacherRow: 8 },    // 第8,9行
     { period: 3, subjectRow: 10, teacherRow: 11 },  // 第11,12行
     { period: 4, subjectRow: 12, teacherRow: 13 },  // 第13,14行
-    { period: 5, subjectRow: 19, teacherRow: 20 },  // 第20,21行
-    { period: 6, subjectRow: 21, teacherRow: 22 }   // 第22,23行
+    { period: 5, subjectRow: 18, teacherRow: 19 },  // 第19,20行
+    { period: 6, subjectRow: 20, teacherRow: 21 }   // 第21,22行
   ];
 
   const timetable = {};
