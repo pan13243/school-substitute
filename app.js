@@ -1829,7 +1829,7 @@ function renderTTClass() {
       // 星期五第8节特殊处理:只显示时间,不显示具体安排
       if (d === '星期四' && (p === 8 || p === 9)) {
         html += `<td class="afterschool-cell special-club">
-          <div class="time-cell">${t}</div>
+          <div class="time-cell">${getAfterSchoolTime(d, p)}</div>
           <span class="subj">特色社团活动</span>
         </td>`;
         continue;
