@@ -4290,6 +4290,13 @@ function parseTimetableWorkbook(wb) {
  * 解析原始总课表格式 V2 - 使用 sheet_to_json
  */
 function parseOriginalTimetableV2(ws) {
+  // 归一化班级名(半角()->全角(), 六1->六(1)),避免重导时半角/全角混用造成重复
+  const normCls = (s) => {
+    s = String(s || '').trim();
+    const m = s.match(/^([一二三四五六七])\s*[（(]?\s*(\d+)\s*[）)]?\s*$/);
+    return m ? (m[1] + '（' + m[2] + '）') : s;
+  };
+
   // 读取所有数据(header:1 返回二维数组)
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
   if (!rows || rows.length < 10) return null;
@@ -4298,7 +4305,7 @@ function parseOriginalTimetableV2(ws) {
   const classRow = rows[2] || [];
   const classes = [];
   for (let c = 2; c < 23 && c < classRow.length; c++) {
-    const cls = String(classRow[c] || '').trim();
+    const cls = normCls(classRow[c]);
     if (cls && cls !== 'null' && cls !== 'undefined') classes.push(cls);
   }
   if (classes.length === 0) return null;
@@ -4570,10 +4577,10 @@ function parseAfterSchoolSheet(ws, sheetName) {
   for (let i = 0; i < header.length; i++) {
     // 匹配 "一1", "一(1)", "一(1)", "一 1" 等格式
     if (/[一二三四五六]/.test(header[i]) && /\d/.test(header[i])) {
-      // 归一化名称为 "一(1)" 格式以匹配前端
-      const m = header[i].match(/^([一二三四五��])\s*[((]?\s*(\d+)\s*[))]?\s*$/);
+      // 归一化名称为 "一（1）" 格式(全角括号),与 parseOriginalTimetableV2 对齐,避免半角/全角混用导致 classes 翻倍
+      const m = header[i].match(/^([一二三四五六七])\s*[((]\s*(\d+)\s*[))]\s*$/);
       if (m) {
-        classCols.push({ idx: i, name: `${m[1]}(${m[2]})` });
+        classCols.push({ idx: i, name: `${m[1]}（${m[2]}）` });
       } else {
         classCols.push({ idx: i, name: header[i] });
       }
