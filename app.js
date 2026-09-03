@@ -4666,31 +4666,6 @@ async function handleTextImport() {
   }
 }
 
-async function normClass(s) {
-  s = String(s || '').trim();
-  const m = s.match(/([一二三四五六七])\s*[（(]?\s*(\d+)\s*[）)]?/);
-  return m ? (m[1] + '（' + m[2] + '）') : s;
-}
-function normalizeImportClasses(data) {
-  if (data && data.timetable) {
-    for (const day of Object.keys(data.timetable)) {
-      const cm = data.timetable[day]; const nc = {};
-      for (const [cls, periods] of Object.entries(cm)) nc[normClass(cls)] = periods;
-      data.timetable[day] = nc;
-    }
-  }
-  if (data && data.afterSchoolService && data.afterSchoolService.slots) {
-    for (const slot of data.afterSchoolService.slots) {
-      if (slot.assignments) {
-        const na = {};
-        for (const [cls, val] of Object.entries(slot.assignments)) na[normClass(cls)] = val;
-        slot.assignments = na;
-      }
-    }
-  }
-  if (Array.isArray(data && data.classes)) data.classes = [...new Set(data.classes.map(normClass))];
-  return data;
-}
 async function loadScheduleData() {
   try {
     const r = await API.getSchedule();
@@ -4711,9 +4686,16 @@ async function doImport(data) {
   if (!data.timetable && !data.classes && !data.calendar && !data.afterSchoolService && !data.clubActivities) {
     toast('数据格式不正确,缺少 timetable/classes/calendar/afterSchoolService/clubActivities','error'); return;
   }
-  // 规范化班级名括号(半角()->全角（）, 六1->六（1）),并去掉冗余字段让后端按课表重算,避免重复班级
-  data = normalizeImportClasses(data);
-  delete data.classes; delete data.allTeachers; delete data.teacherAssignment;
+  // 防呆:检测解析异常(如浏览器 XLSX 把单元格解析成 Promise,班级名变 "[object Promise]")
+  if (data.timetable) {
+    for (const day of Object.keys(data.timetable)) {
+      for (const cls of Object.keys(data.timetable[day])) {
+        if (typeof cls !== 'string' || cls.includes('[object ')) {
+          toast('解析结果异常(班级名非法:'+cls+'),请刷新重试或联系管理员用脚本导入','error'); return;
+        }
+      }
+    }
+  }
   const loading = showLoading('正在导入...');
   try {
     const r = await API.importSchedule(data);
