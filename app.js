@@ -4304,19 +4304,19 @@ function parseOriginalTimetableV2(ws) {
   // 班级名在第3行(index 2),从第3列(index 2)开始
   const classRow = rows[2] || [];
   const classes = [];
-  for (let c = 2; c < 23 && c < classRow.length; c++) {
+  for (let c = 2; c < 22 && c < classRow.length; c++) {
     const cls = normCls(classRow[c]);
     if (cls && cls !== 'null' && cls !== 'undefined') classes.push(cls);
   }
   if (classes.length === 0) return null;
 
-  // 每天起始列(0-based index)
+  // 每天起始列(0-based index) —— 当前总课表各日块之间无空列,每块20班连续排列
   const dayConfig = [
     { day: '星期一', startCol: 2 },   // C列
-    { day: '星期二', startCol: 23 },  // X列
-    { day: '星期三', startCol: 44 },  // AS列
-    { day: '星期四', startCol: 65 },  // BN列
-    { day: '星期五', startCol: 86 }   // CI列
+    { day: '星期二', startCol: 22 },  // V列
+    { day: '星期三', startCol: 42 },  // AP列
+    { day: '星期四', startCol: 62 },  // BK列
+    { day: '星期五', startCol: 82 }   // CG列
   ];
 
   // 节次定义(0-based row index)
