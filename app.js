@@ -1967,9 +1967,9 @@ function renderTTMy(teacherName) {
     const weekTag = s.isAfterSchool && s.weekType !== '通用'
       ? `<span class="week-tag ${s.weekType === '双周' ? 'week-double' : ''}" style="margin-left:4px;font-size:11px;">${s.weekType}</span>`
       : '';
-    // 星期五第8节特殊处理:显示"特色社团活动"
+    // 星期四第8节特殊处理:显示"特色社团活动"(数据里周四 R21 是"社团活动")
     let subjectLabel = esc(s.subject);
-    if (s.day === '星期五' && s.period === 8 && s.isAfterSchool) {
+    if (s.day === '星期四' && s.period === 8 && s.isAfterSchool) {
       subjectLabel = '特色社团活动';
     }
     // 计算实际时间:优先用 slot.time,否则根据星期动态查
@@ -3073,7 +3073,7 @@ function renderTeacherSubTT(teacherName) {
       ? `<span class="week-tag ${s.weekType === '双周' ? 'week-double' : ''}" style="margin-left:4px;font-size:11px;">${s.weekType}</span>`
       : '';
     let subjectLabel = esc(s.subject);
-    if (s.day === '星期五' && s.period === 8 && s.isAfterSchool) {
+    if (s.day === '星期四' && s.period === 8 && s.isAfterSchool) {
       subjectLabel = '特色社团活动';
     }
     const actualTime = s.time || getTime(s.day, s.period);
@@ -4596,22 +4596,25 @@ function parseAfterSchoolSheet(ws, sheetName) {
     '晚自习': 10,
     '午休': 11
   };
-  // 按时间段判断节次(处理"课后服务"不带数字的情况)
+  // 按时间段判断节次(处理"课后服务"不带数字的情况;支持全角冒号和破折号)
   const TIME_PERIOD_MAP = {
-    '13:00': 11, '13:00': 11,
-    '14:40': 7, '14:40': 7,  // 周五课后服务
-    '15:40': 7, '15:40': 7,
-    '16:25': 8, '16:25': 8,
-    '17:10': 9, '17:10': 9,
-    '19:30': 10, '19:30': 10
+    '13:00': 11,  // 午休
+    '14:40': 7,   // 周五课后服务
+    '15:25': 8,   // 周五课后服务
+    '15:40': 7,
+    '16:25': 8,
+    '16:30': 9,   // 周五课后服务
+    '17:10': 9,
+    '19:30': 10
   };
   const getPeriod = (project, timeRange) => {
     if (PROJECT_PERIOD_MAP[project]) return PROJECT_PERIOD_MAP[project];
-    // 从时间中提取开始小时:分钟
-    const m = String(timeRange).match(/(\d{1,2})[::]\d{2}/);
+    // 归一化时间串:全角冒号→半角,破折号→半角连字符
+    const normalized = String(timeRange).replace(/[：]/g, ':').replace(/[—–]/g, '-');
+    // 提取开始时间(第一个 HH:MM,避免匹到末尾时间)
+    const m = normalized.match(/(\d{1,2}:\d{2})/);
     if (m) {
-      const key = m[0];
-      return TIME_PERIOD_MAP[key] || 0;
+      return TIME_PERIOD_MAP[m[1]] || 0;
     }
     return 0;
   };
