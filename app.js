@@ -1837,10 +1837,12 @@ function renderTTClass() {
         continue;
       }
       // 内容格:名字上方显示「时间+项目名」
-      // 周五:只第7节在时间前加「课后服务1」,其余(周五原样)保持 t
+      // 周五课后服务(P7/P8/P9)用 fridayAfterSchoolTimeMap 取正确时间,并补全「课后服务1/2/3」标签
       let timeLabel;
       if (d === '星期五') {
-        timeLabel = (p === 7) ? `${t}${esc(afterSchoolName[7])}` : t;
+        const asTime = getAfterSchoolTime(d, p);
+        const asName = afterSchoolName[p] || '';
+        timeLabel = asName ? `${asTime} ${asName}` : asTime;
       } else {
         timeLabel = `${esc(afterSchoolTimeMap[p] || '')} ${esc(afterSchoolName[p] || '')}`.trim();
       }
