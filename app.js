@@ -1373,9 +1373,9 @@ async function loadTeacherList() {
     } catch { teachers = []; }
   }
   if (teachers.length === 0) {
-    const { data } = await API.getSchedule();
-    if (data && data.allTeachers) {
-      teachers = data.allTeachers;
+    const r = await API.getSchedule();
+    if (r && r.success && r.allTeachers) {
+      teachers = r.allTeachers;
       localStorage.setItem('teachers_cache', JSON.stringify({ t: teachers, ts: Date.now() }));
     }
   }
