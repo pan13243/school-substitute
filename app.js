@@ -182,6 +182,8 @@ function getTeacherClass(teacherName, leaveDate, period, forcedParity) {
 const AFTER_SCHOOL_PERIOD_MAP = {
   '13:00': 11, '13:00': 11,
   '14:40': 7, '14:40': 7,  // 周五课后服务
+  '15:25': 8,  // 周五课后服务2
+  '16:10': 9,  // 周五课后服务3
   '15:40': 7, '15:40': 7,
   '16:25': 8, '16:25': 8,
   '17:10': 9, '17:10': 9,
