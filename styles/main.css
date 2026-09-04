@@ -355,7 +355,7 @@ html, body { height: 100%; font-family: 'PingFang SC', 'Microsoft YaHei', -apple
 
 /* 桌面端：隐藏手机端专用组件（统计区课表查询 / 大卡 / 双卡 / 隐私独立行） */
 @media (min-width: 601px) {
-  .home-big-card, .home-privacy-row { display: none; }
+  .home-big-card { display: none; }
 
   /* 教师PC端：已批准请假记录大卡片 */
   .home-approved-card {
