@@ -58,7 +58,7 @@ function formatWeekday(record) {
   if (!record) return '-';
   if (record.makeupDay) {
     const origDay = record.leaveDate ? wdayFull(record.leaveDate) : record.dayOfWeek || '';
-    const origShort = origDay.replace('��期','').replace('周','');
+    const origShort = origDay.replace('星期','').replace('周','');
     const makeupShort = record.makeupDay.replace('星期','').replace('周','');
     const parity = record.makeupParity === '单' ? '（单周）' : record.makeupParity === '双' ? '（双周）' : '';
     return origShort + '补' + makeupShort + parity;
@@ -325,7 +325,7 @@ async function resetTeacherPrivacyPwd(teacherName) {
   }
 }
 
-// 获取所有设置���隐私密码的教师(管理员用)
+// 获取所有设置了隐私密码的教师(管理员用)
 async function getTeachersWithPrivacyPwd() {
   try {
     const r = await fetch('/api/teacher/pwd', {
@@ -572,7 +572,7 @@ function showModal(title, content) {
     <div style="background:#fff; border-radius:12px; max-width:500px; width:100%; max-height:80vh; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
       <div style="padding:16px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
         <h3 style="margin:0; font-size:16px; font-weight:600;">${title}</h3>
-        <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">��</button>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
       </div>
       <div style="padding:20px; overflow-y:auto; max-height:60vh;">${content}</div>
       <div style="padding:12px 20px; border-top:1px solid #E5E7EB; text-align:right;">
@@ -704,7 +704,7 @@ async function loadSigLib(scope, name) {
   return [];
 }
 
-// 保存一条签名(异��,云端 KV),同步更新缓存
+// 保存一条签名(异步,云端 KV),同步更新缓存
 async function addToSigLib(scope, name, sigName, dataUrl) {
   try {
     const r = await fetch('/api/signatures', {
@@ -1017,7 +1017,7 @@ function showAllTeachers() {
   const list = teas.map(t => `<span style="display:inline-block; padding:8px 16px; margin:4px; background:#F3F4F6; border-radius:20px; font-size:14px;">${t}</span>`).join('');
   showModal('👩‍🏫 教师名单 (' + teas.length + '人)', `<div style="line-height:2;">${list}</div>`);
 }
-// ═══════════════════════��══════════════════════════════
+// ══════════════════════════════════════════════════════
 
 // 常用汉字拼音首字母映射
 const PINYIN_FIRST_LETTERS = {
@@ -2826,7 +2826,7 @@ function showPrincipalApproveModal(slipId) {
           <img src="${slip.teacherSignature}" style="max-height:80px; border:1px solid #E5E7EB; border-radius:6px; background:#fff; padding:4px;">
         </div>` : ''}
         <div class="form-group">
-          <label>审��人签字 *(请用鼠标/手指签名)</label>
+          <label>审批人签字 *(请用鼠标/手指签名)</label>
           <div style="border:2px dashed #CBD5E1; border-radius:8px; overflow:hidden; background:#FAFAFA;">
             <canvas id="principal-canvas" style="width:100%; height:140px; display:block; touch-action:none; cursor:crosshair;"></canvas>
           </div>
@@ -4930,7 +4930,7 @@ async function adminResetTeacherPwd(teacherName) {
 
 // ══════════════════════════════════════════════════════
 //  初始化
-// ═════════════════���════════════════════════════════════
+// ═════════════════════════════════════════════════════════
 async function initApp() {
   // 恢复管理员身份
   const role = sessionStorage.getItem('role');
