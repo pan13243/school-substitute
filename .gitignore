@@ -5,6 +5,7 @@ package-lock.json
 .DS_Store
 *.xlsx
 *.xls
+!templates/标准导入模板.xlsx
 
 #调试脚本（工作区临时文件）
 __patch.*
