@@ -4,6 +4,21 @@
  * 数据:课表、请假、代课安排
  */
 
+// v148: 清理旧 Service Worker 缓存,避免"强刷归0/重开正常"陷阱
+// 旧 sw.js (daiketiao-v84) 把静态资源用"网络优先、缓存备用"策略拦截;
+// 强刷绕过 disk cache 但不绕过 SW → 仍命中旧缓存老响应 → 与真实 KV 不一致
+// 启动时 unregister 所有 SW + 删所有 caches,确保新版永远 NetworkOnly
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister().catch(() => {}));
+  }).catch(() => {});
+}
+if ('caches' in window) {
+  caches.keys().then(keys => {
+    keys.forEach(k => caches.delete(k).catch(() => {}));
+  }).catch(() => {});
+}
+
 // ══════════════════════════════════════════════════════
 //  全局状态
 // ══════════════════════════════════════════════════════
