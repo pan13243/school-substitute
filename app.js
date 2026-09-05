@@ -3617,11 +3617,25 @@ async function exportSubKaoqin() {
       });
     }
   } catch (e) { console.warn('slip fetch failed', e); }
-  // 统计每位请假教师每天的总节数(用于「节数」列)
+  // 节次数值(用于「节数」列): 常规课1-6=1, 午休11=1, 晚自习10=2, 课后服务7/8/9=空白
+  // 数字period → 节数; 字符串period(如"课后服务2、3")→ 留空白
+  const periodNum = (p) => {
+    const n = parseInt(p);
+    return isNaN(n) ? -1 : n;
+  };
+  const jieShu = (p) => {
+    const n = periodNum(p);
+    if (n >= 7) return '';  // 课后服务(7/8/9)+晚自习(10)+午休(11)→留空白
+    if (n >= 1 && n <= 6) return 1;
+    return '';
+  };
+  // 统计每位请假教师每天的总节数(用于「节数」列,仅常规课行)
   const cntMap = {};
   substituteRecords.forEach(s => {
-    const k = (s.leaveTeacher||'') + '|' + (s.leaveDate||'');
-    cntMap[k] = (cntMap[k] || 0) + 1;
+    if (periodNum(s.period) >= 1 && periodNum(s.period) <= 6) {
+      const k = (s.leaveTeacher||'') + '|' + (s.leaveDate||'');
+      cntMap[k] = (cntMap[k] || 0) + 1;
+    }
   });
   // 13 列 A-M 模板(按用户桌面模板)
   // A=序号 B=有假教师 C=时间(年/月/日) D=星期 E=事由 F=假别
@@ -3672,9 +3686,17 @@ async function exportSubKaoqin() {
     r[7]  = (slipDurMap[s.leaveId] != null ? slipDurMap[s.leaveId] : (s.duration != null ? s.duration : (leaveDurationMap[s.leaveId] != null ? leaveDurationMap[s.leaveId] : 1)));  // 天数:以请假条时长为准
     r[8]  = s.substituteTeacher || '';
     r[9]  = s.className || '';
-    r[10] = s.period || '';
+    r[10] = (() => {
+      const p = s.period;
+      const n = periodNum(p);
+      if (String(p).includes('课后服务') || String(p).includes('晚自习') || String(p).includes('午休')) return p;
+      if (n >= 10) return n === 10 ? '晚自习' : '午休';
+      if (n >= 7) return n === 7 ? '课后服务1' : n === 8 ? '课后服务2' : '课后服务3';
+      if (n >= 1) return '第' + n + '节';
+      return p || '';
+    })();
     r[11] = s.subject || '';
-    r[12] = cntMap[k] || 1;        // 节数:同教师同日期总节数
+    r[12] = jieShu(s.period);       // 节数:课后服务留空白,常规课1,午休1,晚自习2
     rows.push(r);
   });
   // 仅登记请假(后勤/无课老师):代课情况留空
