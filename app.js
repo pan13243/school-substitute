@@ -3625,8 +3625,10 @@ async function exportSubKaoqin() {
   };
   const jieShu = (p) => {
     const n = periodNum(p);
-    if (n >= 7) return '';  // 课后服务(7/8/9)+晚自习(10)+午休(11)→留空白
-    if (n >= 1 && n <= 6) return 1;
+    if (n === 10) return 2;   // 晚自习=2节
+    if (n === 11) return 1;   // 午休=1节
+    if (n >= 7) return '';    // 课后服务(7/8/9)=留空白
+    if (n >= 1 && n <= 6) return 1;  // 常规课=1节
     return '';
   };
   // 统计每位请假教师每天的总节数(用于「节数」列,仅常规课行)
