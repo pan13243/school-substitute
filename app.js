@@ -3574,11 +3574,21 @@ async function deleteSubstituteFromModal(id) {
 
 function exportSubExcel() {
   if (substituteRecords.length === 0) { toast('无记录可导出','warning'); return; }
+  // 科目栏:课后服务记录标 课后服务1/2/3 (period 7/8/9 映射)
+  const subjectLabel = (s) => {
+    const p = String(s.period || '');
+    if (p.includes('课后服务')) return p;
+    const n = parseInt(p);
+    if (n === 7) return '课后服务1';
+    if (n === 8) return '课后服务2';
+    if (n === 9) return '课后服务3';
+    return s.subject || '';
+  };
   const data = substituteRecords.map(s => ({
     '请假教师': s.leaveTeacher||'',
     '代课教师': s.substituteTeacher||'',
     '班级': s.className||'',
-    '科目': s.subject||'',
+    '科目': subjectLabel(s),
     '日期': fmtDate(s.leaveDate||''),
     '星期': formatSubstituteWeekday(s),
     '节次': '第'+(s.period||'')+'节',
