@@ -19,3 +19,6 @@ wrangler.toml.deleted
 
 # Cloudflare wrangler 本地缓存（禁止提交git）
 .wrangler/
+
+# v149 调试脚本(不入库)
+_stray/

@@ -1427,7 +1427,8 @@ function renderAppShell() {
     principal: '校长审批',
     import: '导入课表',
     slip: '请假条管理',
-    settings: '通知设置'
+    settings: '通知设置',
+    shared: '共享文件夹'
   };
   const currentTitle = pageTitles[currentPage] || '代课调课系统';
   const showBackBtn = currentPage !== 'home';
@@ -1463,6 +1464,7 @@ function renderAppShell() {
           <button class="nav-btn" data-page="home"    onclick="switchPage('home')">🏠 首页</button>
           <button class="nav-btn" data-page="tt"      onclick="switchPage('tt')">📅 课表查询</button>
           <button class="nav-btn" data-page="leave"   onclick="switchPage('leave')">🏖️ 请假登记${leaveBadge}</button>
+<button class="nav-btn" data-page="shared" onclick="switchPage('shared')">📁 共享文件夹</button>
           ` : ''}
           ${principalAuthed ? `<button class="nav-btn" data-page="principal" onclick="switchPage('principal')">✍️ 校长审批${principalBadge}</button>` : ''}
           ${isAdmin ? `
@@ -1495,6 +1497,7 @@ function switchPage(page) {
   else if (page === 'import')  renderImportPage(area);
   else if (page === 'slip')    renderSlipPage(area);
   else if (page === 'settings') renderSettingsPage(area);
+  else if (page === 'shared') renderSharedPage(area);
 }
 
 function handleLogout() {
@@ -1545,6 +1548,15 @@ function renderHomePage(area) {
         <div class="stat-icon">📅</div>
         <div class="stat-num">—</div>
         <div class="stat-label">课表查询</div>
+      </div>
+    </div>
+
+    <!-- v149 共享文件夹入口(所有登录角色可见) -->
+    <div class="home-big-card home-shared-entry" style="border-left:4px solid #8B5CF6; background:linear-gradient(135deg,#F5F3FF,#EEF2FF);" onclick="switchPage('shared')">
+      <div class="home-big-icon">📁</div>
+      <div class="home-big-text">
+        <div class="home-big-title">共享文件夹</div>
+        <div class="home-big-sub">上传 / 下载学校共享文件(教案·课件·通知)</div>
       </div>
     </div>
 
@@ -5324,3 +5336,338 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initApp();
   }
 });
+
+// ══════════════════════════════════════════════════════
+//  共享文件夹 v149 (R2) — 纯新增,不动任何 v148 现有逻辑
+// ══════════════════════════════════════════════════════
+// 鉴权(v94 教训):浏览器禁止中文 header,x-teacher-name 只发 ASCII 占位符 '1';
+//   真实姓名一律放 form/body 字段(uploader),后端据此记录/校验。
+const SHARED_ALLOWED_EXTS = ['.docx', '.xlsx', '.pptx', '.pdf', '.jpg', '.jpeg', '.png', '.zip', '.txt', '.mp4'];
+const SHARED_CATEGORIES = ['教案', '课件', '通知', '其他'];
+let sharedCache = { files: [], totalBytes: 0, hardLimitBytes: 10 * 1024 * 1024 * 1024 };
+
+function fmtBytes(b) {
+  if (!b && b !== 0) return '-';
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  if (b < 1024 * 1024 * 1024) return (b / 1024 / 1024).toFixed(1) + ' MB';
+  return (b / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+}
+
+function sharedAuthHeaders() {
+  const h = {};
+  if (isAdmin) {
+    h['x-admin-pwd'] = adminPwd || 'admin888';
+  } else if (principalAuthed) {
+    h['x-principal-pwd'] = principalPwd || 'principal888';
+  } else {
+    h['x-teacher-name'] = '1'; // ASCII 占位符,真实姓名走 body/form
+  }
+  return h;
+}
+
+function sharedMyName() {
+  if (isAdmin) return '管理员';
+  return sessionStorage.getItem('teacherName') || '';
+}
+
+function renderSharedPage(area) {
+  area.innerHTML = `
+  <div class="page">
+    ${mobileBackBar('共享文件夹')}
+    <h2 class="page-title">📁 共享文件夹</h2>
+    <p class="text-muted" style="margin:0 0 14px;">学校共享文件库(教案·课件·通知等)。教师可上传/下载,管理员可上传/下载/删除。</p>
+
+    <div style="background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:14px 16px; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+        <span style="font-size:13px; color:#4B5563; font-weight:600;">容量使用</span>
+        <span style="font-size:13px; color:#8B5CF6; font-weight:700;" id="shared-usage-text">加载中...</span>
+      </div>
+      <div style="background:#EDE9FE; border-radius:6px; height:10px; overflow:hidden;">
+        <div id="shared-usage-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#8B5CF6,#6D28D9); border-radius:6px; transition:width .4s;"></div>
+      </div>
+      <div id="shared-upload-panel" style="margin-top:14px;">
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <input type="file" id="shared-file-input" style="font-size:13px; flex:1; min-width:180px;"
+                 accept=".docx,.xlsx,.pptx,.pdf,.jpg,.jpeg,.png,.zip,.txt,.mp4">
+          <select id="shared-category" class="form-input" style="width:auto; padding:6px 10px; font-size:13px;">
+            ${SHARED_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+          </select>
+          <input type="text" id="shared-note" class="form-input" placeholder="备注(可选)" style="flex:1; min-width:140px; font-size:13px;">
+          <button class="btn btn-primary" onclick="uploadSharedFile()">⬆️ 上传</button>
+        </div>
+        <div style="font-size:12px; color:#9CA3AF; margin-top:6px;">单个文件 ≤50MB(MP4 ≤100MB); 类型:${SHARED_ALLOWED_EXTS.join(' ')}</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;" id="shared-filter-row">
+      <button class="btn btn-sm shared-filter-btn" data-cat="" onclick="filterSharedFiles('')" style="background:#8B5CF6; color:#fff;">全部</button>
+      ${SHARED_CATEGORIES.map(c => `<button class="btn btn-sm shared-filter-btn" data-cat="${c}" onclick="filterSharedFiles('${c}')" style="background:#F3F4F6; color:#374151;">${c}</button>`).join('')}
+    </div>
+
+    <div id="shared-file-list"><p style="color:#9CA3AF; text-align:center; padding:30px;">加载中...</p></div>
+  </div>`;
+  loadSharedFiles();
+}
+
+let sharedFilterCat = '';
+
+function filterSharedFiles(cat) {
+  sharedFilterCat = cat || '';
+  document.querySelectorAll('.shared-filter-btn').forEach(b => {
+    const active = (b.dataset.cat || '') === sharedFilterCat;
+    b.style.background = active ? '#8B5CF6' : '#F3F4F6';
+    b.style.color = active ? '#fff' : '#374151';
+  });
+  renderSharedFileList();
+}
+
+async function loadSharedFiles() {
+  const listEl = $('shared-file-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<p style="color:#9CA3AF; text-align:center; padding:30px;">加载中...</p>';
+  try {
+    const r = await fetch('/api/shared/list', { headers: sharedAuthHeaders() });
+    const j = await r.json();
+    if (!j.success) {
+      listEl.innerHTML = `<p style="color:#DC2626; text-align:center; padding:30px;">加载失败:${esc(j.error || '未知错误')}</p>`;
+      return;
+    }
+    sharedCache = { files: j.files || [], totalBytes: j.totalBytes || 0, hardLimitBytes: j.hardLimitBytes || (10 * 1024 * 1024 * 1024) };
+    renderSharedUsage();
+    renderSharedFileList();
+  } catch (err) {
+    listEl.innerHTML = '<p style="color:#DC2626; text-align:center; padding:30px;">网络错误</p>';
+  }
+}
+
+function renderSharedUsage() {
+  const used = sharedCache.totalBytes || 0;
+  const limit = sharedCache.hardLimitBytes || (10 * 1024 * 1024 * 1024);
+  const pct = Math.min(100, Math.round(used / limit * 100));
+  const usageEl = $('shared-usage-text');
+  const barEl = $('shared-usage-bar');
+  if (usageEl) usageEl.textContent = `${fmtBytes(used)} / ${fmtBytes(limit)} (${pct}%)`;
+  if (barEl) {
+    barEl.style.width = pct + '%';
+    barEl.style.background = pct >= 90 ? 'linear-gradient(90deg,#EF4444,#DC2626)' : 'linear-gradient(90deg,#8B5CF6,#6D28D9)';
+  }
+  // 总容量满 → 全员禁传(前端提示;后端同样校验)
+  const uploadPanel = $('shared-upload-panel');
+  if (uploadPanel) {
+    const btn = uploadPanel.querySelector('button');
+    if (btn) btn.disabled = used >= limit;
+  }
+}
+
+function renderSharedFileList() {
+  const listEl = $('shared-file-list');
+  if (!listEl) return;
+  const myName = sharedMyName();
+  const files = sharedCache.files || [];
+  const filtered = sharedFilterCat ? files.filter(f => f.category === sharedFilterCat) : files;
+  if (filtered.length === 0) {
+    listEl.innerHTML = '<p style="color:#9CA3AF; text-align:center; padding:30px;">暂无文件(可点击上方按钮上传)</p>';
+    return;
+  }
+  listEl.innerHTML = `
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>文件名</th><th>分类</th><th>大小</th><th>上传者</th><th>备注</th><th>上传时间</th><th>操作</th></tr></thead>
+      <tbody>
+        ${filtered.map(f => `
+        <tr>
+          <td style="max-width:220px; word-break:break-all;">${esc(f.fileName)}</td>
+          <td><span class="badge badge-blue">${esc(f.category || '其他')}</span></td>
+          <td>${fmtBytes(f.size)}</td>
+          <td>${esc(f.uploader || '-')}</td>
+          <td style="max-width:140px; word-break:break-all; color:#6B7280;">${esc(f.note || '') || '-'}</td>
+          <td>${f.uploadedAt ? new Date(f.uploadedAt).toLocaleString('zh-CN',{hour12:false}).replace(/\//g,'-') : '-'}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm" onclick="downloadSharedFile('${f.id}')">⬇️ 下载</button>
+            ${(isAdmin || f.uploader === myName) ? `<button class="btn btn-sm" style="margin-left:4px;" onclick="openSharedEditModal('${f.id}')">✏️ 修改</button>` : ''}
+            ${isAdmin ? `<button class="btn btn-sm btn-danger" style="margin-left:4px;" onclick="askDeleteSharedFile('${f.id}')">🗑️ 删除</button>` : ''}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:12px; color:#9CA3AF; margin-top:8px;">共 ${filtered.length} 个文件</p>`;
+}
+
+function sharedValidateFile(file) {
+  if (!file) return '请先选择文件';
+  const name = file.name || '';
+  const idx = name.lastIndexOf('.');
+  const ext = idx >= 0 ? name.slice(idx).toLowerCase() : '';
+  if (!SHARED_ALLOWED_EXTS.includes(ext)) return '文件类型不允许: ' + (ext || '(无后缀)') + '。允许: ' + SHARED_ALLOWED_EXTS.join('/');
+  const limit = ext === '.mp4' ? 100 * 1024 * 1024 : 50 * 1024 * 1024;
+  if (file.size > limit) return '文件超过 ' + (ext === '.mp4' ? 100 : 50) + 'MB 上限';
+  if ((sharedCache.totalBytes || 0) + file.size > (sharedCache.hardLimitBytes || (10 * 1024 * 1024 * 1024))) {
+    return '共享文件夹总容量已满(10GB 上限),请联系管理员清理';
+  }
+  return '';
+}
+
+async function uploadSharedFile() {
+  const input = $('shared-file-input');
+  const file = input && input.files && input.files[0];
+  const err = sharedValidateFile(file);
+  if (err) { toast(err, 'warning'); return; }
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('category', ($('shared-category') && $('shared-category').value) || '其他');
+  fd.append('note', ($('shared-note') && $('shared-note').value.trim()) || '');
+  fd.append('uploader', sharedMyName()); // 真实姓名走 form 字段(中文 header 被浏览器禁)
+
+  const btn = document.querySelector('#shared-upload-panel button');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 上传中...'; }
+  try {
+    const r = await fetch('/api/shared/upload', { method: 'POST', headers: sharedAuthHeaders(), body: fd });
+    const j = await r.json();
+    if (j.success) {
+      toast('✅ 上传成功', 'success');
+      if (input) input.value = '';
+      const noteEl = $('shared-note'); if (noteEl) noteEl.value = '';
+      await loadSharedFiles();
+    } else {
+      toast(j.error || '上传失败', 'error');
+    }
+  } catch (e2) {
+    toast('网络错误:' + (e2.message || e2), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬆️ 上传'; }
+  }
+}
+
+async function downloadSharedFile(id) {
+  const f = (sharedCache.files || []).find(x => x.id === id);
+  if (!f) { toast('文件不存在', 'error'); return; }
+  try {
+    const r = await fetch('/api/shared/download?id=' + encodeURIComponent(id), { headers: sharedAuthHeaders() });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      toast(j.error || '下载失败', 'error');
+      return;
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = f.fileName || '下载';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch (err) {
+    toast('下载失败:' + (err.message || err), 'error');
+  }
+}
+
+function askDeleteSharedFile(id) {
+  const f = (sharedCache.files || []).find(x => x.id === id);
+  if (!f) { toast('文件不存在', 'error'); return; }
+  const name = f.fileName;
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:440px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:14px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0; font-size:16px; color:#DC2626;">🗑️ 删除文件确认</h3>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
+      </div>
+      <div style="padding:20px;">
+        <p style="margin:0 0 8px; font-size:14px; color:#374151;">删除后不可恢复。请输入完整文件名以确认:</p>
+        <p style="margin:0 0 10px; font-size:14px; font-weight:600; color:#111827; word-break:break-all;">${name}</p>
+        <input type="text" id="shared-delete-confirm-input" class="form-input" placeholder="输入上方完整文件名" style="width:100%; box-sizing:border-box;">
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #E5E7EB; text-align:right; display:flex; gap:8px; justify-content:flex-end;">
+        <button onclick="this.closest('.modal-overlay').remove()" style="padding:8px 16px; background:#9CA3AF; color:#fff; border:none; border-radius:6px; cursor:pointer;">取消</button>
+        <button onclick="doDeleteSharedFile('${id}')" style="padding:8px 16px; background:#DC2626; color:#fff; border:none; border-radius:6px; cursor:pointer;">确认删除</button>
+      </div>
+    </div>`;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+  setTimeout(() => { const inp = $('shared-delete-confirm-input'); if (inp) inp.focus(); }, 50);
+}
+
+async function doDeleteSharedFile(id) {
+  const f = (sharedCache.files || []).find(x => x.id === id);
+  if (!f) { toast('文件不存在', 'error'); return; }
+  const input = $('shared-delete-confirm-input');
+  const typed = input ? input.value.trim() : '';
+  if (typed !== f.fileName) { toast('文件名不匹配,无法删除', 'error'); return; }
+  try {
+    const r = await fetch('/api/shared/delete?id=' + encodeURIComponent(id) + '&confirmName=' + encodeURIComponent(typed), {
+      method: 'DELETE', headers: sharedAuthHeaders()
+    });
+    const j = await r.json();
+    if (j.success) {
+      toast('✅ 已删除', 'success');
+      const m = document.querySelector('.modal-overlay'); if (m) m.remove();
+      await loadSharedFiles();
+    } else {
+      toast(j.error || '删除失败', 'error');
+    }
+  } catch (err) {
+    toast('网络错误:' + (err.message || err), 'error');
+  }
+}
+
+function openSharedEditModal(id) {
+  const f = (sharedCache.files || []).find(x => x.id === id);
+  if (!f) { toast('文件不存在', 'error'); return; }
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff; border-radius:12px; max-width:440px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:14px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="margin:0; font-size:16px;">✏️ 修改文件信息</h3>
+        <button onclick="this.closest('.modal-overlay').remove()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6B7280;">×</button>
+      </div>
+      <div style="padding:20px;">
+        <p style="margin:0 0 14px; font-size:14px; font-weight:600; word-break:break-all;">${esc(f.fileName)}</p>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:13px; color:#6B7280; display:block; margin-bottom:4px;">分类</label>
+          <select id="shared-edit-category" class="form-input" style="width:100%; box-sizing:border-box;">
+            ${SHARED_CATEGORIES.map(c => `<option value="${c}" ${c === f.category ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:13px; color:#6B7280; display:block; margin-bottom:4px;">备注</label>
+          <input type="text" id="shared-edit-note" class="form-input" value="${esc(f.note || '')}" style="width:100%; box-sizing:border-box;" placeholder="备注(可选)">
+        </div>
+      </div>
+      <div style="padding:12px 20px; border-top:1px solid #E5E7EB; text-align:right; display:flex; gap:8px; justify-content:flex-end;">
+        <button onclick="this.closest('.modal-overlay').remove()" style="padding:8px 16px; background:#9CA3AF; color:#fff; border:none; border-radius:6px; cursor:pointer;">取消</button>
+        <button onclick="doUpdateSharedFile('${id}')" style="padding:8px 16px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer;">保存</button>
+      </div>
+    </div>`;
+  modal.className = 'modal-overlay';
+  document.body.appendChild(modal);
+}
+
+async function doUpdateSharedFile(id) {
+  const category = ($('shared-edit-category') && $('shared-edit-category').value) || '其他';
+  const note = ($('shared-edit-note') && $('shared-edit-note').value.trim()) || '';
+  const body = { id, category, note };
+  if (!isAdmin) body.uploader = sessionStorage.getItem('teacherName') || ''; // 真实姓名走 body
+  try {
+    const r = await fetch('/api/shared/update', {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, sharedAuthHeaders()),
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    if (j.success) {
+      toast('✅ 已保存', 'success');
+      const m = document.querySelector('.modal-overlay'); if (m) m.remove();
+      await loadSharedFiles();
+    } else {
+      toast(j.error || '保存失败', 'error');
+    }
+  } catch (err) {
+    toast('网络错误:' + (err.message || err), 'error');
+  }
+}
+

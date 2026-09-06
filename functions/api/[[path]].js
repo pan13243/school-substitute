@@ -1156,6 +1156,227 @@ function authAdmin(headers) {
   return p === 'admin888';
 }
 
+// ============ 共享文件夹 (R2) v149 ============
+// 文件字节存 R2 桶(变量名 R2,绑定 school-shared-files); 元数据存 KV key 'sharedFiles'(新 key,不动现有任何 KV)
+// 权限: 教师=上传+下载; 管理员=上传+下载+删除(需文件名二次确认); 修改备注/分类=上传者本人+管理员
+// 限制: 单文件 50MB(MP4 放宽 100MB); 累计总容量 10GB 硬限制(超限全员禁传,需管理员清理)
+// 白名单: .docx/.xlsx/.pptx/.pdf/.jpg/.jpeg/.png/.zip/.txt/.mp4; 预设分类: 教案/课件/通知/其他
+// 鉴权要点(v94 教训): 浏览器禁止中文 header 值,x-teacher-name 只发 ASCII 占位符 '1';
+//   真实身份一律以 form/body 字段(uploader)为准,header 仅作"是否已登录"判断。
+const SHARED_FILES_KV_KEY = 'sharedFiles';
+const SHARED_MAX_SIZE_MB = 50;
+const SHARED_MAX_SIZE_MB_VIDEO = 100;
+const SHARED_TOTAL_HARD_LIMIT_MB = 10 * 1024; // 10 GB
+const SHARED_ALLOWED_EXTS = ['.docx', '.xlsx', '.pptx', '.pdf', '.jpg', '.jpeg', '.png', '.zip', '.txt', '.mp4'];
+const SHARED_CATEGORIES = ['教案', '课件', '通知', '其他'];
+
+function sharedFileExt(name) {
+  if (!name) return '';
+  const idx = name.lastIndexOf('.');
+  if (idx < 0 || idx === name.length - 1) return '';
+  return name.slice(idx).toLowerCase();
+}
+
+function getSharedCategory(text) {
+  return SHARED_CATEGORIES.includes(text) ? text : '其他';
+}
+
+async function loadSharedStore(env) {
+  return await getKV(env, SHARED_FILES_KV_KEY) || { files: [], totalBytes: 0 };
+}
+
+async function saveSharedStore(env, store) {
+  await putKV(env, SHARED_FILES_KV_KEY, store);
+}
+
+async function sharedAuth(request, env) {
+  // header 只判断登录态;真实姓名走 form/body 字段(见文件头注释)
+  const isAdmin = authAdmin(request.headers);
+  const isPrincipal = await authPrincipal(request.headers, env);
+  const hasTeacher = !!((request.headers.get('x-teacher-name') || '').trim());
+  return { isAdmin, isPrincipal, ok: isAdmin || isPrincipal || hasTeacher };
+}
+
+// GET /api/shared/list — 所有已登录(教师/管理员/校长)可看
+async function handleSharedList(request, env) {
+  const auth = await sharedAuth(request, env);
+  if (!auth.ok) return json({ success: false, error: '请先登录' }, 401);
+  const store = await loadSharedStore(env);
+  const files = (store.files || []).slice().sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+  return json({
+    success: true,
+    files,
+    totalBytes: store.totalBytes || 0,
+    hardLimitBytes: SHARED_TOTAL_HARD_LIMIT_MB * 1024 * 1024,
+    hardLimitGB: 10
+  });
+}
+
+// POST /api/shared/upload (multipart/form-data) — 教师+管理员可上传
+async function handleSharedUpload(request, env) {
+  if (!env.R2) return json({ success: false, error: 'R2 桶未绑定,请联系管理员' }, 500);
+  const auth = await sharedAuth(request, env);
+  if (!auth.ok) return json({ success: false, error: '请先登录' }, 401);
+
+  const ct = request.headers.get('content-type') || '';
+  if (!ct.includes('multipart/form-data')) {
+    return json({ success: false, error: '需要 multipart/form-data' }, 400);
+  }
+
+  let form;
+  try {
+    form = await request.formData();
+  } catch (e) {
+    return json({ success: false, error: '解析表单失败: ' + (e.message || e) }, 400);
+  }
+
+  const file = form.get('file');
+  const uploader = (form.get('uploader') || '').toString().trim()
+    || (auth.isAdmin ? '管理员' : (auth.isPrincipal ? '校长' : '教师'));
+  const category = getSharedCategory((form.get('category') || '其他').toString());
+  const note = (form.get('note') || '').toString().slice(0, 200);
+
+  if (!file || typeof file === 'string') {
+    return json({ success: false, error: '请选择文件' }, 400);
+  }
+  const fileName = String(file.name || '未命名');
+  const ext = sharedFileExt(fileName);
+  if (!SHARED_ALLOWED_EXTS.includes(ext)) {
+    return json({ success: false, error: '文件类型不允许: ' + (ext || '(无后缀)') + '。允许: ' + SHARED_ALLOWED_EXTS.join('/') }, 400);
+  }
+  const size = file.size || 0;
+  const limitMB = (ext === '.mp4') ? SHARED_MAX_SIZE_MB_VIDEO : SHARED_MAX_SIZE_MB;
+  if (size > limitMB * 1024 * 1024) {
+    return json({ success: false, error: '文件超过 ' + limitMB + 'MB 上限(当前 ' + (size / 1024 / 1024).toFixed(2) + 'MB)' }, 400);
+  }
+
+  const store = await loadSharedStore(env);
+  const hardLimit = SHARED_TOTAL_HARD_LIMIT_MB * 1024 * 1024;
+  if ((store.totalBytes || 0) + size > hardLimit) {
+    return json({ success: false, error: '共享文件夹总容量已满(10GB 上限),请联系管理员清理后再上传' }, 400);
+  }
+
+  const id = 'sf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  const r2Key = 'shared/' + id + ext;
+  let buf;
+  try {
+    buf = await file.arrayBuffer();
+  } catch (e) {
+    return json({ success: false, error: '读取文件失败: ' + (e.message || e) }, 400);
+  }
+
+  try {
+    await env.R2.put(r2Key, buf, {
+      httpMetadata: { contentType: file.type || 'application/octet-stream' }
+    });
+  } catch (e) {
+    return json({ success: false, error: 'R2 上传失败: ' + (e.message || e) }, 500);
+  }
+
+  const record = {
+    id, fileName, ext, size, category, note,
+    uploader,
+    uploaderType: auth.isAdmin ? 'admin' : (auth.isPrincipal ? 'principal' : 'teacher'),
+    uploadedAt: Date.now(),
+    r2Key
+  };
+  store.files = store.files || [];
+  store.files.unshift(record);
+  store.totalBytes = (store.totalBytes || 0) + size;
+  await saveSharedStore(env, store);
+
+  return json({ success: true, file: record, totalBytes: store.totalBytes });
+}
+
+// GET /api/shared/download?id=... — 所有已登录可下载
+async function handleSharedDownload(request, env) {
+  const auth = await sharedAuth(request, env);
+  if (!auth.ok) return json({ success: false, error: '请先登录' }, 401);
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id') || '';
+  if (!id) return json({ success: false, error: '缺少文件 id' }, 400);
+
+  const store = await loadSharedStore(env);
+  const file = (store.files || []).find(f => f.id === id);
+  if (!file) return json({ success: false, error: '文件不存在或已删除' }, 404);
+  if (!env.R2) return json({ success: false, error: 'R2 桶未绑定' }, 500);
+
+  const obj = await env.R2.get(file.r2Key);
+  if (!obj) return json({ success: false, error: 'R2 文件丢失' }, 404);
+
+  const headers = new Headers();
+  if (obj.httpMetadata && obj.httpMetadata.contentType) {
+    headers.set('Content-Type', obj.httpMetadata.contentType);
+  }
+  const asciiFallback = file.fileName.replace(/[^\x20-\x7E]/g, '_');
+  headers.set('Content-Disposition', "attachment; filename=\"" + asciiFallback + "\"; filename*=UTF-8''" + encodeURIComponent(file.fileName));
+  return new Response(obj.body, { headers });
+}
+
+// DELETE /api/shared/delete?id=...&confirmName=... — 仅管理员(需文件名二次确认)
+async function handleSharedDelete(request, env) {
+  if (!authAdmin(request.headers)) {
+    return json({ success: false, error: '仅管理员可删除文件' }, 403);
+  }
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id') || '';
+  const confirmName = url.searchParams.get('confirmName') || '';
+  if (!id) return json({ success: false, error: '缺少文件 id' }, 400);
+
+  const store = await loadSharedStore(env);
+  const idx = (store.files || []).findIndex(f => f.id === id);
+  if (idx < 0) return json({ success: false, error: '文件不存在' }, 404);
+
+  const file = store.files[idx];
+  if (file.fileName !== confirmName) {
+    return json({ success: false, error: '文件名确认不匹配(需输入完整文件名)' }, 400);
+  }
+
+  if (env.R2) {
+    try {
+      await env.R2.delete(file.r2Key);
+    } catch (e) {
+      console.error('R2 删除失败:', e);
+    }
+  }
+
+  store.totalBytes = Math.max(0, (store.totalBytes || 0) - (file.size || 0));
+  store.files.splice(idx, 1);
+  await saveSharedStore(env, store);
+
+  return json({ success: true, totalBytes: store.totalBytes });
+}
+
+// POST /api/shared/update — 修改备注/分类(上传者本人+管理员)
+async function handleSharedUpdate(request, env) {
+  const isAdmin = authAdmin(request.headers);
+  // 教师身份从 body.uploader 取(header 是 ASCII 占位符,不能当真实身份)
+  const body = await request.json().catch(() => ({}));
+  const uploader = (body.uploader || '').toString().trim();
+  if (!isAdmin && !uploader) {
+    return json({ success: false, error: '请先登录' }, 401);
+  }
+  const { id, note, category } = body;
+  if (!id) return json({ success: false, error: '缺少文件 id' }, 400);
+
+  const store = await loadSharedStore(env);
+  const file = (store.files || []).find(f => f.id === id);
+  if (!file) return json({ success: false, error: '文件不存在' }, 404);
+
+  if (!isAdmin && file.uploader !== uploader) {
+    return json({ success: false, error: '无权修改(仅上传者本人和管理员可修改)' }, 403);
+  }
+
+  if (typeof note === 'string') file.note = note.slice(0, 200);
+  if (typeof category === 'string') file.category = getSharedCategory(category);
+  file.updatedAt = Date.now();
+  file.updatedBy = isAdmin ? '管理员' : uploader;
+
+  await saveSharedStore(env, store);
+  return json({ success: true, file });
+}
+
+
 // ============ 入口 ============
 export async function onRequest(context) {
   const { request, env } = context;
@@ -1260,5 +1481,22 @@ if (path === '/api/schedule' || path === '/api/schedule/') {
     });
   }
   
+
+  // ============ 共享文件夹 (R2) 路由 v149 ============
+  if (path === '/api/shared/list') {
+    if (method === 'GET') return handleSharedList(request, env);
+  }
+  if (path === '/api/shared/upload') {
+    if (method === 'POST') return handleSharedUpload(request, env);
+  }
+  if (path === '/api/shared/download') {
+    if (method === 'GET') return handleSharedDownload(request, env);
+  }
+  if (path === '/api/shared/delete') {
+    if (method === 'DELETE') return handleSharedDelete(request, env);
+  }
+  if (path === '/api/shared/update') {
+    if (method === 'POST') return handleSharedUpdate(request, env);
+  }
   return json({ success: false, error: 'API 路由未找到: ' + path }, 404);
 }
