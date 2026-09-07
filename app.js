@@ -5402,12 +5402,18 @@ function renderSharedPage(area) {
     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;" id="shared-filter-row">
       ${isAdmin ? '<button class="btn btn-sm" onclick="adminManageCategories()" style="background:#F5F3FF; color:#6D28D9; border:1px dashed #8B5CF6; margin-right:6px;">⚙️ 管理分类</button>' : ''}
       <button class="btn btn-sm shared-filter-btn" data-cat="" onclick="filterSharedFiles('')" style="background:#8B5CF6; color:#fff;">全部</button>
-      ${(sharedCache.categories||[]).map(c => `<button class="btn btn-sm shared-filter-btn" data-cat="${esc(c)}" onclick="filterSharedFiles(this.dataset.cat)" style="background:#F3F4F6; color:#374151;">${esc(c)}</button>`).join('')}
+      ${renderSharedFilterBtns()}
     </div>
 
     <div id="shared-file-list"><p style="color:#9CA3AF; text-align:center; padding:30px;">加载中...</p></div>
   </div>`;
   loadSharedFiles();
+}
+
+function renderSharedFilterBtns() {
+  return (sharedCache.categories || []).map(c =>
+    `<button class="btn btn-sm shared-filter-btn" data-cat="${esc(c)}" onclick="filterSharedFiles(this.dataset.cat)" style="background:#F3F4F6; color:#374151;">${esc(c)}</button>`
+  ).join('');
 }
 
 let sharedFilterCat = '';
@@ -5435,6 +5441,14 @@ async function loadSharedFiles() {
     }
     sharedCache = { files: j.files || [], totalBytes: j.totalBytes || 0, hardLimitBytes: j.hardLimitBytes || (10 * 1024 * 1024 * 1024), categories: j.categories || sharedCache.categories || ['教案','课件','通知','其他'] };
     renderSharedUsage();
+    // v151 fix: 分类列表变化后,重渲染筛选按钮行(保留'管理分类'按钮和'全部'按钮)
+    const filterRow = document.getElementById('shared-filter-row');
+    if (filterRow) {
+      const adminBtn = filterRow.querySelector('button[onclick="adminManageCategories()"]');
+      filterRow.innerHTML = (adminBtn ? adminBtn.outerHTML : '') +
+        '<button class="btn btn-sm shared-filter-btn" data-cat="" onclick="filterSharedFiles(\'\')" style="background:#8B5CF6; color:#fff;">全部</button>' +
+        renderSharedFilterBtns();
+    }
     renderSharedFileList();
   } catch (err) {
     listEl.innerHTML = '<p style="color:#DC2626; text-align:center; padding:30px;">网络错误</p>';
