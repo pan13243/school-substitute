@@ -5343,8 +5343,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 鉴权(v94 教训):浏览器禁止中文 header,x-teacher-name 只发 ASCII 占位符 '1';
 //   真实姓名一律放 form/body 字段(uploader),后端据此记录/校验。
 const SHARED_ALLOWED_EXTS = ['.docx', '.xlsx', '.pptx', '.pdf', '.jpg', '.jpeg', '.png', '.zip', '.txt', '.mp4'];
-const SHARED_CATEGORIES = ['教案', '课件', '通知', '其他'];
-let sharedCache = { files: [], totalBytes: 0, hardLimitBytes: 10 * 1024 * 1024 * 1024 };
+let sharedCache = { files: [], totalBytes: 0, hardLimitBytes: 10 * 1024 * 1024 * 1024, categories: ['教案','课件','通知','其他'] };
 
 function fmtBytes(b) {
   if (!b && b !== 0) return '-';
@@ -5391,7 +5390,7 @@ function renderSharedPage(area) {
           <input type="file" id="shared-file-input" style="font-size:13px; flex:1; min-width:180px;"
                  accept=".docx,.xlsx,.pptx,.pdf,.jpg,.jpeg,.png,.zip,.txt,.mp4">
           <select id="shared-category" class="form-input" style="width:auto; padding:6px 10px; font-size:13px;">
-            ${SHARED_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+            ${(sharedCache.categories||[]).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
           </select>
           <input type="text" id="shared-note" class="form-input" placeholder="备注(可选)" style="flex:1; min-width:140px; font-size:13px;">
           <button class="btn btn-primary" onclick="uploadSharedFile()">⬆️ 上传</button>
@@ -5401,8 +5400,9 @@ function renderSharedPage(area) {
     </div>
 
     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;" id="shared-filter-row">
+      ${isAdmin ? '<button class="btn btn-sm" onclick="adminManageCategories()" style="background:#F5F3FF; color:#6D28D9; border:1px dashed #8B5CF6; margin-right:6px;">⚙️ 管理分类</button>' : ''}
       <button class="btn btn-sm shared-filter-btn" data-cat="" onclick="filterSharedFiles('')" style="background:#8B5CF6; color:#fff;">全部</button>
-      ${SHARED_CATEGORIES.map(c => `<button class="btn btn-sm shared-filter-btn" data-cat="${c}" onclick="filterSharedFiles('${c}')" style="background:#F3F4F6; color:#374151;">${c}</button>`).join('')}
+      ${(sharedCache.categories||[]).map(c => `<button class="btn btn-sm shared-filter-btn" data-cat="${esc(c)}" onclick="filterSharedFiles(this.dataset.cat)" style="background:#F3F4F6; color:#374151;">${esc(c)}</button>`).join('')}
     </div>
 
     <div id="shared-file-list"><p style="color:#9CA3AF; text-align:center; padding:30px;">加载中...</p></div>
@@ -5433,7 +5433,7 @@ async function loadSharedFiles() {
       listEl.innerHTML = `<p style="color:#DC2626; text-align:center; padding:30px;">加载失败:${esc(j.error || '未知错误')}</p>`;
       return;
     }
-    sharedCache = { files: j.files || [], totalBytes: j.totalBytes || 0, hardLimitBytes: j.hardLimitBytes || (10 * 1024 * 1024 * 1024) };
+    sharedCache = { files: j.files || [], totalBytes: j.totalBytes || 0, hardLimitBytes: j.hardLimitBytes || (10 * 1024 * 1024 * 1024), categories: j.categories || sharedCache.categories || ['教案','课件','通知','其他'] };
     renderSharedUsage();
     renderSharedFileList();
   } catch (err) {
@@ -5631,7 +5631,7 @@ function openSharedEditModal(id) {
         <div style="margin-bottom:12px;">
           <label style="font-size:13px; color:#6B7280; display:block; margin-bottom:4px;">分类</label>
           <select id="shared-edit-category" class="form-input" style="width:100%; box-sizing:border-box;">
-            ${SHARED_CATEGORIES.map(c => `<option value="${c}" ${c === f.category ? 'selected' : ''}>${c}</option>`).join('')}
+            ${(sharedCache.categories||[]).map(c => `<option value="${esc(c)}" ${c === f.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}
           </select>
         </div>
         <div>
@@ -5671,3 +5671,98 @@ async function doUpdateSharedFile(id) {
   }
 }
 
+
+async function sharedUpdateCategoryApi(action, name, newName) {
+  const fd = { action, name, newName: newName || '' };
+  try {
+    const r = await fetch('/api/shared/categories/update', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, sharedAuthHeaders()),
+      body: JSON.stringify(fd)
+    });
+    const j = await r.json();
+    return j;
+  } catch (e) { return { success: false, error: '网络错误:' + (e.message || e) }; }
+}
+
+function adminManageCategories() {
+  const cats = sharedCache.categories || [];
+  const listHtml = cats.length
+    ? cats.map(c => {
+        const oldCount = (sharedCache.files || []).filter(f => f.category === c).length;
+        return `<div style="display:flex; align-items:center; gap:6px; padding:8px 10px; background:#F9FAFB; border-radius:8px; margin-bottom:6px;">
+          <span style="flex:1; font-size:14px; color:#1F2937;">${esc(c)}</span>
+          <span style="font-size:12px; color:#9CA3AF;">${oldCount} 个文件</span>
+          <button class="btn btn-sm" onclick="adminRenameCategoryPrompt('${esc(c)}')" style="background:#EEF2FF; color:#4338CA;">重命名</button>
+          <button class="btn btn-sm" onclick="adminDeleteCategory('${esc(c)}')" style="background:#FEE2E2; color:#B91C1C;">删除</button>
+        </div>`;
+      }).join('')
+    : '<p style="color:#9CA3AF; text-align:center; padding:20px;">暂无分类</p>';
+
+  const body = `
+    <div style="margin-bottom:14px;">
+      <div style="display:flex; gap:6px; align-items:center;">
+        <input id="admin-cat-new" class="form-input" placeholder="新分类名称" style="flex:1;">
+        <button class="btn btn-primary" onclick="adminAddCategory()">➕ 添加</button>
+      </div>
+    </div>
+    <div style="max-height:50vh; overflow-y:auto;">${listHtml}</div>
+    <div style="margin-top:12px; padding:8px 10px; background:#FEF3C7; border-radius:6px; font-size:12px; color:#92400E;">
+      💡 删除分类时该分类下的文件<strong>保留原分类名(已锁定)</strong>,仅从可选列表移除。
+    </div>
+  `;
+  showModal('⚙️ 管理分类', body);
+}
+
+async function adminAddCategory() {
+  const inp = $('admin-cat-new');
+  if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) { toast('请输入分类名', 'warning'); return; }
+  const j = await sharedUpdateCategoryApi('add', name);
+  if (j.success) {
+    toast('✅ 已添加', 'success');
+    sharedCache.categories = j.categories || [];
+    inp.value = '';
+    await loadSharedFiles();
+    adminManageCategories();
+  } else {
+    toast(j.error || '添加失败', 'error');
+  }
+}
+
+async function adminRenameCategoryPrompt(oldName) {
+  const newName = prompt('将 "' + oldName + '" 重命名为:', oldName);
+  if (newName === null) return;
+  const trimmed = newName.trim();
+  if (!trimmed) { toast('名称不能为空', 'warning'); return; }
+  if (trimmed === oldName) return;
+  const j = await sharedUpdateCategoryApi('rename', oldName, trimmed);
+  if (j.success) {
+    toast('✅ 已重命名', 'success');
+    sharedCache.categories = j.categories || [];
+    await loadSharedFiles();
+    adminManageCategories();
+  } else {
+    toast(j.error || '重命名失败', 'error');
+  }
+}
+
+async function adminDeleteCategory(name) {
+  const oldCount = (sharedCache.files || []).filter(f => f.category === name).length;
+  const msg = oldCount > 0
+    ? '确认删除分类 "' + name + '"?\n\n该分类下还有 ' + oldCount + ' 个文件,将保留原分类名(已锁定),仅从可选列表移除。'
+    : '确认删除分类 "' + name + '"?';
+  if (!confirm(msg)) return;
+  const j = await sharedUpdateCategoryApi('delete', name);
+  if (j.success) {
+    if (j.lockedFiles) toast('已删除,' + j.lockedFiles + ' 个老文件保留原分类', 'success');
+    else toast('✅ 已删除', 'success');
+    sharedCache.categories = j.categories || [];
+    if (sharedFilterCat === name) sharedFilterCat = '';
+    await loadSharedFiles();
+    adminManageCategories();
+  } else {
+    toast(j.error || '删除失败', 'error');
+  }
+}

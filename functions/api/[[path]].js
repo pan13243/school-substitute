@@ -1164,6 +1164,8 @@ function authAdmin(headers) {
 // 鉴权要点(v94 教训): 浏览器禁止中文 header 值,x-teacher-name 只发 ASCII 占位符 '1';
 //   真实身份一律以 form/body 字段(uploader)为准,header 仅作"是否已登录"判断。
 const SHARED_FILES_KV_KEY = 'sharedFiles';
+const SHARED_CATEGORIES_KV_KEY = 'sharedCategories';
+const SHARED_DEFAULT_CATEGORIES = ['教案', '课件', '通知', '其他'];
 const SHARED_MAX_SIZE_MB = 50;
 const SHARED_MAX_SIZE_MB_VIDEO = 100;
 const SHARED_TOTAL_HARD_LIMIT_MB = 10 * 1024; // 10 GB
@@ -1197,6 +1199,18 @@ async function sharedAuth(request, env) {
   return { isAdmin, isPrincipal, ok: isAdmin || isPrincipal || hasTeacher };
 }
 
+async function loadSharedCategories(env) {
+  let cats = await getKV(env, SHARED_CATEGORIES_KV_KEY);
+  if (!Array.isArray(cats) || cats.length === 0) {
+    cats = SHARED_DEFAULT_CATEGORIES.slice();
+    await putKV(env, SHARED_CATEGORIES_KV_KEY, cats);
+  }
+  return cats;
+}
+async function saveSharedCategories(env, cats) {
+  await putKV(env, SHARED_CATEGORIES_KV_KEY, cats);
+}
+
 // GET /api/shared/list — 所有已登录(教师/管理员/校长)可看
 async function handleSharedList(request, env) {
   const auth = await sharedAuth(request, env);
@@ -1208,8 +1222,50 @@ async function handleSharedList(request, env) {
     files,
     totalBytes: store.totalBytes || 0,
     hardLimitBytes: SHARED_TOTAL_HARD_LIMIT_MB * 1024 * 1024,
-    hardLimitGB: 10
+    hardLimitGB: 10,
+    categories: await loadSharedCategories(env)
   });
+}
+
+// POST /api/shared/categories/update — 仅管理员(body:{action:'add'|'rename'|'delete', name, newName?})
+async function handleSharedCategoriesUpdate(request, env) {
+  const auth = await sharedAuth(request, env);
+  if (!auth.ok) return json({ success: false, error: '请先登录' }, 401);
+  if (!auth.isAdmin) return json({ success: false, error: '仅管理员可管理分类' }, 403);
+
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ success: false, error: 'JSON 解析失败' }, 400); }
+  const action = (body.action || '').toString().trim();
+  const name = (body.name || '').toString().trim();
+  const newName = (body.newName || '').toString().trim();
+  if (!['add', 'rename', 'delete'].includes(action)) return json({ success: false, error: '未知操作' }, 400);
+
+  const cats = await loadSharedCategories(env);
+  if (action === 'add') {
+    if (!name) return json({ success: false, error: '分类名不能为空' }, 400);
+    if (cats.includes(name)) return json({ success: false, error: '分类已存在' }, 400);
+    cats.push(name);
+    await saveSharedCategories(env, cats);
+    return json({ success: true, categories: cats });
+  }
+  if (action === 'rename') {
+    if (!name || !newName) return json({ success: false, error: '原名与新名均必填' }, 400);
+    if (!cats.includes(name)) return json({ success: false, error: '原分类不存在' }, 400);
+    if (cats.includes(newName)) return json({ success: false, error: '新分类名已存在' }, 400);
+    const idx = cats.indexOf(name);
+    cats[idx] = newName;
+    await saveSharedCategories(env, cats);
+    return json({ success: true, categories: cats });
+  }
+  if (action === 'delete') {
+    if (!name) return json({ success: false, error: '分类名不能为空' }, 400);
+    if (!cats.includes(name)) return json({ success: false, error: '分类不存在' }, 400);
+    const store = await loadSharedStore(env);
+    const lockedCount = (store.files || []).filter(f => f.category === name).length;
+    const filtered = cats.filter(x => x !== name);
+    await saveSharedCategories(env, filtered);
+    return json({ success: true, categories: filtered, lockedFiles: lockedCount });
+  }
 }
 
 // POST /api/shared/upload (multipart/form-data) — 教师+管理员可上传
@@ -1483,6 +1539,9 @@ if (path === '/api/schedule' || path === '/api/schedule/') {
   
 
   // ============ 共享文件夹 (R2) 路由 v149 ============
+  if (path === '/api/shared/categories/update') {
+    if (method === 'POST') return handleSharedCategoriesUpdate(request, env);
+  }
   if (path === '/api/shared/list') {
     if (method === 'GET') return handleSharedList(request, env);
   }
