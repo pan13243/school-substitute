@@ -1,4 +1,4 @@
-/**
+﻿/**
  * school-substitute 代课调课系统 - 前端
  * 角色:管理员(需密码)/ 教师
  * 数据:课表、请假、代课安排
@@ -5449,6 +5449,12 @@ async function loadSharedFiles() {
         '<button class="btn btn-sm shared-filter-btn" data-cat="" onclick="filterSharedFiles(\'\')" style="background:#8B5CF6; color:#fff;">全部</button>' +
         renderSharedFilterBtns();
     }
+        // v152 fix: 上传弹窗的 #shared-category select 也要重渲染(共享同一份 sharedCache.categories)
+        const categorySel = document.getElementById('shared-category');
+        if (categorySel) {
+          categorySel.innerHTML = (sharedCache.categories || []).map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('');
+        }
+
     renderSharedFileList();
   } catch (err) {
     listEl.innerHTML = '<p style="color:#DC2626; text-align:center; padding:30px;">网络错误</p>';
