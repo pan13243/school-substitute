@@ -1179,7 +1179,14 @@ function sharedFileExt(name) {
   return name.slice(idx).toLowerCase();
 }
 
-function getSharedCategory(text) {
+async function getSharedCategory(text, env) {
+  // v153: 优先用 KV 分类列表(v150 管理员可加新分类),v149 硬编码白名单作为最后兜底
+  if (env) {
+    try {
+      const kvCats = await loadSharedCategories(env);
+      if (Array.isArray(kvCats) && text && kvCats.includes(text)) return text;
+    } catch (e) { /* 忽略,回退到 v149 白名单 */ }
+  }
   return SHARED_CATEGORIES.includes(text) ? text : '其他';
 }
 
@@ -1289,7 +1296,7 @@ async function handleSharedUpload(request, env) {
   const file = form.get('file');
   const uploader = (form.get('uploader') || '').toString().trim()
     || (auth.isAdmin ? '管理员' : (auth.isPrincipal ? '校长' : '教师'));
-  const category = getSharedCategory((form.get('category') || '其他').toString());
+  const category = await getSharedCategory((form.get('category') || '其他').toString(), env);
   const note = (form.get('note') || '').toString().slice(0, 200);
 
   if (!file || typeof file === 'string') {
@@ -1424,7 +1431,7 @@ async function handleSharedUpdate(request, env) {
   }
 
   if (typeof note === 'string') file.note = note.slice(0, 200);
-  if (typeof category === 'string') file.category = getSharedCategory(category);
+  if (typeof category === 'string') file.category = await getSharedCategory(category, env);
   file.updatedAt = Date.now();
   file.updatedBy = isAdmin ? '管理员' : uploader;
 
