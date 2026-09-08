@@ -1160,7 +1160,7 @@ function authAdmin(headers) {
 // 文件字节存 R2 桶(变量名 R2,绑定 school-shared-files); 元数据存 KV key 'sharedFiles'(新 key,不动现有任何 KV)
 // 权限: 教师=上传+下载; 管理员=上传+下载+删除(需文件名二次确认); 修改备注/分类=上传者本人+管理员
 // 限制: 单文件 50MB(MP4 放宽 100MB); 累计总容量 10GB 硬限制(超限全员禁传,需管理员清理)
-// 白名单: .docx/.xlsx/.pptx/.pdf/.jpg/.jpeg/.png/.zip/.txt/.mp4; 预设分类: 教案/课件/通知/其他
+// 白名单: .docx/.xlsx/.pptx/.pdf/.jpg/.jpeg/.png/.zip/.txt/.mp4/.doc; 预设分类: 教案/课件/通知/其他
 // 鉴权要点(v94 教训): 浏览器禁止中文 header 值,x-teacher-name 只发 ASCII 占位符 '1';
 //   真实身份一律以 form/body 字段(uploader)为准,header 仅作"是否已登录"判断。
 const SHARED_FILES_KV_KEY = 'sharedFiles';
@@ -1169,7 +1169,7 @@ const SHARED_DEFAULT_CATEGORIES = ['教案', '课件', '通知', '其他'];
 const SHARED_MAX_SIZE_MB = 50;
 const SHARED_MAX_SIZE_MB_VIDEO = 100;
 const SHARED_TOTAL_HARD_LIMIT_MB = 10 * 1024; // 10 GB
-const SHARED_ALLOWED_EXTS = ['.docx', '.xlsx', '.pptx', '.pdf', '.jpg', '.jpeg', '.png', '.zip', '.txt', '.mp4'];
+const SHARED_ALLOWED_EXTS = ['.docx', '.xlsx', '.pptx', '.pdf', '.jpg', '.jpeg', '.png', '.zip', '.txt', '.mp4', '.doc']; // v154: 增加 .doc
 const SHARED_CATEGORIES = ['教案', '课件', '通知', '其他'];
 
 function sharedFileExt(name) {

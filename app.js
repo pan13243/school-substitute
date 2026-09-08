@@ -5342,7 +5342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ══════════════════════════════════════════════════════
 // 鉴权(v94 教训):浏览器禁止中文 header,x-teacher-name 只发 ASCII 占位符 '1';
 //   真实姓名一律放 form/body 字段(uploader),后端据此记录/校验。
-const SHARED_ALLOWED_EXTS = ['.docx', '.xlsx', '.pptx', '.pdf', '.jpg', '.jpeg', '.png', '.zip', '.txt', '.mp4'];
+const SHARED_ALLOWED_EXTS = ['.docx', '.xlsx', '.pptx', '.pdf', '.jpg', '.jpeg', '.png', '.zip', '.txt', '.mp4', '.doc']; // v154: 增加 .doc
 let sharedCache = { files: [], totalBytes: 0, hardLimitBytes: 10 * 1024 * 1024 * 1024, categories: ['教案','课件','通知','其他'] };
 
 function fmtBytes(b) {
@@ -5388,7 +5388,7 @@ function renderSharedPage(area) {
       <div id="shared-upload-panel" style="margin-top:14px;">
         <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
           <input type="file" id="shared-file-input" style="font-size:13px; flex:1; min-width:180px;"
-                 accept=".docx,.xlsx,.pptx,.pdf,.jpg,.jpeg,.png,.zip,.txt,.mp4">
+                 accept=".docx,.xlsx,.pptx,.pdf,.jpg,.jpeg,.png,.zip,.txt,.mp4,.doc">
           <select id="shared-category" class="form-input" style="width:auto; padding:6px 10px; font-size:13px;">
             ${(sharedCache.categories||[]).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
           </select>
