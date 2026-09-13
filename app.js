@@ -5820,3 +5820,215 @@ async function adminDeleteCategory(name) {
     toast(j.error || '删除失败', 'error');
   }
 }
+
+// ══════════════════════════════════════════════════════
+//  v158 病假证明（管理员端"请假记录"弹窗增强）
+//  纯追加：wrap showModal / showAdminLeaveHistory + 新增 v158* 函数
+//  存储：R2 桶 proofs/xxx + KV 'leaveProofs'（新 key，不动旧 KV）
+//  路由：/api/leave-proofs（新增文件 functions/api/leave-proofs.js）
+// ══════════════════════════════════════════════════════
+(function v158Init() {
+  if (window.__v158Installed) return;
+  window.__v158Installed = true;
+  window.v158ProofCache = window.v158ProofCache || {};
+
+  // 1) 弹窗加宽：包装 showModal，对"请假记录(管理员)"与"病假证明*"放宽 max-width 并允许横向滚动
+  var __v158OrigShowModal = window.showModal;
+  if (typeof __v158OrigShowModal === 'function') {
+    window.showModal = function (title, content) {
+      var r = __v158OrigShowModal.call(this, title, content);
+      try {
+        var t = String(title || '');
+        if (t.indexOf('请假记录(管理员)') === 0 || t.indexOf('病假证明') === 0) {
+          var ov = document.body.lastElementChild;
+          var inner = ov && ov.firstElementChild;
+          if (inner) {
+            inner.style.maxWidth = '960px';
+            inner.style.width = '96vw';
+            var body = inner.children[1];
+            if (body) { body.style.overflowX = 'auto'; }
+          }
+        }
+      } catch (e) { /* ignore */ }
+      return r;
+    };
+    window.__v158OrigShowModal = __v158OrigShowModal;
+  }
+
+  // 2) 管理员请假记录弹窗：加"假别"列 + 病假行"证明"按钮
+  var __v158OrigShowAdminLeaveHistory = window.showAdminLeaveHistory;
+  if (typeof __v158OrigShowAdminLeaveHistory === 'function') {
+    window.showAdminLeaveHistory = function () {
+      var out = __v158OrigShowAdminLeaveHistory.apply(this, arguments);
+      try { v158EnhanceAdminLeaveModal(); } catch (e) { console.log('[v158] 增强失败:', e); }
+      return out;
+    };
+    window.__v158OrigShowAdminLeaveHistory = __v158OrigShowAdminLeaveHistory;
+  }
+  console.log('[v158] 病假证明已安装');
+})();
+
+// 给已渲染的"请假记录(管理员)"弹窗插入"假别"列，并为病假行加"证明"按钮
+function v158EnhanceAdminLeaveModal() {
+  var overlay = document.body.lastElementChild;
+  if (!overlay || !overlay.classList || !overlay.classList.contains('modal-overlay')) return;
+  var table = overlay.querySelector('table.data-table');
+  if (!table) return;
+  var records = (typeof leaveRecords !== 'undefined' && leaveRecords) ? leaveRecords : [];
+  var headRow = table.querySelector('thead tr');
+  if (!headRow) return;
+  var bodyRows = table.querySelectorAll('tbody tr');
+  if (headRow.children.length < 8 || bodyRows.length !== records.length) return;
+  if (headRow.querySelector('.v158-th')) return; // 防重复
+
+  var th = document.createElement('th');
+  th.className = 'v158-th';
+  th.textContent = '假别';
+  headRow.insertBefore(th, headRow.children[5]);
+
+  bodyRows.forEach(function (tr, i) {
+    var l = records[i];
+    var tds = tr.children;
+    if (!l || tds.length < 8) return;
+    var td = document.createElement('td');
+    td.className = 'v158-td';
+    td.textContent = l.leaveType ? l.leaveType : '-';
+    if (l.leaveType === '病假') {
+      var btn = document.createElement('button');
+      btn.className = 'btn btn-sm btn-primary';
+      btn.style.marginTop = '4px';
+      btn.textContent = '📎 证明';
+      btn.onclick = function () { v158OpenProofModal(l.id, l.teacherName); };
+      td.appendChild(document.createElement('br'));
+      td.appendChild(btn);
+    }
+    tr.insertBefore(td, tds[5]);
+  });
+}
+
+function v158FindLeave(id) {
+  return (typeof leaveRecords !== 'undefined' && leaveRecords) ? leaveRecords.find(function (l) { return l.id === id; }) : null;
+}
+
+function v158FormatSize(n) {
+  if (!n) return '0 B';
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+function v158FormatTime(t) {
+  if (!t) return '';
+  var d = new Date(t);
+  var p = function (x) { return String(x).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+// 打开"病假证明"对话框（上传 + 查看 + 下载 + 删除）
+function v158OpenProofModal(leaveId, teacherName) {
+  if (!isAdmin) { toast('无权访问', 'error'); return; }
+  var leave = v158FindLeave(leaveId);
+  var title = '病假证明 - ' + (teacherName || (leave && leave.teacherName) || '') + (leave ? ' ' + fmtDate(leave.leaveDate) : '');
+  var html =
+    '<div>' +
+      '<div style="margin-bottom:12px; padding:10px; background:#F9FAFB; border:1px dashed #D1D5DB; border-radius:8px;">' +
+        '<input type="file" id="v158-proof-input" multiple accept=".jpg,.jpeg,.png,.pdf" style="font-size:13px; max-width:100%;">' +
+        '<button class="btn btn-sm btn-primary" style="margin-left:8px;" onclick="v158UploadProof(\'' + leaveId + '\')">上传</button>' +
+        '<div style="margin-top:6px; font-size:12px; color:#6B7280;">支持 jpg / png / pdf，可多选，单文件不超过 20MB</div>' +
+      '</div>' +
+      '<div id="v158-proof-list"></div>' +
+    '</div>';
+  showModal(title, html);
+  v158RenderProofList(leaveId);
+}
+
+async function v158RenderProofList(leaveId) {
+  var box = document.getElementById('v158-proof-list');
+  if (!box) return;
+  box.innerHTML = '<div style="color:#6B7280; font-size:13px; padding:8px 0;">加载中...</div>';
+  try {
+    var r = await fetch('/api/leave-proofs?leaveId=' + encodeURIComponent(leaveId), { headers: { 'x-admin-pwd': adminPwd } });
+    var j = await r.json();
+    var list = (j && j.success && j.data) ? j.data : [];
+    window.v158ProofCache = window.v158ProofCache || {};
+    list.forEach(function (p) { window.v158ProofCache[p.id] = p; });
+    if (!list.length) {
+      box.innerHTML = '<div style="color:#9CA3AF; font-size:13px; padding:8px 0;">暂无证明材料</div>';
+      return;
+    }
+    box.innerHTML = list.map(function (p) {
+      return '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid #F3F4F6;">' +
+        '<div style="min-width:0;">' +
+          '<div style="font-size:14px; word-break:break-all;">📄 ' + esc(p.fileName || '未命名') + '</div>' +
+          '<div style="font-size:12px; color:#9CA3AF;">' + v158FormatSize(p.size) + ' · ' + v158FormatTime(p.uploadedAt) + (p.uploader ? ' · ' + esc(p.uploader) : '') + '</div>' +
+        '</div>' +
+        '<div style="flex-shrink:0; white-space:nowrap;">' +
+          '<button class="btn btn-sm btn-success" onclick="v158DownloadProof(\'' + p.id + '\')">下载</button> ' +
+          '<button class="btn btn-sm btn-danger" onclick="v158DeleteProof(\'' + p.id + '\',\'' + leaveId + '\')">删除</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div style="color:#EF4444; font-size:13px; padding:8px 0;">加载失败: ' + esc(e && e.message ? e.message : String(e)) + '</div>';
+  }
+}
+
+async function v158UploadProof(leaveId) {
+  if (!isAdmin) { toast('无权访问', 'error'); return; }
+  var inp = document.getElementById('v158-proof-input');
+  if (!inp || !inp.files || !inp.files.length) { toast('请先选择文件', 'warning'); return; }
+  var allowed = ['.jpg', '.jpeg', '.png', '.pdf'];
+  var files = Array.prototype.slice.call(inp.files);
+  var ok = 0, fail = 0;
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    var dot = f.name.lastIndexOf('.');
+    var ext = dot >= 0 ? f.name.slice(dot).toLowerCase() : '';
+    if (allowed.indexOf(ext) < 0) { toast('不支持的类型: ' + f.name, 'error'); fail++; continue; }
+    if (f.size > 20 * 1024 * 1024) { toast('文件过大(>20MB): ' + f.name, 'error'); fail++; continue; }
+    try {
+      var fd = new FormData();
+      fd.append('file', f);
+      fd.append('leaveId', leaveId);
+      fd.append('uploader', '管理员');
+      var r = await fetch('/api/leave-proofs', { method: 'POST', headers: { 'x-admin-pwd': adminPwd }, body: fd });
+      var j = await r.json();
+      if (j && j.success) ok++;
+      else { fail++; toast((j && j.error) || '上传失败', 'error'); }
+    } catch (e) { fail++; toast('上传失败: ' + (e && e.message ? e.message : e), 'error'); }
+  }
+  if (ok) toast('✅ 已上传 ' + ok + ' 个文件' + (fail ? '，失败 ' + fail + ' 个' : ''), 'success');
+  inp.value = '';
+  await v158RenderProofList(leaveId);
+}
+
+function v158DownloadProof(id) {
+  var p = (window.v158ProofCache || {})[id];
+  var name = (p && p.fileName) ? p.fileName : ('proof_' + id);
+  fetch('/api/leave-proofs?action=download&id=' + encodeURIComponent(id), { headers: { 'x-admin-pwd': adminPwd } })
+    .then(function (r) {
+      if (!r.ok) throw new Error('下载失败 (' + r.status + ')');
+      return r.blob();
+    })
+    .then(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); if (a.parentNode) a.parentNode.removeChild(a); }, 1500);
+    })
+    .catch(function (e) { toast(e && e.message ? e.message : '下载失败', 'error'); });
+}
+
+async function v158DeleteProof(id, leaveId) {
+  if (!isAdmin) { toast('无权访问', 'error'); return; }
+  if (!confirm('确认删除该证明文件？删除后不可恢复。')) return;
+  try {
+    var r = await fetch('/api/leave-proofs?id=' + encodeURIComponent(id), { method: 'DELETE', headers: { 'x-admin-pwd': adminPwd } });
+    var j = await r.json();
+    if (j && j.success) { toast('已删除', 'success'); await v158RenderProofList(leaveId); }
+    else toast((j && j.error) || '删除失败', 'error');
+  } catch (e) { toast('删除失败: ' + (e && e.message ? e.message : e), 'error'); }
+}
