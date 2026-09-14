@@ -6032,3 +6032,157 @@ async function v158DeleteProof(id, leaveId) {
     else toast((j && j.error) || '删除失败', 'error');
   } catch (e) { toast('删除失败: ' + (e && e.message ? e.message : e), 'error'); }
 }
+
+// ══════════════════════════════════════════════════════
+//  v159 管理员端"代课记录历史"弹窗增强：
+//  "代课教师"栏可修改（点击 ✏️ 弹出 select 下拉选择新代课教师）
+//  纯追加：wrap showAdminSubstituteHistory + 新增 v159* 函数
+//  后端：/api/substitute-update（新增文件 functions/api/substitute-update.js）
+// ══════════════════════════════════════════════════════
+(function v159Init() {
+  if (window.__v159Installed) return;
+  window.__v159Installed = true;
+
+  // 包装 showAdminSubstituteHistory：原函数跑完后增强"代课教师"列
+  var __v159Orig = window.showAdminSubstituteHistory;
+  if (typeof __v159Orig === 'function') {
+    window.showAdminSubstituteHistory = function () {
+      var out = __v159Orig.apply(this, arguments);
+      try { v159EnhanceAdminSubModal(); } catch (e) { console.log('[v159] 增强失败:', e); }
+      return out;
+    };
+    window.__v159OrigShowAdminSubstituteHistory = __v159Orig;
+  }
+  console.log('[v159] 代课教师可编辑已安装');
+})();
+
+// 给已渲染的"代课记录历史(管理员)"弹窗的"代课教师"列每行加 ✏️ 编辑按钮
+function v159EnhanceAdminSubModal() {
+  var overlay = document.body.lastElementChild;
+  if (!overlay || !overlay.classList || !overlay.classList.contains('modal-overlay')) return;
+  var table = overlay.querySelector('table.data-table');
+  if (!table) return;
+  var records = (typeof substituteRecords !== 'undefined' && substituteRecords) ? substituteRecords : [];
+  var bodyRows = table.querySelectorAll('tbody tr');
+  if (!bodyRows.length || bodyRows.length !== records.length) return;
+  if (table.querySelector('.v159-edit-btn')) return; // 防重复
+
+  bodyRows.forEach(function (tr, i) {
+    var s = records[i];
+    if (!s) return;
+    var cell = tr.children[3]; // 第4列：代课教师
+    if (!cell) return;
+    var btn = document.createElement('button');
+    btn.className = 'btn btn-sm btn-secondary v159-edit-btn';
+    btn.style.marginLeft = '6px';
+    btn.style.fontSize = '11px';
+    btn.style.padding = '2px 6px';
+    btn.style.lineHeight = '1';
+    btn.textContent = '✏️';
+    btn.title = '修改代课教师';
+    btn.onclick = function (ev) { ev.stopPropagation(); v159OpenEdit(s.id); };
+    cell.appendChild(btn);
+  });
+}
+
+function v159FindSub(id) {
+  return (typeof substituteRecords !== 'undefined' && substituteRecords) ? substituteRecords.find(function (x) { return x.id === id; }) : null;
+}
+
+// 关闭最近的一个 modal-overlay（用于保存/取消后清理弹窗）
+function v159CloseTopModal() {
+  var overlays = document.querySelectorAll('.modal-overlay');
+  if (overlays && overlays.length) {
+    var last = overlays[overlays.length - 1];
+    if (last && last.parentNode) last.parentNode.removeChild(last);
+  }
+}
+
+// 打开"修改代课教师"弹窗
+function v159OpenEdit(id) {
+  if (!isAdmin) { toast('无权访问', 'error'); return; }
+  var s = v159FindSub(id);
+  if (!s) { toast('记录不存在', 'error'); return; }
+  var current = s.substituteTeacher || '';
+
+  // 智能过滤：复用 getSubstituteOptions（排除请假教师、当天请假者、有课冲突者）
+  var opts = '';
+  try {
+    if (typeof getSubstituteOptions === 'function') {
+      opts = getSubstituteOptions(current, s) || '';
+    }
+  } catch (e) { opts = ''; console.log('[v159] getSubstituteOptions 异常:', e); }
+
+  // 兜底：如果没拿到选项，用全部教师
+  if (!opts) {
+    var teachers = (typeof scheduleData !== 'undefined' && scheduleData && scheduleData.allTeachers) ? scheduleData.allTeachers : [];
+    opts = teachers.map(function (t) {
+      return '<option value="' + esc(t) + '"' + (t === current ? ' selected' : '') + '>' + esc(t) + '</option>';
+    }).join('');
+  }
+
+  var html =
+    '<div>' +
+      '<div style="margin-bottom:12px; padding:10px 12px; background:#F9FAFB; border:1px dashed #D1D5DB; border-radius:8px; font-size:13px; color:#374151;">' +
+        '<div><b>请假教师</b>: ' + esc(s.leaveTeacher || '-') + '</div>' +
+        '<div style="margin-top:4px;"><b>日期</b>: ' + esc(fmtDate(s.leaveDate)) + ' (' + esc(formatSubstituteWeekday(s) || '-') + ')' + '</div>' +
+        '<div style="margin-top:4px;"><b>班级</b>: ' + esc(s.className || '-') + ' · <b>科目</b>: ' + esc(s.subject || '-') + ' · <b>节次</b>: 第' + (s.period || '-') + '节</div>' +
+        '<div style="margin-top:4px;"><b>当前代课教师</b>: <span style="color:#2563EB;">' + esc(current || '-') + '</span></div>' +
+      '</div>' +
+      '<div style="padding:0 4px;">' +
+        '<label style="display:block; font-size:13px; margin-bottom:6px;">新代课教师</label>' +
+        '<select id="v159-new-teacher" style="width:100%; padding:8px 10px; border:1px solid #D1D5DB; border-radius:6px; font-size:14px;">' + opts + '</select>' +
+        '<div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end;">' +
+          '<button class="btn btn-sm" onclick="v159Cancel()">取消</button>' +
+          '<button class="btn btn-sm btn-primary" onclick="v159Save(\'' + id + '\')">保存</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  showModal('修改代课教师', html);
+
+  // 确保默认选中当前教师（防止 select 第一个 option 不对）
+  var sel = document.getElementById('v159-new-teacher');
+  if (sel && current) {
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === current) { sel.selectedIndex = i; break; }
+    }
+  }
+}
+
+function v159Cancel() {
+  v159CloseTopModal();
+}
+
+async function v159Save(id) {
+  if (!isAdmin) { toast('无权访问', 'error'); return; }
+  var sel = document.getElementById('v159-new-teacher');
+  if (!sel) { toast('找不到选择框', 'error'); return; }
+  var newTeacher = sel.value;
+  if (!newTeacher) { toast('请选择教师', 'warning'); return; }
+  var s = v159FindSub(id);
+  if (!s) { toast('记录不存在', 'error'); return; }
+  if (newTeacher === s.substituteTeacher) {
+    toast('代课教师未变化', 'warning');
+    v159CloseTopModal();
+    return;
+  }
+  try {
+    var r = await fetch('/api/substitute-update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd },
+      body: JSON.stringify({ id: id, substituteTeacher: newTeacher })
+    });
+    var j = await r.json();
+    if (j && j.success) {
+      s.substituteTeacher = newTeacher;
+      toast('✅ 已修改', 'success');
+      v159CloseTopModal();
+      // 重渲管理员代课记录弹窗
+      try { showAdminSubstituteHistory(); } catch (e) { console.log('[v159] 刷新弹窗失败:', e); }
+    } else {
+      toast((j && j.error) || '保存失败', 'error');
+    }
+  } catch (e) {
+    toast('保存失败: ' + (e && e.message ? e.message : e), 'error');
+  }
+}
