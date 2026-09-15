@@ -6331,3 +6331,50 @@ async function v159Save(id) {
     }
   }
 })();
+// ══════════════════════════════════════════════════════
+//  v161 教师登录后已通过隐私密码验证 → 我的请假/代课记录跳过二次弹窗
+//  (纯追加 monkey-patch，不动 v160 及之前代码)
+// ══════════════════════════════════════════════════════
+(function v161Init() {
+  if (window.__v161Installed) return;
+  window.__v161Installed = true;
+  console.log('[v161] 已登录教师跳过二次隐私弹窗');
+
+  // 标记已通过隐私密码验证的教师集合
+  window.__v161Authed = new Set();
+
+  // wrap verifyTeacherPrivacyPwd：验证通过时记录教师名
+  var __v161OrigVerify = window.verifyTeacherPrivacyPwd;
+  window.verifyTeacherPrivacyPwd = async function (teacherName, inputPwd) {
+    var ok = await __v161OrigVerify(teacherName, inputPwd);
+    if (ok && teacherName) {
+      window.__v161Authed.add(teacherName);
+      console.log('[v161] 隐私验证通过:', teacherName);
+    }
+    return ok;
+  };
+
+  // wrap handleTeacherLogin：登录完成时立即标记当前教师为已验证
+  // v160 在登录入口已经过密码才能调到这里，所以登录后到关闭浏览器期间都算"已验证"
+  var __v161OrigLogin = window.handleTeacherLogin;
+  window.handleTeacherLogin = function (teacherName) {
+    if (teacherName) {
+      window.__v161Authed.add(teacherName);
+      console.log('[v161] 登录时标记已验证:', teacherName);
+    }
+    return __v161OrigLogin.apply(this, arguments);
+  };
+
+  // wrap showPrivacyVerifyModal：已验证教师直接放行，不弹框
+  var __v161OrigModal = window.showPrivacyVerifyModal;
+  window.showPrivacyVerifyModal = async function (teacherName, onSuccess, title) {
+    if (teacherName && window.__v161Authed.has(teacherName)) {
+      console.log('[v161] 跳过隐私弹窗:', teacherName, title || '');
+      if (typeof onSuccess === 'function') onSuccess();
+      return;
+    }
+    return __v161OrigModal.apply(this, arguments);
+  };
+
+  console.log('[v161] 已安装');
+})();
