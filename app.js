@@ -6186,3 +6186,148 @@ async function v159Save(id) {
     toast('保存失败: ' + (e && e.message ? e.message : e), 'error');
   }
 }
+
+// ══════════════════════════════════════════════════════
+//  v160 教师隐私密码功能修复（纯追加 monkey-patch，不动 v159 及之前代码）
+//
+//  修复三个问题：
+//    1. GET 查密码状态 → 旧接口 403（需 header 鉴权）→ 改用 /api/teacher-verify（query param）
+//    2. POST 验证密码 → 旧接口 403"原密码错误"（共用设置接口）→ 改用 /api/teacher-verify（专用验证）
+//    3. 登录流程无拦截 → selectTeacher 直接进系统 → monkey-patch selectTeacher 加密码验证
+//
+//  后端：/api/teacher-verify（新增文件 functions/api/teacher-verify.js）
+//  KV：复用旧 key teacher_privacy_passwords（只读）
+// ══════════════════════════════════════════════════════
+(function v160Init() {
+  if (window.__v160Installed) return;
+  window.__v160Installed = true;
+  console.log('[v160] 教师隐私密码修复已安装');
+
+  // --- 1. 覆盖 getTeacherPrivacyPwdStatus：改用新 API ---
+  var __v160OrigGetStatus = window.getTeacherPrivacyPwdStatus;
+  window.getTeacherPrivacyPwdStatus = async function (teacherName) {
+    try {
+      var r = await fetch('/api/teacher-verify?teacher=' + encodeURIComponent(teacherName));
+      var data = await r.json();
+      if (data.success) {
+        teacherPwdCache[teacherName] = data.hasPassword;
+        return data.hasPassword;
+      }
+    } catch (e) {}
+    // 兜底：如果新 API 挂了，尝试旧缓存
+    return teacherPwdCache[teacherName] || false;
+  };
+
+  // --- 2. 覆盖 verifyTeacherPrivacyPwd：改用新 API ---
+  var __v160OrigVerify = window.verifyTeacherPrivacyPwd;
+  window.verifyTeacherPrivacyPwd = async function (teacherName, inputPwd) {
+    try {
+      var r = await fetch('/api/teacher-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacherName: teacherName, password: inputPwd })
+      });
+      var data = await r.json();
+      return data.success;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // --- 3. 包装 selectTeacher：选名字后先检查隐私密码 ---
+  var __v160OrigSelectTeacher = window.selectTeacher;
+  window.selectTeacher = function (name) {
+    // 先执行原逻辑：填值、关下拉
+    var input = $('teacher-search-input');
+    var hidden = $('login-teacher-select');
+    var dropdown = $('teacher-search-dropdown');
+    if (input) input.value = name;
+    if (hidden) hidden.value = name;
+    if (dropdown) dropdown.style.display = 'none';
+
+    // 异步检查隐私密码
+    v160CheckPrivacyBeforeLogin(name);
+  };
+
+  // 登录前隐私密码检查
+  async function v160CheckPrivacyBeforeLogin(teacherName) {
+    if (!teacherName) return;
+    try {
+      var hasPwd = await getTeacherPrivacyPwdStatus(teacherName);
+      if (!hasPwd) {
+        // 没设密码 → 直接登录
+        handleTeacherLogin(teacherName);
+        return;
+      }
+      // 设了密码 → 弹出密码输入框
+      v160ShowLoginPwdModal(teacherName);
+    } catch (e) {
+      // 查询失败 → 允许登录（不因网络问题阻塞）
+      console.log('[v160] 查询隐私密码状态失败，允许登录:', e);
+      handleTeacherLogin(teacherName);
+    }
+  }
+
+  // 登录时的密码输入弹窗
+  function v160ShowLoginPwdModal(teacherName) {
+    var modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px;';
+    modal.innerHTML =
+      '<div style="background:#fff; border-radius:12px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+        '<div style="padding:20px; border-bottom:1px solid #E5E7EB;">' +
+          '<h3 style="margin:0; font-size:16px; font-weight:600;">🔒 隐私验证</h3>' +
+          '<p style="margin:8px 0 0; color:#6B7280; font-size:13px;">教师 <b>' + esc(teacherName) + '</b> 已设置隐私密码，请输入密码后进入</p>' +
+        '</div>' +
+        '<div style="padding:20px;">' +
+          '<input type="password" id="v160-login-pwd-input" class="form-input" placeholder="请输入隐私密码" autocomplete="off" ' +
+          'style="width:100%; padding:12px; border:2px solid #E5E7EB; border-radius:8px; font-size:14px;" ' +
+          'onkeydown="if(event.key===\'Enter\')document.getElementById(\'v160-login-confirm-btn\').click()">' +
+          '<p style="margin:8px 0 0; color:#9CA3AF; font-size:12px;">忘记密码请联系管理员重置</p>' +
+        '</div>' +
+        '<div style="padding:12px 20px; border-top:1px solid #E5E7EB; display:flex; gap:8px; justify-content:flex-end;">' +
+          '<button id="v160-login-cancel-btn" style="padding:8px 16px; background:#F3F4F6; color:#374151; border:none; border-radius:6px; cursor:pointer;">取消</button>' +
+          '<button id="v160-login-confirm-btn" style="padding:8px 16px; background:#3B82F6; color:#fff; border:none; border-radius:6px; cursor:pointer;">确认</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    // 聚焦输入框
+    setTimeout(function () { var inp = $('v160-login-pwd-input'); if (inp) inp.focus(); }, 100);
+
+    // 取消按钮
+    var cancelBtn = $('v160-login-cancel-btn');
+    if (cancelBtn) {
+      cancelBtn.onclick = function () {
+        modal.remove();
+        // 清空搜索框，让用户重新选
+        var searchInput = $('teacher-search-input');
+        if (searchInput) searchInput.value = '';
+        var hiddenField = $('login-teacher-select');
+        if (hiddenField) hiddenField.value = '';
+      };
+    }
+
+    // 确认按钮
+    var confirmBtn = $('v160-login-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.onclick = async function () {
+        var inputPwd = $('v160-login-pwd-input');
+        if (!inputPwd || !inputPwd.value.trim()) {
+          toast('请输入密码', 'warning');
+          return;
+        }
+        var verified = await verifyTeacherPrivacyPwd(teacherName, inputPwd.value.trim());
+        if (verified) {
+          modal.remove();
+          handleTeacherLogin(teacherName);
+        } else {
+          toast('密码错误', 'error');
+          // 清空输入框，重新聚焦
+          inputPwd.value = '';
+          inputPwd.focus();
+        }
+      };
+    }
+  }
+})();
