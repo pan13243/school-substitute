@@ -6378,3 +6378,247 @@ async function v159Save(id) {
 
   console.log('[v161] 已安装');
 })();
+// ══════════════════════════════════════════════════════
+//  v162 一键查询课表功能（纯追加，不动 v161 及之前代码）
+//  位置：管理员端课表查询页，「按班级查看」与「按教师查看」之间
+//  节次 1-6: 查总课表 timetable；7-9: 查课后服务表 afterSchoolService；
+//  节次 10-11: 查总课表；详情弹窗多行多列展示有课/没课老师，按优先级排序
+// ══════════════════════════════════════════════════════
+(function v162Init() {
+  if (window.__v162Installed) return;
+  window.__v162Installed = true;
+
+  // ── 1. 包装 renderTimetablePage，注入「一键查询」按钮 ──
+  var __v162OrigRenderTT = window.renderTimetablePage;
+  window.renderTimetablePage = function (area) {
+    // 先调原函数（它会写入完整 page HTML）
+    __v162OrigRenderTT.apply(this, arguments);
+    // 插入按钮：在 tt-class-view 结束后、tt-my-view 开始前
+    var insertionPt = document.getElementById('tt-my-view');
+    if (!insertionPt) return;
+    var btn = document.createElement('div');
+    btn.style.cssText = 'text-align:center;padding:8px 0 4px;';
+    btn.innerHTML = '<button class="btn btn-primary" onclick="v162ShowQuickQuery()" style="font-size:14px;padding:6px 20px;">🔍 一键查询</button>';
+    insertionPt.parentNode.insertBefore(btn, insertionPt);
+  };
+
+  // ── 2. 主入口：显示星期×节次 网格弹窗 ──
+  window.v162ShowQuickQuery = function () {
+    var days = ['星期一', '星期二', '星期三', '星期四', '星期五'];
+    var dayLabels = ['一', '二', '三', '四', '五'];
+    var periods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    var periodNames = ['第1节', '第2节', '第3节', '第4节', '第5节', '第6节',
+      '课后服务1', '课后服务2', '课后服务3', '晚自习', '午休'];
+
+    // 构建网格表头
+    var th = '<th style="min-width:70px;background:#f3f4f6;">节次\\星期</th>';
+    days.forEach(function (d, i) {
+      th += '<th style="background:#EEF2FF;color:#3730A3;font-size:13px;padding:6px 4px;">' + dayLabels[i] + '</th>';
+    });
+
+    // 构建网格主体（11行×5列）
+    var rows = '';
+    periods.forEach(function (p, pi) {
+      rows += '<tr><td style="background:#f3f4f6;font-weight:600;font-size:13px;padding:4px 6px;">' + periodNames[pi] + '</td>';
+      days.forEach(function (day) {
+        var key = day + '_' + p;
+        rows += '<td style="text-align:center;padding:4px;">' +
+          '<button class="btn btn-sm" style="padding:4px 8px;font-size:12px;border-radius:6px;" ' +
+          'onclick="v162ShowSlotDetail(\'' + day + '\',' + p + ')">查</button></td>';
+      });
+      rows += '</tr>';
+    });
+
+    var html =
+      '<div style="overflow-x:auto;">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap;">' +
+      '<thead><tr>' + th + '</tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+      '</table></div>' +
+      '<p style="text-align:center;color:#9CA3AF;font-size:12px;margin:8px 0 0;">点击任意格子查看该节次有课/没课教师</p>';
+
+    // 弹窗：标题宽、max-width 大一些
+    v162OpenModal('📅 一键查询课表', html, 'wide');
+  };
+
+  // ── 3. 点击格子 → 显示该节次详情 ──
+  window.v162ShowSlotDetail = function (day, period) {
+    var result = v162CalcSlot(day, period);
+    var periodNames = ['第1节', '第2节', '第3节', '第4节', '第5节', '第6节',
+      '课后服务1', '课后服务2', '课后服务3', '晚自习', '午休'];
+
+    // 详情弹窗也用 wide 样式
+    v162OpenModal(periodNames[period - 1] + ' ' + day, result.html, 'wide');
+  };
+
+  // ── 4. 核心计算：查某天某节的所有有课/没课老师 ──
+  //    节次 1-6/10-11: 遍历 timetable[day] 所有班级
+  //    节次 7-9:       查 afterSchoolService.slots，支持单双周
+  //    节次 7-9        若 timetable 里有课后服务记录也一并收入
+  window.v162CalcSlot = function (day, period) {
+    var td = window.scheduleData || {};
+    var tt = td.timetable || {};
+    var aft = td.afterSchoolService || {};
+    var allTeachers = td.allTeachers || [];
+    var isAft = (period >= 7 && period <= 9);
+
+    var hasSet = {};  // 已安排的教师名 → { teacher, tier, note }
+    var noteMap = {}; // 教师 → 备注（如"一1语文"/"单周"/"双周"）
+
+    if (isAft) {
+      // ── 课后服务节次（7/8/9）────────────────────────────────
+      var slot = aft.slots
+        ? aft.slots.find(function (s) { return s && s.day === day && s.period == period; })
+        : null;
+      if (slot && slot.assignments) {
+        Object.entries(slot.assignments).forEach(function (cls, info) {
+          if (!info) return;
+          // 单周+双周都有的轮换制
+          if (info.singleWeek && info.doubleWeek) {
+            [info.singleWeek, info.doubleWeek].forEach(function (t, idx) {
+              var wk = idx === 0 ? '单周' : '双周';
+              var teacher = Array.isArray(t) ? t.join(' / ') : t;
+              if (teacher && teacher !== '-') {
+                hasSet[teacher] = true;
+                noteMap[teacher] = (noteMap[teacher] ? noteMap[teacher] + '；' : '') + cls + ' ' + wk;
+              }
+            });
+          } else if (info.teacher) {
+            // 固定教师
+            hasSet[info.teacher] = true;
+            noteMap[info.teacher] = (noteMap[info.teacher] ? noteMap[info.teacher] + '；' : '') + cls;
+          } else if (info.singleWeek) {
+            var t = Array.isArray(info.singleWeek) ? info.singleWeek.join(' / ') : info.singleWeek;
+            if (t && t !== '-') {
+              hasSet[t] = true;
+              noteMap[t] = (noteMap[t] ? noteMap[t] + '；' : '') + cls + ' 单周';
+            }
+          } else if (info.doubleWeek) {
+            var t2 = Array.isArray(info.doubleWeek) ? info.doubleWeek.join(' / ') : info.doubleWeek;
+            if (t2 && t2 !== '-') {
+              hasSet[t2] = true;
+              noteMap[t2] = (noteMap[t2] ? noteMap[t2] + '；' : '') + cls + ' 双周';
+            }
+          }
+        });
+      }
+      // timetable 里也可能记录了课后服务（补充兜底）
+      var dayTt = tt[day] || {};
+      Object.entries(dayTt).forEach(function (cls, slots) {
+        if (!Array.isArray(slots)) return;
+        var found = slots.find(function (s) { return s && s.period == period; });
+        if (found && (found.teacher || (found.teachers && found.teachers.length))) {
+          var teachers = found.teachers || [found.teacher];
+          teachers.forEach(function (t) {
+            if (t && t !== '-') {
+              hasSet[t] = true;
+              noteMap[t] = (noteMap[t] ? noteMap[t] + '；' : '') + cls;
+            }
+          });
+        }
+      });
+    } else {
+      // ── 普通节次（1-6, 10, 11）────────────────────────────
+      var dayTt2 = tt[day] || {};
+      Object.entries(dayTt2).forEach(function (cls, slots) {
+        if (!Array.isArray(slots)) return;
+        var found = slots.find(function (s) { return s && s.period == period; });
+        if (found && (found.teacher || (found.teachers && found.teachers.length))) {
+          var teachers = found.teachers || [found.teacher];
+          teachers.forEach(function (t) {
+            if (t && t !== '-') {
+              hasSet[t] = true;
+              noteMap[t] = (noteMap[t] ? noteMap[t] + '；' : '') + cls;
+            }
+          });
+        }
+      });
+    }
+
+    // 计算每个老师的 tier（优先级）
+    var teacherList = allTeachers.map(function (t) {
+      var tier = window.getTeacherTier ? window.getTeacherTier(t, '', day) : 5;
+      return { name: t, tier: tier, note: noteMap[t] || '' };
+    });
+
+    // 有课老师（按 tier ASC 排）
+    var hasTeachers = teacherList
+      .filter(function (item) { return hasSet[item.name]; })
+      .sort(function (a, b) { return a.tier - b.tier; });
+
+    // 没课老师（按 tier ASC 排，跨班主科 tier=99 排最后）
+    var freeTeachers = teacherList
+      .filter(function (item) { return !hasSet[item.name]; })
+      .sort(function (a, b) { return a.tier - b.tier; });
+
+    // 多行多列展示（每行最多 5 个）
+    var makeGrid = function (arr, cls) {
+      if (!arr.length) return '<span style="color:#9CA3AF;">无</span>';
+      var html = '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start;">';
+      arr.forEach(function (item) {
+        var tag = cls === 'free' ? '○' : '●';
+        var note = item.note ? ' <span style="color:#9CA3AF;font-size:11px;">' + item.note + '</span>' : '';
+        var bg = cls === 'free' ? '#F3F4F6' : '#DCFCE7';
+        var color = cls === 'free' ? '#6B7280' : '#16A34A';
+        html += '<span style="display:inline-block;padding:2px 8px;border-radius:12px;background:' + bg + ';color:' + color + ';font-size:12px;margin:2px;">' +
+          tag + ' ' + window.esc(item.name) + note + '</span>';
+      });
+      html += '</div>';
+      return html;
+    };
+
+    var html =
+      '<div style="font-size:13px;line-height:1.8;">' +
+      '<p style="margin:0 0 8px 0;color:#6B7280;font-size:12px;">' + day + ' ' + periodNames2(period) + '，共 ' + hasTeachers.length + ' 位教师有课，' + freeTeachers.length + ' 位教师无课</p>' +
+      '<div style="margin-bottom:12px;">' +
+      '<div style="font-weight:600;color:#16A34A;margin-bottom:4px;">✅ 有课教师（' + hasTeachers.length + '）</div>' +
+      makeGrid(hasTeachers, 'has') +
+      '</div>' +
+      '<div>' +
+      '<div style="font-weight:600;color:#6B7280;margin-bottom:4px;">○ 没课教师（' + freeTeachers.length + '）</div>' +
+      makeGrid(freeTeachers, 'free') +
+      '</div>' +
+      '</div>';
+
+    return { html: html, hasTeachers: hasTeachers, freeTeachers: freeTeachers };
+  };
+
+  // 节次名称辅助
+  function periodNames2(p) {
+    var names = ['第1节', '第2节', '第3节', '第4节', '第5节', '第6节',
+      '课后服务1', '课后服务2', '课后服务3', '晚自习', '午休'];
+    return names[p - 1] || ('第' + p + '节');
+  }
+
+  // ── 5. 弹窗工具（内联，不依赖 showModal，避免 max-width:500px 限制）──
+  window.v162OpenModal = function (title, content, mode) {
+    var isWide = mode === 'wide';
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:center;justify-content:center;padding:16px;';
+    var maxW = isWide ? '96vw' : '500px';
+    var innerMaxW = isWide ? '96vw' : '480px';
+    modal.innerHTML =
+      '<div style="background:#fff;border-radius:12px;max-width:' + maxW + ';width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+      '<div style="padding:16px 20px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
+      '<h3 style="margin:0;font-size:15px;font-weight:600;">' + window.esc(title) + '</h3>' +
+      '<button onclick="this.closest(\'.v162-modal\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9CA3AF;padding:0;line-height:1;">✕</button>' +
+      '</div>' +
+      '<div class="v162-modal-body" style="padding:16px 20px;overflow-y:auto;max-width:' + innerMaxW + ';width:100%;box-sizing:border-box;">' +
+      content +
+      '</div>' +
+      '</div>';
+    modal.className = 'v162-modal';
+    document.body.appendChild(modal);
+
+    // ESC 键关闭
+    var escHandler = function (e) {
+      if (e.key === 'Escape') {
+        modal.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  };
+
+  console.log('[v162] 一键查询已安装');
+})();
