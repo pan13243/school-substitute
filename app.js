@@ -6456,7 +6456,7 @@ async function v159Save(id) {
   //    节次 7-9:       查 afterSchoolService.slots，支持单双周
   //    节次 7-9        若 timetable 里有课后服务记录也一并收入
   window.v162CalcSlot = function (day, period) {
-    var td = window.scheduleData || {};
+    var td = (typeof scheduleData !== 'undefined' ? scheduleData : window.scheduleData) || {};
     var tt = td.timetable || {};
     var aft = td.afterSchoolService || {};
     var allTeachers = td.allTeachers || [];
