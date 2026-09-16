@@ -6471,7 +6471,9 @@ async function v159Save(id) {
         ? aft.slots.find(function (s) { return s && s.day === day && s.period == period; })
         : null;
       if (slot && slot.assignments) {
-        Object.entries(slot.assignments).forEach(function (cls, info) {
+        Object.entries(slot.assignments).forEach(function (entry) {
+          var cls = entry[0];
+          var info = entry[1];
           if (!info) return;
           // 单周+双周都有的轮换制
           if (info.singleWeek && info.doubleWeek) {
@@ -6504,7 +6506,9 @@ async function v159Save(id) {
       }
       // timetable 里也可能记录了课后服务（补充兜底）
       var dayTt = tt[day] || {};
-      Object.entries(dayTt).forEach(function (cls, slots) {
+      Object.entries(dayTt).forEach(function (entry) {
+        var cls = entry[0];
+        var slots = entry[1];
         if (!Array.isArray(slots)) return;
         var found = slots.find(function (s) { return s && s.period == period; });
         if (found && (found.teacher || (found.teachers && found.teachers.length))) {
@@ -6520,7 +6524,9 @@ async function v159Save(id) {
     } else {
       // ── 普通节次（1-6, 10, 11）────────────────────────────
       var dayTt2 = tt[day] || {};
-      Object.entries(dayTt2).forEach(function (cls, slots) {
+      Object.entries(dayTt2).forEach(function (entry) {
+        var cls = entry[0];
+        var slots = entry[1];
         if (!Array.isArray(slots)) return;
         var found = slots.find(function (s) { return s && s.period == period; });
         if (found && (found.teacher || (found.teachers && found.teachers.length))) {
