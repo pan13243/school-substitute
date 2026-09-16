@@ -6628,3 +6628,143 @@ async function v159Save(id) {
 
   console.log('[v162] 一键查询已安装');
 })();
+// ══════════════════════════════════════════════════════
+// v166: 一键查询按校历本周单双周过滤 (2026-09-16)
+//   - 包装 v162ShowSlotDetail, 弹窗DOM落地后过滤非本周老师
+//   - 校历来源: scheduleData.calendar.weeks[*].parity (single/double)
+//   - 仅对 period 7-11 (课后服务/晚自习/午休) 生效
+//   - 1-6 普通课没有单双周, 不动
+//   - 兜底: 校历查不到今天 → 不过滤, 保持v165原样
+// ══════════════════════════════════════════════════════
+(function v166Init() {
+  if (typeof window === 'undefined') return;
+  if (window.__v166Installed) return;
+  window.__v166Installed = true;
+
+  // 查今天 parity: 'single' | 'double' | null
+  function v166GetTodayParity() {
+    try {
+      var sd;
+      try { sd = scheduleData; } catch (e) {}
+      if (!sd) { try { sd = window.scheduleData; } catch (e) {} }
+      if (!sd || !sd.calendar || !Array.isArray(sd.calendar.weeks)) return null;
+      var d = new Date();
+      var today = d.getFullYear() + '-' +
+                  String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                  String(d.getDate()).padStart(2, '0');
+      for (var i = 0; i < sd.calendar.weeks.length; i++) {
+        var w = sd.calendar.weeks[i];
+        if (!Array.isArray(w.days)) continue;
+        for (var j = 0; j < w.days.length; j++) {
+          if (w.days[j] && w.days[j].date === today) return w.parity;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function v166ParityLabel(p) {
+    return p === 'single' ? '单周' : (p === 'double' ? '双周' : null);
+  }
+
+  if (typeof window.v162ShowSlotDetail !== 'function') {
+    console.warn('[v166] v162ShowSlotDetail 未找到, 跳过');
+    return;
+  }
+
+  var __origShowSlotDetail = window.v162ShowSlotDetail;
+
+  window.v162ShowSlotDetail = function v166ShowSlotDetail(day, period) {
+    // 先调原函数弹窗
+    var result = __origShowSlotDetail(day, period);
+
+    // 仅课后服务/晚自习/午休 (period 7-11) 需要单双周过滤
+    var isAft = (period >= 7 && period <= 11);
+    if (!isAft) return result;
+
+    var parity = v166GetTodayParity();
+    var label = parity ? v166ParityLabel(parity) : null;
+    if (!label) return result;
+
+    // 等弹窗 DOM 落地 (v162ShowSlotDetail 同步 appendChild, 直接查即可)
+    var modal = document.querySelector('.v162-modal:last-of-type');
+    if (!modal) return result;
+    var body = modal.querySelector('.v162-modal-body');
+    if (!body) return result;
+
+    // 顶部注入状态条 (让用户看到 v166 在跑)
+    var oldStatus = body.querySelector('.v166-status');
+    if (oldStatus) oldStatus.remove();
+    var statusDiv = document.createElement('div');
+    statusDiv.className = 'v166-status';
+    statusDiv.style.cssText = 'background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;color:#92400E;';
+    statusDiv.textContent = 'v166 | 今天 ' + label + ', 按校历过滤中...';
+    body.insertBefore(statusDiv, body.firstChild);
+
+    // 找"有课教师"和"没课教师"两个 section
+    // v162OpenModal 生成的结构: 两个 div, 各含一个 font-weight:600 的 header
+    var hasSection = null, freeSection = null;
+    var headerDivs = body.querySelectorAll('div[style*="font-weight:600"]');
+    Array.from(headerDivs).forEach(function (header) {
+      var h = header.textContent || '';
+      if (h.indexOf('有课教师') >= 0) hasSection = header.parentElement;
+      else if (h.indexOf('没课教师') >= 0) freeSection = header.parentElement;
+    });
+    if (!hasSection || !freeSection) return result;
+
+    var hasContainer = hasSection.querySelector('div[style*="display:flex"]');
+    var freeContainer = freeSection.querySelector('div[style*="display:flex"]');
+    if (!hasContainer || !freeContainer) return result;
+
+    // 遍历有课的 pill, 把非本周的移到没课
+    var pills = hasContainer.querySelectorAll(':scope > span');
+    var movedCount = 0;
+    Array.from(pills).forEach(function (pill) {
+      var txt = pill.textContent || '';
+      // 通用周 (无单/双周标注) → 保留
+      if (txt.indexOf('单周') < 0 && txt.indexOf('双周') < 0) return;
+      // 含今天 parity 标注 → 保留 (可能同时含单周+双周, 如孙焕英单周五(4)+双周三(2))
+      if (txt.indexOf(label) >= 0) return;
+      // 只含相反标注 → 移到没课, 改色
+      try {
+        pill.innerHTML = pill.innerHTML.replace(/●/g, '○');
+        pill.style.background = '#F3F4F6';
+        pill.style.color = '#6B7280';
+        freeContainer.appendChild(pill);
+        movedCount++;
+      } catch (e) {}
+    });
+
+    if (movedCount === 0) return result;
+
+    // 更新顶部总数文字
+    var totalP = body.querySelector('p');
+    if (totalP) {
+      var t2 = totalP.textContent || '';
+      totalP.textContent = t2.replace(
+        /共 (\d+) 位教师有课，(\d+) 位教师无课/,
+        function (_, h, f) {
+          return '共 ' + (parseInt(h, 10) - movedCount) +
+                 ' 位教师有课，' + (parseInt(f, 10) + movedCount) + ' 位教师无课' +
+                 '（已按校历' + label + '过滤 ' + movedCount + ' 位）';
+        }
+      );
+    }
+
+    // 更新两个 section 标题里的数字
+    var hasHeader = hasSection.querySelector('div[style*="font-weight:600"]');
+    if (hasHeader) {
+      var hm = (hasHeader.textContent || '').match(/有课教师（(\d+)）/);
+      if (hm) hasHeader.textContent = '✅ 有课教师（' + (parseInt(hm[1], 10) - movedCount) + '）';
+    }
+    var freeHeader = freeSection.querySelector('div[style*="font-weight:600"]');
+    if (freeHeader) {
+      var fm = (freeHeader.textContent || '').match(/没课教师（(\d+)）/);
+      if (fm) freeHeader.textContent = '○ 没课教师（' + (parseInt(fm[1], 10) + movedCount) + '）';
+    }
+
+    return result;
+  };
+
+  console.log('[v166] 一键查询按校历单双周过滤已安装');
+})();
