@@ -6460,7 +6460,7 @@ async function v159Save(id) {
     var tt = td.timetable || {};
     var aft = td.afterSchoolService || {};
     var allTeachers = td.allTeachers || [];
-    var isAft = (period >= 7 && period <= 9);
+    var isAft = (period >= 7 && period <= 11);
 
     var hasSet = {};  // 已安排的教师名 → { teacher, tier, note }
     var noteMap = {}; // 教师 → 备注（如"一1语文"/"单周"/"双周"）
