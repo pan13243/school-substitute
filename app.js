@@ -6768,3 +6768,230 @@ async function v159Save(id) {
 
   console.log('[v166] 一键查询按校历单双周过滤已安装');
 })();
+
+
+// ============================================================================
+// v167: 管理员端"代课安排"页按当前选中教师筛选 + 自动生成按筛选累加 (2026-09-18)
+//   - 仅在管理员端生效;教师端 0 改动 (isAdmin 为 false 时所有后处理直接 return)
+//   - 顶部"待安排教师"按钮区新增「全部」按钮 (data-v167="all")
+//   - 选中某教师 → 下方"待安排代课的请假"表格只显示该教师
+//   - 自动生成代课安排 → 仅生成当前筛选教师的请假 (append 到 preview, 不覆盖)
+//   - 切到「全部」时 → 显示所有预览; 点自动生成 → v166 全量生成行为 (兜底)
+//   - 确认方案 → v166 行为 (保存 preview 全部)
+//   - v165 之前所有代码不动, 仅 monkey-patch 顶层函数引用
+//   - 当前选中教师通过 DOM 查 .sub-tab-btn.active 取 textContent (避免依赖 let currentSubTeacher)
+// ============================================================================
+
+(function v167Init() {
+  if (typeof window === 'undefined') return;
+  if (window.__v167Installed) return;
+  window.__v167Installed = true;
+
+  // v167 累加状态 (闭包, 不污染 v165 变量)
+  var __v167OldPreview = [];
+  var __v167AccumKeys = {};
+
+  function v167GetActiveTeacher() {
+    try {
+      var btns = document.querySelectorAll('.sub-tab-btn');
+      for (var i = 0; i < btns.length; i++) {
+        if (btns[i].classList.contains('active')) {
+          var txt = (btns[i].textContent || '').trim();
+          if (txt === '全部') return '__all__';
+          return txt;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function v167UpdateAllBtn() {
+    try {
+      var tabs = document.querySelector('.sub-teacher-tabs');
+      if (!tabs) return;
+      var existing = tabs.querySelector('[data-v167="all"]');
+      if (!existing) {
+        var btn = document.createElement('button');
+        btn.className = 'sub-tab-btn';
+        btn.setAttribute('data-v167', 'all');
+        btn.setAttribute('onclick', 'v167SwitchAll()');
+        btn.textContent = '全部';
+        tabs.insertBefore(btn, tabs.firstChild);
+      }
+      var active = v167GetActiveTeacher();
+      var allBtn = tabs.querySelector('[data-v167="all"]');
+      if (allBtn) {
+        if (active === '__all__') allBtn.classList.add('active');
+        else allBtn.classList.remove('active');
+      }
+    } catch (e) {}
+  }
+
+  function v167FilterSubPage() {
+    try {
+      if (typeof isAdmin === 'undefined' || !isAdmin) return;
+      var root = document.getElementById('main-content');
+      if (!root) return;
+      v167UpdateAllBtn();
+      var active = v167GetActiveTeacher();
+      if (!active || active === '__all__') return;
+
+      var cards = root.querySelectorAll('.card');
+      var targetCard = null;
+      for (var i = 0; i < cards.length; i++) {
+        var h3 = cards[i].querySelector('.card-header h3');
+        if (h3 && h3.textContent.indexOf('待安排代课的请假') >= 0) {
+          targetCard = cards[i];
+          break;
+        }
+      }
+      if (!targetCard) return;
+      var h3 = targetCard.querySelector('.card-header h3');
+      var tbody = targetCard.querySelector('tbody');
+      if (!tbody) return;
+
+      var rows = tbody.querySelectorAll('tr');
+      var keepCount = 0;
+      for (var j = 0; j < rows.length; j++) {
+        var firstCell = rows[j].querySelector('td');
+        var name = firstCell ? firstCell.textContent.trim() : '';
+        if (name === active) {
+          keepCount++;
+        } else {
+          rows[j].parentNode.removeChild(rows[j]);
+        }
+      }
+
+      if (h3) h3.textContent = '⏳ 待安排代课的请假 (' + keepCount + ')';
+      var badge = root.querySelector('.pending-badge');
+      if (badge) badge.textContent = keepCount + ' 条请假待安排';
+    } catch (e) {
+      console.warn('[v167] filter error:', e);
+    }
+  }
+
+  function v167HideTeacherTT() {
+    try {
+      if (typeof isAdmin === 'undefined' || !isAdmin) return;
+      var active = v167GetActiveTeacher();
+      if (active !== '__all__') return;
+      var root = document.getElementById('main-content');
+      if (!root) return;
+      var blocks = root.querySelectorAll('.card');
+      for (var i = 0; i < blocks.length; i++) {
+        var h3 = blocks[i].querySelector('h3');
+        if (h3 && h3.textContent.indexOf('老师的课表') >= 0) {
+          blocks[i].style.display = 'none';
+        }
+      }
+    } catch (e) {}
+  }
+
+  function v167InjectStatus(active) {
+    try {
+      var root = document.getElementById('main-content');
+      if (!root) return;
+      var old = root.querySelector('.v167-status');
+      if (old) old.remove();
+      var div = document.createElement('div');
+      div.className = 'v167-status';
+      div.style.cssText = 'background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:6px 10px;margin:8px 0;font-size:12px;color:#92400E;';
+      div.textContent = 'v167 | 当前筛选: ' + (active === '__all__' ? '全部' : active) + ' (仅显示该教师待安排请假, 生成代课仅生成该教师)';
+      root.insertBefore(div, root.firstChild);
+    } catch (e) {}
+  }
+
+  function v167AfterRender() {
+    try {
+      if (typeof isAdmin === 'undefined' || !isAdmin) return;
+      var active = v167GetActiveTeacher();
+      v167UpdateAllBtn();
+      if (active && active !== '__all__') {
+        v167FilterSubPage();
+      } else {
+        v167HideTeacherTT();
+      }
+      v167InjectStatus(active || '__all__');
+    } catch (e) {
+      console.warn('[v167] afterRender error:', e);
+    }
+  }
+
+  window.v167SwitchAll = function v167SwitchAll() {
+    try {
+      if (typeof isAdmin === 'undefined' || !isAdmin) return;
+      var tabs = document.querySelector('.sub-teacher-tabs');
+      if (tabs) {
+        var btns = tabs.querySelectorAll('.sub-tab-btn');
+        for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+        var allBtn = tabs.querySelector('[data-v167="all"]');
+        if (allBtn) allBtn.classList.add('active');
+      }
+      if (typeof renderSubPage === 'function') renderSubPage(document.getElementById('main-content'));
+    } catch (e) {}
+  };
+
+  if (typeof switchSubTeacher === 'function') {
+    var __origSwitchSubTeacher = switchSubTeacher;
+    switchSubTeacher = function v167SwitchSubTeacher(teacherName) {
+      var r = __origSwitchSubTeacher.apply(this, arguments);
+      setTimeout(function() { v167AfterRender(); }, 0);
+      return r;
+    };
+  }
+
+  if (typeof renderSubPage === 'function') {
+    var __origRenderSubPage = renderSubPage;
+    renderSubPage = function v167RenderSubPage() {
+      var r = __origRenderSubPage.apply(this, arguments);
+      setTimeout(function() { v167AfterRender(); }, 0);
+      return r;
+    };
+  }
+
+  if (typeof doGenerateSubstitutes === 'function') {
+    var __origDoGenerate = doGenerateSubstitutes;
+    doGenerateSubstitutes = async function v167DoGenerate() {
+      var active = v167GetActiveTeacher();
+      var result = await __origDoGenerate.apply(this, arguments);
+      try {
+        if (typeof isAdmin !== 'undefined' && isAdmin) {
+          var justGenerated = (typeof previewSubstitutes !== 'undefined' ? previewSubstitutes : []).slice();
+          var filtered;
+          if (active && active !== '__all__') {
+            filtered = justGenerated.filter(function(s) { return (s.leaveTeacher || '').trim() === active; });
+          } else {
+            filtered = justGenerated;
+          }
+          var toAdd = [];
+          for (var i = 0; i < filtered.length; i++) {
+            var k = (filtered[i].leaveId || '') + '_' + (filtered[i].period || '') + '_' + (filtered[i].className || '');
+            if (!__v167AccumKeys[k]) {
+              __v167AccumKeys[k] = true;
+              toAdd.push(filtered[i]);
+            }
+          }
+          __v167OldPreview = __v167OldPreview.concat(toAdd);
+          if (typeof previewSubstitutes !== 'undefined') {
+            previewSubstitutes = __v167OldPreview.slice();
+          }
+          if (typeof renderSubPage === 'function') renderSubPage(document.getElementById('main-content'));
+        }
+      } catch (e) {
+        console.warn('[v167] doGenerate error:', e);
+      }
+      return result;
+    };
+  }
+
+  if (typeof cancelPreview === 'function') {
+    var __origCancelPreview = cancelPreview;
+    cancelPreview = function v167CancelPreview() {
+      __v167OldPreview = [];
+      __v167AccumKeys = {};
+      return __origCancelPreview.apply(this, arguments);
+    };
+  }
+
+  console.log('[v167] 管理员端代课安排按教师筛选 + 自动生成累加已安装');
+})();
