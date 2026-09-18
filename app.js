@@ -6911,11 +6911,12 @@ async function v159Save(id) {
       } else {
         v167HideTeacherTT();
       }
-      v168RenderLeaveCard();
+      v169HideLeaveCardIfV168();
       v168FilterPreviewTable();
+      v169RenderTeacherTT();
       v167InjectStatus(active || '__all__');
     } catch (e) {
-      console.warn('[v168] afterRender error:', e);
+      console.warn('[v169] afterRender error:', e);
     }
   }
 
@@ -6997,6 +6998,54 @@ async function v159Save(id) {
 
 
   // ===== v168 修复: preview 模式下"待安排代课的请假"卡片缺失 + preview 表格按当前教师筛选 =====
+
+
+  // ===== v169 修复: preview 模式下不显示"待安排请假"卡片, 显示"老师课表"区块 =====
+
+  function v169HideLeaveCardIfV168() {
+    try {
+      var root = document.getElementById('main-content');
+      if (!root) return;
+      var v168Card = root.querySelector('.v168-leave-card');
+      if (v168Card) v168Card.remove();
+    } catch (e) {}
+  }
+
+  function v169RenderTeacherTT() {
+    try {
+      var root = document.getElementById('main-content');
+      if (!root) return;
+      // v165 已渲染课表区块? 跳过
+      var cards = root.querySelectorAll('.card');
+      for (var i = 0; i < cards.length; i++) {
+        var h3 = cards[i].querySelector('.card-header h3');
+        if (h3 && h3.textContent.indexOf('老师的课表') >= 0) return;
+      }
+      // 当前选中教师 (非 __all__)
+      var active = v167GetActiveTeacher();
+      if (!active || active === '__all__') return;
+      // 调 renderTeacherSubTT 拿课表 HTML
+      var ttHtml = '';
+      if (typeof renderTeacherSubTT === 'function') {
+        ttHtml = renderTeacherSubTT(active);
+      } else if (window.renderTeacherSubTT) {
+        ttHtml = window.renderTeacherSubTT(active);
+      }
+      if (!ttHtml) return;
+      var escFn = (typeof esc === 'function') ? esc : window.esc || function(t) { return String(t == null ? '' : t); };
+      var html =
+        '<div class="card v169-teacher-tt" style="margin-top:16px;">' +
+          '<div class="card-header">' +
+            '<h3>📅 ' + escFn(active) + ' 老师的课表</h3>' +
+            '<span class="preview-hint">v169 | 当前教师课表</span>' +
+          '</div>' +
+          '<div class="table-wrap">' + ttHtml + '</div>' +
+        '</div>';
+      root.insertAdjacentHTML('beforeend', html);
+    } catch (e) {
+      console.warn('[v169] renderTeacherTT error:', e);
+    }
+  }
 
   function v168GetApprovedLeaves() {
     try {
