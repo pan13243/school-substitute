@@ -6911,9 +6911,11 @@ async function v159Save(id) {
       } else {
         v167HideTeacherTT();
       }
+      v168RenderLeaveCard();
+      v168FilterPreviewTable();
       v167InjectStatus(active || '__all__');
     } catch (e) {
-      console.warn('[v167] afterRender error:', e);
+      console.warn('[v168] afterRender error:', e);
     }
   }
 
@@ -6991,6 +6993,93 @@ async function v159Save(id) {
       __v167AccumKeys = {};
       return __origCancelPreview.apply(this, arguments);
     };
+  }
+
+
+  // ===== v168 修复: preview 模式下"待安排代课的请假"卡片缺失 + preview 表格按当前教师筛选 =====
+
+  function v168GetApprovedLeaves() {
+    try {
+      var lr = (typeof leaveRecords !== 'undefined' ? leaveRecords : window.leaveRecords) || [];
+      var sr = (typeof substituteRecords !== 'undefined' ? substituteRecords : window.substituteRecords) || [];
+      var arrangedLeaveIds = new Set(sr.map(function(x) { return x.leaveId; }).filter(Boolean));
+      return lr.filter(function(l) {
+        return l.status === 'approved' && l.needSubstitute !== false && !arrangedLeaveIds.has(l.id);
+      });
+    } catch (e) { return []; }
+  }
+
+  function v168RenderLeaveCard() {
+    try {
+      var root = document.getElementById('main-content');
+      if (!root) return;
+      var oldV168 = root.querySelector('.v168-leave-card');
+      if (oldV168) oldV168.remove();
+      // 如果 v165 已渲染"待安排代课的请假"卡片(preview 模式之外), 不重复注入
+      var cards = root.querySelectorAll('.card');
+      for (var i = 0; i < cards.length; i++) {
+        var h3 = cards[i].querySelector('.card-header h3');
+        if (h3 && h3.textContent.indexOf('待安排代课的请假') >= 0) return;
+      }
+      var active = v167GetActiveTeacher();
+      var allLeaves = v168GetApprovedLeaves();
+      var leaves;
+      if (active && active !== '__all__') {
+        leaves = allLeaves.filter(function(l) { return (l.teacherName || '').trim() === active; });
+      } else {
+        leaves = allLeaves;
+      }
+      if (leaves.length === 0) return;
+      var escFn = (typeof esc === 'function') ? esc : window.esc || function(t) { return String(t == null ? '' : t); };
+      var getClassFn = (typeof getClassForLeave === 'function') ? getClassForLeave : window.getClassForLeave || function() { return ''; };
+      var fmtDateFn = (typeof fmtDate === 'function') ? fmtDate : window.fmtDate || function(t) { return t || ''; };
+      var fmtWeekFn = (typeof formatWeekday === 'function') ? formatWeekday : window.formatWeekday || function() { return ''; };
+      var rows = leaves.map(function(l) {
+        return '<tr>' +
+          '<td>' + escFn((l.teacherName || '').trim()) + '</td>' +
+          '<td>' + escFn(getClassFn(l)) + '</td>' +
+          '<td>' + escFn(fmtDateFn(l.leaveDate || '')) + '</td>' +
+          '<td>' + escFn(fmtWeekFn(l)) + '</td>' +
+          '<td>第' + escFn(l.period || '') + '节</td>' +
+          '<td>' + escFn(l.reason || '-') + '</td>' +
+          '</tr>';
+      }).join('');
+      var html =
+        '<div class="card v168-leave-card" style="margin-top:16px;border:2px solid #10B981;">' +
+          '<div class="card-header">' +
+            '<h3>⏳ 待安排代课的请假 (' + leaves.length + ')</h3>' +
+            '<span class="preview-hint" style="color:#10B981;font-weight:600;">v168 | 当前教师待安排</span>' +
+          '</div>' +
+          '<div class="table-wrap">' +
+            '<table class="data-table">' +
+              '<thead><tr><th>请假教师</th><th>班级</th><th>日期</th><th>星期</th><th>节次</th><th>原因</th></tr></thead>' +
+              '<tbody>' + rows + '</tbody>' +
+            '</table>' +
+          '</div>' +
+        '</div>';
+      root.insertAdjacentHTML('beforeend', html);
+    } catch (e) {
+      console.warn('[v168] renderLeaveCard error:', e);
+    }
+  }
+
+  function v168FilterPreviewTable() {
+    try {
+      var root = document.getElementById('main-content');
+      if (!root) return;
+      var rows = root.querySelectorAll('.preview-table tbody .preview-row');
+      if (rows.length === 0) return;
+      var active = v167GetActiveTeacher();
+      for (var i = 0; i < rows.length; i++) {
+        var firstCell = rows[i].querySelector('td');
+        var name = firstCell ? (firstCell.textContent || '').trim() : '';
+        if (!active || active === '__all__') rows[i].style.display = '';
+        else if (name === active) rows[i].style.display = '';
+        else rows[i].style.display = 'none';
+      }
+    } catch (e) {
+      console.warn('[v168] filterPreviewTable error:', e);
+    }
   }
 
   console.log('[v167] 管理员端代课安排按教师筛选 + 自动生成累加已安装');
