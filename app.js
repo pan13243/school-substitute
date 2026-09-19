@@ -7200,3 +7200,117 @@ async function v159Save(id) {
 
   console.log('[v170] tier保守修: getTeacherTier查不到时tier=5已安装');
 })();
+
+/* ===== v171 主系统管理（多租户阶段1：授权码生成 + 查看） ===== */
+(function v171Init() {
+  if (window.__v171Installed) return;
+  window.__v171Installed = true;
+
+  // 注入「主系统管理」菜单项（仅管理员可见）
+  var __origRenderAppShell = window.renderAppShell;
+  if (typeof __origRenderAppShell === 'function') {
+    window.renderAppShell = function () {
+      var html = __origRenderAppShell.apply(this, arguments);
+      if (typeof isAdmin !== 'undefined' && isAdmin) {
+        var inject = '<button class="nav-btn" data-page="master" onclick="v171OpenMasterAdmin()">🏫 主系统管理</button>';
+        return html.replace(
+          '<button class="nav-btn" data-page="settings" onclick="switchPage(\'settings\')">🔔 通知设置</button>',
+          '<button class="nav-btn" data-page="settings" onclick="switchPage(\'settings\')">🔔 通知设置</button>' + inject
+        );
+      }
+      return html;
+    };
+  }
+
+  window.v171OpenMasterAdmin = function () {
+    if (typeof isAdmin === 'undefined' || !isAdmin) { toast('仅管理员可访问', 'warning'); return; }
+    var content = ''
+      + '<div style="padding:8px;">'
+      + '  <h3 style="margin:0 0 12px;">🏫 主系统管理（多租户控制台）</h3>'
+      + '  <div style="border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:16px;">'
+      + '    <div style="font-weight:600;margin-bottom:8px;">生成授权码</div>'
+      + '    <div style="display:flex;gap:8px;align-items:center;">'
+      + '      <input id="v171-code-count" type="number" min="1" max="20" value="1" style="width:70px;padding:6px;border:1px solid #D1D5DB;border-radius:6px;">'
+      + '      <button class="btn btn-primary" onclick="v171GenCode()">生成</button>'
+      + '    </div>'
+      + '    <div id="v171-code-result" style="margin-top:8px;color:#059669;font-weight:600;min-height:20px;"></div>'
+      + '  </div>'
+      + '  <div style="border:1px solid #E5E7EB;border-radius:8px;padding:12px;">'
+      + '    <div style="font-weight:600;margin-bottom:8px;">授权码列表</div>'
+      + '    <div id="v171-codes-list">加载中...</div>'
+      + '  </div>'
+      + '  <div style="border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-top:16px;">'
+      + '    <div style="font-weight:600;margin-bottom:8px;">学校列表</div>'
+      + '    <div id="v171-schools-list">加载中...</div>'
+      + '  </div>'
+      + '</div>';
+    showModal('主系统管理', content);
+    setTimeout(function () {
+      var ov = document.querySelector('.modal-overlay:last-of-type');
+      if (ov) { var box = ov.querySelector('div[style*="max-width:500px"]'); if (box) box.style.maxWidth = '960px'; }
+    }, 50);
+    v171LoadCodes();
+    v171LoadSchools();
+  };
+
+  window.v171GenCode = async function () {
+    var el = document.getElementById('v171-code-count');
+    var cnt = el ? (parseInt(el.value) || 1) : 1;
+    var out = document.getElementById('v171-code-result');
+    try {
+      var res = await fetch('/api/master/codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd },
+        body: JSON.stringify({ count: cnt })
+      });
+      var j = await res.json();
+      if (out) {
+        if (j.success) {
+          out.textContent = '已生成: ' + j.codes.map(function (c) { return c.code; }).join('  ');
+          out.style.color = '#059669';
+          v171LoadCodes();
+        } else {
+          out.textContent = '失败: ' + (j.message || '未知错误');
+          out.style.color = '#DC2626';
+        }
+      }
+    } catch (e) {
+      if (out) { out.textContent = '网络错误'; out.style.color = '#DC2626'; }
+    }
+  };
+
+  window.v171LoadCodes = async function () {
+    var el = document.getElementById('v171-codes-list');
+    if (!el) return;
+    try {
+      var res = await fetch('/api/master/codes', { headers: { 'x-admin-pwd': adminPwd } });
+      var j = await res.json();
+      if (!j.success) { el.textContent = '加载失败'; return; }
+      if (!j.codes.length) { el.textContent = '暂无授权码'; return; }
+      el.innerHTML = j.codes.map(function (c) {
+        return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F3F4F6;">'
+          + '<span style="font-family:monospace;font-weight:600;">' + esc(c.code) + '</span>'
+          + '<span style="color:' + (c.used ? '#EF4444' : '#059669') + ';">' + (c.used ? '已用' : '未用') + '</span>'
+          + '<span style="color:#9CA3AF;font-size:12px;">' + new Date(c.createdAt).toLocaleString('zh-CN') + '</span>'
+          + '</div>';
+      }).join('');
+    } catch (e) { el.textContent = '加载失败'; }
+  };
+
+  window.v171LoadSchools = async function () {
+    var el = document.getElementById('v171-schools-list');
+    if (!el) return;
+    try {
+      var res = await fetch('/api/master/schools', { headers: { 'x-admin-pwd': adminPwd } });
+      var j = await res.json();
+      if (!j.success) { el.textContent = '加载失败'; return; }
+      if (!j.schools.length) { el.textContent = '暂无学校（阶段1未开通子系统）'; return; }
+      el.innerHTML = j.schools.map(function (s) {
+        return '<div style="padding:4px 0;border-bottom:1px solid #F3F4F6;">'
+          + '<b>' + esc(s.schoolName) + '</b> | ' + esc(s.phone || '') + ' | ' + (s.active ? '已激活' : '未激活')
+          + ' | ' + (s.url || '—') + ' | 到期 ' + (s.expiresAt ? new Date(s.expiresAt).toLocaleDateString('zh-CN') : '—')
+          + '</div>';
+      }).join('');
+    } catch (e) { el.textContent = '加载失败'; }
+  };
+})();
