@@ -318,7 +318,7 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
         absentTeachers: absentByDate.get(leave.leaveDate || targetDate) || null,
         occupiedSlots: buildOccupiedSlots(leave.leaveDate || targetDate)
       });
-      const realDate = dayMap[leaveWeekday] || leave.leaveDate;
+      const realDate = leave.leaveDate;
       if (substitute) {
         results.push({
           id: 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
@@ -391,7 +391,7 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
           absentTeachers: absentByDate.get(leave.leaveDate || targetDate) || null,
           occupiedSlots: buildOccupiedSlots(leave.leaveDate || targetDate)
         });
-        const realDate = dayMap[leaveWeekday] || leave.leaveDate;
+        const realDate = leave.leaveDate;
         if (substitute) {
           results.push({
             id: 'sub_aft_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
