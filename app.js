@@ -7133,3 +7133,70 @@ async function v159Save(id) {
 
   console.log('[v167] 管理员端代课安排按教师筛选 + 自动生成累加已安装');
 })();
+
+// ===== v170 保守修: timetable 查不到时 tier=5 而非 tier=99 =====
+// 问题: 张洪斌在 teacherAssignment 里是五（1）道德与法治老师，
+// 但 timetable 五（1）周一第5节没有他的记录 → 被误判为"跨班主科" tier=99 → 下拉名单消失
+// 保守修: timetable 查不到该老师，默认 tier=5，不再调用 isMainSubjectTeacher
+
+(function v170Init() {
+  if (window.__v170Installed) return;
+  window.__v170Installed = true;
+
+  // 保存原始 getTeacherTier（闭包内不再调用，保留给其他路径用）
+  // 重写 getTeacherTier: 把 "不在targetClass教课 → isMainSubjectTeacher → tier=99"
+  // 改为 "不在targetClass教课 → tier=5"
+  var __origGetTeacherTier = window.getTeacherTier;
+
+  window.getTeacherTier = function getTeacherTier_patched(teacherName, targetClass, dow) {
+    if (!teacherName || !targetClass || !dow) return 99;
+    var dayData = scheduleData && scheduleData.timetable ? scheduleData.timetable[dow] : null;
+    if (dayData) {
+      var slots = dayData[targetClass];
+      if (slots) {
+        var mySlots = Array.isArray(slots) ? slots.filter(function(sl) {
+          if (!sl) return false;
+          var teachers = sl.teachers || (sl.teacher ? [sl.teacher] : []);
+          return teachers.indexOf(teacherName) >= 0;
+        }) : [];
+        if (mySlots.length === 0) {
+          // ===== 保守修: 查不到就给 tier=5，不做 isMainSubjectTeacher 判定 =====
+          return 5;
+        }
+        for (var i = 0; i < mySlots.length; i++) {
+          var subj = mySlots[i].subject;
+          if (['语文','数学'].indexOf(subj) >= 0) return 1;
+        }
+        for (var i = 0; i < mySlots.length; i++) {
+          var subj = mySlots[i].subject;
+          if (subj === '英语') return 2;
+        }
+        for (var i = 0; i < mySlots.length; i++) {
+          var subj = mySlots[i].subject;
+          if (['科学','道德与法治','道德','科学课'].indexOf(subj) >= 0) return 3;
+        }
+        return 4;
+      }
+    }
+    // timetable 无数据时用 teacherAssignment 兜底
+    var ta = scheduleData && scheduleData.teacherAssignment ? scheduleData.teacherAssignment : {};
+    var clsSubs = ta[targetClass] || {};
+    var subjs = Object.entries(clsSubs);
+    var myMain = null;
+    for (var i = 0; i < subjs.length; i++) {
+      if (subjs[i][1] === teacherName) { myMain = subjs[i]; break; }
+    }
+    if (myMain) {
+      var sb = myMain[0];
+      if (['语文','数学'].indexOf(sb) >= 0) return 1;
+      if (sb === '英语') return 2;
+      if (['科学','道德与法治','道德','科学课'].indexOf(sb) >= 0) return 3;
+      return 4;
+    }
+    // 跨班: 用 isMainSubjectTeacher 确认是否为主科老师
+    if (typeof isMainSubjectTeacher === 'function' && isMainSubjectTeacher(teacherName)) return 99;
+    return 5;
+  };
+
+  console.log('[v170] tier保守修: getTeacherTier查不到时tier=5已安装');
+})();
