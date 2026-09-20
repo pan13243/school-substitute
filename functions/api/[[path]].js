@@ -1564,5 +1564,94 @@ if (path === '/api/schedule' || path === '/api/schedule/') {
   if (path === '/api/shared/update') {
     if (method === 'POST') return handleSharedUpdate(request, env);
   }
+  // ============ 阶段2: 学校激活 API ============
+  if (path === '/api/activate') {
+    if (request.method === 'POST') return handleActivate(request, env);
+    return json({ success: false, message: '仅支持 POST' }, 405);
+  }
+
   return json({ success: false, error: 'API 路由未找到: ' + path }, 404);
 }
+// ============ 阶段2: handleActivate ============
+async function handleActivate(request, env) {
+  if (request.method !== 'POST') return json({ success: false, message: '仅支持 POST' }, 405);
+
+  const origin = request.headers.get('Origin') || '';
+  const corsHeaders = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
+
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ success: false, message: '无效的请求体' }, 400, corsHeaders); }
+
+  const { code, schoolName, adminName, phone, password } = body || {};
+
+  if (!code || !schoolName || !adminName || !phone || !password) return json({ success: false, message: '缺少必填字段' }, 400, corsHeaders);
+  if (schoolName.length > 40) return json({ success: false, message: '学校名称不能超过40字' }, 400, corsHeaders);
+  if (!/^1\d{10}$/.test(phone)) return json({ success: false, message: '手机号格式不正确' }, 400, corsHeaders);
+  if (password.length < 6) return json({ success: false, message: '密码至少6位' }, 400, corsHeaders);
+
+  const config = await getKV(env, '__master__config') || {};
+  const CF_TOKEN = config.CF_TOKEN;
+  const CF_ACCOUNT_ID = config.CF_ACCOUNT_ID;
+  const GITHUB_OWNER = config.GITHUB_OWNER || 'pan13243';
+  const GITHUB_REPO = config.GITHUB_REPO || 'school-substitute';
+  const GITHUB_BRANCH = config.GITHUB_BRANCH || 'main';
+  if (!CF_TOKEN || !CF_ACCOUNT_ID) return json({ success: false, message: '主系统未配置 CF_TOKEN，请联系管理员' }, 500, corsHeaders);
+
+  const codesRaw = await getKV(env, '__master__codes');
+  const codes = Array.isArray(codesRaw) ? codesRaw : [];
+  const codeObj = codes.find(c => c.code === code);
+  if (!codeObj) return json({ success: false, message: '授权码无效' }, 400, corsHeaders);
+  if (codeObj.used) return json({ success: false, message: '此授权码已被使用' }, 400, corsHeaders);
+
+  const schoolId = 'school-' + Math.random().toString(36).slice(2, 10);
+  const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0];
+
+  const cfFetch = (p, o) => fetch('https://api.cloudflare.com' + p, { ...o, headers: { 'Authorization': 'Bearer ' + CF_TOKEN, 'Content-Type': 'application/json', ...(o.headers || {}) } });
+
+  // 1. 建 KV namespace
+  const kvResp = await cfFetch('/client/v4/accounts/' + CF_ACCOUNT_ID + '/storage/kv/namespaces', { method: 'POST', body: JSON.stringify({ title: schoolId }) });
+  const kvData = await kvResp.json();
+  if (!kvData.success) return json({ success: false, message: '创建 KV 失败' }, 500, corsHeaders);
+  const kvId = kvData.result.id;
+
+  // 2. 写 schoolMeta
+  const schoolMeta = { schoolName, adminName, phone, adminPwd: password, principalPwd: 'principal888', plan: 'trial', createdAt: now, expiresAt, schoolId };
+  await cfFetch('/client/v4/accounts/' + CF_ACCOUNT_ID + '/storage/kv/namespaces/' + kvId + '/values/schoolMeta', { method: 'PUT', body: JSON.stringify(schoolMeta) });
+
+  // 3. 建 Pages 项目
+  const pagesName = schoolId;
+  const createPagesResp = await cfFetch('/client/v4/accounts/' + CF_ACCOUNT_ID + '/pages/projects', {
+    method: 'POST', body: JSON.stringify({
+      name: pagesName, subdomain: pagesName,
+      build_config: { build_command: null, destination_dir: '/' },
+      source: { type: 'github', config: { owner: GITHUB_OWNER, repo_name: GITHUB_REPO, production_branch: GITHUB_BRANCH } },
+      deployment_configs: {
+        production: { kv_namespaces: { SCHOOL_SUB: { namespace_id: kvId } } },
+        preview: { kv_namespaces: { SCHOOL_SUB: { namespace_id: kvId } } },
+      },
+    }),
+  });
+  const pagesData = await createPagesResp.json();
+  if (!pagesData.success) {
+    const err = (pagesData.errors && pagesData.errors[0] && pagesData.errors[0].message) || '';
+    if (err.includes('already')) return json({ success: false, message: '该校已激活，请勿重复提交' }, 400, corsHeaders);
+    return json({ success: false, message: '创建学校失败: ' + err }, 500, corsHeaders);
+  }
+
+  const schoolUrl = 'https://' + pagesName + '.pages.dev';
+
+  // 4. 标记码已用
+  const updatedCodes = codes.map(c => c.code === code ? { ...c, used: true, usedAt: now, schoolId, schoolName, phone } : c);
+  await putKV(env, '__master__codes', updatedCodes);
+
+  // 5. 登记总账
+  const schoolsRaw = await getKV(env, '__master__schools');
+  const schools = Array.isArray(schoolsRaw) ? schoolsRaw : [];
+  schools.push({ schoolId, schoolName, adminName, phone, kvId, url: schoolUrl, plan: 'trial', expiresAt, activatedAt: now, activatedBy: code });
+  await putKV(env, '__master__schools', schools);
+
+  return json({ success: true, message: '学校创建成功，请等待约30秒部署完成后访问', url: schoolUrl, schoolId, expiresAt }, 200, corsHeaders);
+}
+
