@@ -1570,6 +1570,11 @@ if (path === '/api/schedule' || path === '/api/schedule/') {
     return json({ success: false, message: '仅支持 POST' }, 405);
   }
 
+  // ============ 阶段2: 学校删除 API ============
+  if (path.startsWith('/api/master/schools/') && path.endsWith('/deprovision')) {
+    if (request.method === 'POST') return handleDeprovision(request, env, path);
+  }
+
   return json({ success: false, error: 'API 路由未找到: ' + path }, 404);
 }
 // ============ 阶段2: handleActivate ============
@@ -1657,3 +1662,57 @@ async function handleActivate(request, env) {
   return json({ success: true, message: '学校创建成功，请等待约30秒部署完成后访问', url: schoolUrl, schoolId, expiresAt }, 200, corsHeaders);
 }
 
+
+// ============ 阶段2: handleDeprovision ============
+async function handleDeprovision(request, env, pathInfo) {
+  if (request.method !== 'POST') return json({ success: false, message: '仅支持 POST' }, 405);
+
+  const origin = request.headers.get('Origin') || '';
+  const corsHeaders = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
+
+  const pwd = request.headers.get('x-admin-pwd') || request.headers.get('x-admin-password') || '';
+  const schoolMeta = await getKV(env, 'schoolMeta') || {};
+  if (pwd !== (schoolMeta.adminPwd || 'admin888')) return json({ success: false, message: '未授权' }, 401, corsHeaders);
+
+  const schoolId = pathInfo.split('/')[3];
+  if (!schoolId) return json({ success: false, message: '缺少学校ID' }, 400, corsHeaders);
+
+  const rawConfig = await env.SCHOOL_SUB.get('__master__config');
+  let config = {};
+  try { config = JSON.parse(rawConfig || 'null') || {}; } catch (e) {}
+  const CF_TOKEN = config.CF_TOKEN;
+  const CF_ACCOUNT_ID = config.CF_ACCOUNT_ID;
+  if (!CF_TOKEN) return json({ success: false, message: '主系统未配置 CF_TOKEN' }, 500, corsHeaders);
+
+  const schoolsRaw = await getKV(env, '__master__schools');
+  const schools = Array.isArray(schoolsRaw) ? schoolsRaw : [];
+  const school = schools.find(s => s.schoolId === schoolId);
+  if (!school) return json({ success: false, message: '学校不存在' }, 404, corsHeaders);
+
+  const results = { pages: false, kv: false, record: false };
+
+  try {
+    const resp = await fetch('https://api.cloudflare.com/client/v4/accounts/' + CF_ACCOUNT_ID + '/pages/projects/' + schoolId, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + CF_TOKEN, 'Content-Type': 'application/json' },
+    });
+    results.pages = resp.ok;
+  } catch (e) { results.pages = true; }
+
+  if (school.kvId) {
+    try {
+      const resp = await fetch('https://api.cloudflare.com/client/v4/accounts/' + CF_ACCOUNT_ID + '/storage/kv/namespaces/' + school.kvId, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + CF_TOKEN, 'Content-Type': 'application/json' },
+      });
+      results.kv = resp.ok;
+    } catch (e) { results.kv = true; }
+  }
+
+  const newSchools = schools.filter(s => s.schoolId !== schoolId);
+  await putKV(env, '__master__schools', newSchools);
+  results.record = true;
+
+  return json({ success: true, message: '学校已删除', results }, 200, corsHeaders);
+}
