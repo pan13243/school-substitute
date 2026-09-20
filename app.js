@@ -7584,3 +7584,184 @@ async function v159Save(id) {
   };
 
 })();
+/* ===== v174 使用说明页（帮助中心｜纯追加：仅新增页面与入口，不改动任何现有逻辑） ===== */
+(function v174Init() {
+  if (window.__v174Installed) return;
+  window.__v174Installed = true;
+
+  // 1) 注入「使用说明」侧边栏入口（所有角色可见，放在功能菜单末尾）
+  var __origRenderAppShell = window.renderAppShell;
+  if (typeof __origRenderAppShell === 'function') {
+    window.renderAppShell = function () {
+      var html = __origRenderAppShell.apply(this, arguments);
+      try {
+        if (html && html.indexOf('</nav>') !== -1 && html.indexOf('data-page="guide"') === -1) {
+          var btn = '<div class="sidebar-section-title" style="margin-top:16px">📖 帮助</div>'
+            + '<button class="nav-btn" data-page="guide" onclick="switchPage(\'guide\')">📖 使用说明</button>';
+          html = html.replace('</nav>', btn + '</nav>');
+        }
+      } catch (e) {}
+      return html;
+    };
+  }
+
+  // 2) 渲染「使用说明」页
+  window.v174RenderGuide = function (area) {
+    if (!area) return;
+    var html = `
+  <div class="page">
+    <h2 class="page-title">📖 使用说明</h2>
+
+    <div class="card" style="background:linear-gradient(135deg,#EEF2FF,#E0E7FF);border:1px solid #C7D2FE;">
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <div style="font-size:34px;line-height:1;">💡</div>
+        <div>
+          <div style="font-weight:700;font-size:16px;color:#3730A3;margin-bottom:6px;">三步搞定日常代课</div>
+          <div style="color:#4338CA;font-size:14px;line-height:1.9;">
+            教师在线请假 &nbsp;➜&nbsp; 校长手写签字审批 &nbsp;➜&nbsp; 管理员一键安排代课并自动通知代课老师
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>👥 角色与权限</h3>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>角色</th><th>登录方式</th><th>可用功能</th></tr></thead>
+          <tbody>
+            <tr><td>👩‍🏫 教师</td><td>教师姓名（支持拼音首字母搜索）</td><td>请假登记 · 我的请假/代课 · 课表查询 · 共享文件夹</td></tr>
+            <tr><td>✍️ 校长</td><td>校长审批密码</td><td>审批事假 / 病假请假条（手写签字）</td></tr>
+            <tr><td>⚙️ 管理员</td><td>管理员密码</td><td>导入课表 · 代课安排 · 请假条管理 · 通知设置 · 主系统管理</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🚀 功能详解</h3>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">📤 导入课表 <span style="font-size:12px;font-weight:600;color:#B45309;background:#FEF3C7;border-radius:4px;padding:1px 6px;margin-left:4px;">管理员 · 首次使用必做</span></div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>方式一 / 二：上传「总课表 Excel」「课后服务表 Excel」</li>
+          <li>方式三：上传「校历表 Excel」，用于单 / 双周判断</li>
+          <li>方式四 / 五：导入 JSON 文件，或手动粘贴 JSON 内容</li>
+          <li>方式六：上传「社团活动安排表 Excel」</li>
+          <li>可维护「后勤 / 无课教师名单」（每行一个姓名）</li>
+          <li style="color:#B91C1C;">⚠️ 导入会覆盖当前课表数据，请谨慎操作</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">🏖️ 请假登记</div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>「单日请假」选择具体节次；「连续多天」按全天填写日期区间</li>
+          <li>假别共 8 种：事假 / 病假 / 婚假 / 丧假 / 公假 / 育儿假 / 产检假 / 其他</li>
+          <li>事假、病假需经校长审批签字后，方可安排代课</li>
+          <li>节次可多选：正课第 1–6 节、课后服务第 7–9 节、晚自习第 10 节、午休第 11 节，另有「全天」「无课」选项</li>
+          <li>调休 / 补课日：选到周六、周日会弹出「补课日 + 单 / 双周」，例如「六补三(单)」</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">✍️ 校长审批</div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>输入校长审批密码进入审批界面</li>
+          <li>在「待审批请假条」中点「签字审批」，手写签名后确认</li>
+          <li>「已处理」列表可查看或删除历史记录</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">✅ 代课安排 <span style="font-size:12px;font-weight:600;color:#1E40AF;background:#DBEAFE;border-radius:4px;padding:1px 6px;margin-left:4px;">管理员</span></div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>顶部列出「待安排教师」，点击标签可切换查看其课表对比</li>
+          <li>点「⚡ 自动生成代课安排」进入预览模式</li>
+          <li>核对方案无误后点「✅ 确认方案」保存并写入记录</li>
+          <li>支持导出「本次安排 / 全部 / 按考勤表」Excel</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">📄 请假条管理</div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>查看每条请假条详情</li>
+          <li>点「🖨️ 打印预览」可直接打印或另存为 PDF</li>
+          <li>可删除不再需要的记录</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">📅 课表查询</div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>支持「按班级查看 / 按教师查看」两种方式切换</li>
+          <li>教师端默认只能查看本人课表</li>
+          <li>管理员可用「🔍 一键查询」查看某节次所有有课 / 没课的老师</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">📁 共享文件夹</div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>上传 / 下载学校共享文件（教案、课件、通知等）</li>
+          <li>支持按分类筛选；管理员可点「⚙️ 管理分类」维护分类</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">🔔 通知设置 <span style="font-size:12px;font-weight:600;color:#1E40AF;background:#DBEAFE;border-radius:4px;padding:1px 6px;margin-left:4px;">管理员</span></div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>配置企业微信机器人 Webhook，代课安排自动推送通知</li>
+          <li>维护「教师企业微信账号」映射（格式：姓名=账号，每行一条）</li>
+          <li>可重置教师隐私密码</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">🏫 主系统管理 <span style="font-size:12px;font-weight:600;color:#6D28D9;background:#F5F3FF;border-radius:4px;padding:1px 6px;margin-left:4px;">管理员</span></div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>生成「授权码」，用于开通新的学校子系统</li>
+          <li>查看学校列表：班级数、年费、到期状态一目了然</li>
+          <li>「💰 缴费记录」登记收费，一键「续费」延长到期时间</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>❓ 常见问题</h3>
+      <div style="color:#374151;font-size:14px;line-height:2;">
+        <div style="margin-bottom:10px;"><b style="color:#111827;">1. 请假后为什么找不到代课安排？</b><br>事假 / 病假需先由校长审批通过，才会进入「待安排」列表。</div>
+        <div style="margin-bottom:10px;"><b style="color:#111827;">2. 教师端看不到别人的课表？</b><br>这是权限设计，教师只能查看本人课表；管理员可查看全部。</div>
+        <div style="margin-bottom:10px;"><b style="color:#111827;">3. 数据安全吗？</b><br>所有数据实时存储在云端，请勿随意点击「清空课表」等危险操作。</div>
+        <div style="margin-bottom:10px;"><b style="color:#111827;">4. 忘记密码怎么办？</b><br>管理员密码、校长密码可由管理员在对应入口重置。</div>
+      </div>
+    </div>
+
+    <div style="text-align:center;color:#9CA3AF;font-size:12px;padding:8px 0 24px;">如有疑问请联系系统管理员</div>
+  </div>
+  `;
+    area.innerHTML = html;
+    // 手机端顶部标题修正
+    try {
+      var mt = document.querySelector('.mobile-header span[style*="flex:1"]');
+      if (mt) mt.textContent = '使用说明';
+    } catch (e) {}
+  };
+
+  // 3) 包装 switchPage，接管 guide 页（其余页面原样透传）
+  var __origSwitchPage = window.switchPage;
+  window.switchPage = function (page) {
+    if (page === 'guide') {
+      try { currentPage = 'guide'; } catch (e) {}
+      document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
+      var btn = document.querySelector('[data-page="guide"]');
+      if (btn) btn.classList.add('active');
+      window.v174RenderGuide(document.getElementById('main-content'));
+      return;
+    }
+    return __origSwitchPage.apply(this, arguments);
+  };
+
+  console.log('[v174] 使用说明页已安装');
+})();
