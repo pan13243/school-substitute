@@ -1570,6 +1570,14 @@ if (path === '/api/schedule' || path === '/api/schedule/') {
     return json({ success: false, message: '仅支持 POST' }, 405);
   }
 
+  // ============ 缴费管理 API ============
+  if (path === '/api/master/payments') {
+    return handlePayments(request, env);
+  }
+  if (path.startsWith('/api/master/schools/') && path.endsWith('/renew')) {
+    return handleSchoolRenew(request, env, path);
+  }
+
   // ============ 阶段2: 学校删除 API ============
   if (path.startsWith('/api/master/schools/') && path.endsWith('/deprovision')) {
     if (request.method === 'POST') return handleDeprovision(request, env, path);
@@ -1716,3 +1724,121 @@ async function handleDeprovision(request, env, pathInfo) {
 
   return json({ success: true, message: '学校已删除', results }, 200, corsHeaders);
 }
+
+// ============ 缴费管理：计算价格 ============
+function calcPrice(classCount) {
+  if (!classCount || classCount <= 0) return 300;
+  if (classCount <= 20) return 300;
+  const extra = Math.ceil((classCount - 20) / 20);
+  return 300 + extra * 100;
+}
+
+// ============ 缴费管理：获取缴费记录 ============
+async function handlePayments(request, env) {
+  const origin = request.headers.get('Origin') || '';
+  const corsHeaders = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, x-admin-pwd, x-admin-password' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
+
+  const pwd = request.headers.get('x-admin-pwd') || request.headers.get('x-admin-password') || '';
+  const schoolMeta = await getKV(env, 'schoolMeta') || {};
+  if (pwd !== (schoolMeta.adminPwd || 'admin888')) return json({ success: false, message: '未授权' }, 401, corsHeaders);
+
+  if (request.method === 'GET') {
+    const payments = await getKV(env, '__master__payments') || [];
+    return json({ success: true, payments }, 200, corsHeaders);
+  }
+
+  if (request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch (e) { return json({ success: false, message: '无效请求' }, 400, corsHeaders); }
+
+    const { schoolId, amount, duration, remark } = body || {};
+    if (!schoolId || !amount) return json({ success: false, message: '缺少学校ID或金额' }, 400, corsHeaders);
+
+    const schoolsRaw = await getKV(env, '__master__schools');
+    const schools = Array.isArray(schoolsRaw) ? schoolsRaw : [];
+    const school = schools.find(s => s.schoolId === schoolId);
+    if (!school) return json({ success: false, message: '学校不存在' }, 404, corsHeaders);
+
+    const now = new Date().toISOString();
+    const payment = {
+      id: 'pay_' + Date.now() + Math.random().toString(36).slice(2, 7),
+      schoolId,
+      schoolName: school.schoolName,
+      amount: parseInt(amount),
+      duration: parseInt(duration) || 1,
+      remark: remark || '',
+      paidAt: now,
+      recordedAt: now,
+    };
+
+    const payments = await getKV(env, '__master__payments') || [];
+    payments.push(payment);
+    await putKV(env, '__master__payments', payments);
+
+    // 自动续费
+    const expiresAt = new Date(school.expiresAt || now);
+    const newExpiresAt = new Date(expiresAt);
+    newExpiresAt.setMonth(newExpiresAt.getMonth() + (parseInt(duration) || 12));
+    const updatedSchools = schools.map(s => s.schoolId === schoolId ? { ...s, expiresAt: newExpiresAt.toISOString() } : s);
+    await putKV(env, '__master__schools', updatedSchools);
+
+    return json({ success: true, message: '缴费记录已添加，学校有效期已延长', payment, newExpiresAt: newExpiresAt.toISOString() }, 200, corsHeaders);
+  }
+
+  return json({ success: false, message: '不支持的方法' }, 405, corsHeaders);
+}
+
+// ============ 缴费管理：快速续费（按当前班级数自动算价） ============
+async function handleSchoolRenew(request, env, path) {
+  const origin = request.headers.get('Origin') || '';
+  const corsHeaders = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, x-admin-pwd, x-admin-password' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
+
+  const pwd = request.headers.get('x-admin-pwd') || request.headers.get('x-admin-password') || '';
+  const schoolMeta = await getKV(env, 'schoolMeta') || {};
+  if (pwd !== (schoolMeta.adminPwd || 'admin888')) return json({ success: false, message: '未授权' }, 401, corsHeaders);
+
+  const schoolId = path.split('/')[3];
+  if (!schoolId) return json({ success: false, message: '缺少学校ID' }, 400, corsHeaders);
+
+  const body = await request.json().catch(() => ({}));
+  const { duration } = body; // 月数，默认12
+
+  const schoolsRaw = await getKV(env, '__master__schools');
+  const schools = Array.isArray(schoolsRaw) ? schoolsRaw : [];
+  const idx = schools.findIndex(s => s.schoolId === schoolId);
+  if (idx < 0) return json({ success: false, message: '学校不存在' }, 404, corsHeaders);
+
+  const school = schools[idx];
+  const classCount = school.classCount || 0;
+  const amount = calcPrice(classCount);
+  const dur = parseInt(duration) || 12;
+  const months = dur;
+  const totalAmount = amount * (months / 12);
+
+  const now = new Date().toISOString();
+  const payment = {
+    id: 'pay_' + Date.now() + Math.random().toString(36).slice(2, 7),
+    schoolId,
+    schoolName: school.schoolName,
+    amount: totalAmount,
+    duration: dur,
+    remark: '快速续费',
+    paidAt: now,
+    recordedAt: now,
+  };
+
+  const payments = await getKV(env, '__master__payments') || [];
+  payments.push(payment);
+  await putKV(env, '__master__payments', payments);
+
+  const expiresAt = new Date(school.expiresAt || now);
+  const newExpiresAt = new Date(expiresAt);
+  newExpiresAt.setMonth(newExpiresAt.getMonth() + months);
+  schools[idx] = { ...school, expiresAt: newExpiresAt.toISOString() };
+  await putKV(env, '__master__schools', schools);
+
+  return json({ success: true, message: '续费成功', payment, newExpiresAt: newExpiresAt.toISOString() }, 200, corsHeaders);
+}
+
