@@ -6628,7 +6628,7 @@ async function v159Save(id) {
 
   console.log('[v162] 一键查询已安装');
 })();
-//* ===== v172 主系统管理增强：缴费管理 + 续费 + 到期状态 ===== */
+/* ===== v172 主系统管理增强：缴费管理 + 续费 + 到期状态 ===== */
 (function v172Init() {
   if (window.__v172Installed) return;
   window.__v172Installed = true;
