@@ -1590,7 +1590,9 @@ async function handleActivate(request, env) {
   if (!/^1\d{10}$/.test(phone)) return json({ success: false, message: '手机号格式不正确' }, 400, corsHeaders);
   if (password.length < 6) return json({ success: false, message: '密码至少6位' }, 400, corsHeaders);
 
-  const config = await getKV(env, '__master__config') || {};
+  const rawConfig = await env.SCHOOL_SUB.get('__master__config');
+  let config = {};
+  try { config = JSON.parse(rawConfig || 'null') || {}; } catch (e) {}
   const CF_TOKEN = config.CF_TOKEN;
   const CF_ACCOUNT_ID = config.CF_ACCOUNT_ID;
   const GITHUB_OWNER = config.GITHUB_OWNER || 'pan13243';
