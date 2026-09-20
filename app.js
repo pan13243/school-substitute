@@ -6628,7 +6628,277 @@ async function v159Save(id) {
 
   console.log('[v162] 一键查询已安装');
 })();
-// ══════════════════════════════════════════════════════
+//* ===== v172 主系统管理增强：缴费管理 + 续费 + 到期状态 ===== */
+(function v172Init() {
+  if (window.__v172Installed) return;
+  window.__v172Installed = true;
+
+  // ============ 价格计算 ============
+  window.v172CalcPrice = function (classCount) {
+    if (!classCount || classCount <= 0) return 300;
+    if (classCount <= 20) return 300;
+    return 300 + Math.ceil((classCount - 20) / 20) * 100;
+  };
+
+  window.v172FmtDate = function (d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  window.v172DaysLeft = function (expiresAt) {
+    if (!expiresAt) return -999;
+    var diff = new Date(expiresAt) - new Date();
+    return Math.ceil(diff / 86400000);
+  };
+
+  window.v172ExpiryTag = function (expiresAt) {
+    var days = window.v172DaysLeft(expiresAt);
+    if (days < 0) return '<span style="background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:4px;font-size:12px;">已到期</span>';
+    if (days <= 30) return '<span style="background:#FEF3C7;color:#92400E;padding:2px 6px;border-radius:4px;font-size:12px;">' + days + '天后到期</span>';
+    return '<span style="background:#D1FAE5;color:#065F46;padding:2px 6px;border-radius:4px;font-size:12px;">正常</span>';
+  };
+
+  // ============ 覆盖 v171LoadSchools（增强学校列表） ============
+  var __origV171LoadSchools = window.v171LoadSchools;
+  window.v171LoadSchools = async function () {
+    var el = document.getElementById('v171-schools-list');
+    if (!el) return;
+    try {
+      var res = await fetch('/api/master/schools', { headers: { 'x-admin-pwd': adminPwd } });
+      var j = await res.json();
+      if (!j.success) { el.textContent = '加载失败'; return; }
+      if (!j.schools.length) {
+        el.innerHTML = '<div style="color:#9CA3AF;text-align:center;padding:16px;">暂无学校</div>';
+        return;
+      }
+      el.innerHTML = ''
+        + '<div style="display:grid;grid-template-columns:2fr 1fr 80px 80px 80px 100px 100px 80px;gap:0;font-size:13px;font-weight:600;color:#6B7280;border-bottom:2px solid #E5E7EB;padding:4px 8px;margin-bottom:4px;">'
+        + '  <div>学校名称</div>'
+        + '  <div>管理员</div>'
+        + '  <div>班级数</div>'
+        + '  <div>年费(元)</div>'
+        + '  <div>到期日</div>'
+        + '  <div>状态</div>'
+        + '  <div>联系</div>'
+        + '  <div>操作</div>'
+        + '</div>';
+      j.schools.forEach(function (s) {
+        var days = window.v172DaysLeft(s.expiresAt);
+        var tag = window.v172ExpiryTag(s.expiresAt);
+        var price = window.v172CalcPrice(s.classCount || 0);
+        el.innerHTML += ''
+          + '<div style="display:grid;grid-template-columns:2fr 1fr 80px 80px 80px 100px 100px 80px;gap:0;font-size:13px;padding:6px 8px;border-bottom:1px solid #F3F4F6;align-items:center;">'
+          + '  <div style="font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(s.schoolName || '') + '">' + esc(s.schoolName || '—') + '</div>'
+          + '  <div style="color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.adminName || '—') + '</div>'
+          + '  <div style="color:#374151;text-align:center;">' + (s.classCount || '?') + '</div>'
+          + '  <div style="color:#059669;font-weight:600;text-align:center;">' + price + '</div>'
+          + '  <div style="color:#6B7280;font-size:12px;text-align:center;">' + window.v172FmtDate(s.expiresAt) + '</div>'
+          + '  <div>' + tag + '</div>'
+          + '  <div style="color:#6B7280;font-size:12px;text-align:center;" title="' + esc(s.phone || '') + '">' + esc(s.phone || '—') + '</div>'
+          + '  <div style="text-align:center;">'
+          + '    <button onclick="v172OpenRenew(\'' + esc(s.schoolId) + '\',\'' + esc(s.schoolName) + '\',' + price + ',' + days + ')" style="background:#1E40AF;color:#FFF;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:12px;">续费</button>'
+          + '  </div>'
+          + '</div>';
+      });
+
+      // 底部汇总
+      var totalSchools = j.schools.length;
+      var expiredCount = j.schools.filter(function (s) { return window.v172DaysLeft(s.expiresAt) < 0; }).length;
+      var warnCount = j.schools.filter(function (s) { var d = window.v172DaysLeft(s.expiresAt); return d >= 0 && d <= 30; }).length;
+      el.innerHTML += ''
+        + '<div style="margin-top:12px;padding:8px;background:#F9FAFB;border-radius:6px;font-size:13px;color:#6B7280;display:flex;gap:20px;">'
+        + '  <span>学校总数：<b style="color:#111827">' + totalSchools + '</b></span>'
+        + '  <span style="color:#EF4444;">已到期：<b>' + expiredCount + '</b></span>'
+        + '  <span style="color:#D97706;">即将到期：<b>' + warnCount + '</b></span>'
+        + '  <button onclick="v172OpenPayments()" style="margin-left:auto;background:#F59E0B;color:#FFF;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:13px;font-weight:600;">💰 缴费记录</button>'
+        + '</div>';
+    } catch (e) { el.textContent = '加载失败'; }
+  };
+
+  // ============ 缴费记录弹窗 ============
+  window.v172OpenPayments = function () {
+    var content = ''
+      + '<div style="padding:8px;">'
+      + '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+      + '    <h3 style="margin:0;font-size:16px;">💰 缴费记录</h3>'
+      + '    <button onclick="v172ShowAddPayment()" style="background:#1E40AF;color:#FFF;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;">+ 新增缴费</button>'
+      + '  </div>'
+      + '  <div id="v172-payments-list" style="max-height:400px;overflow-y:auto;">加载中...</div>'
+      + '  <div id="v172-payments-summary" style="margin-top:12px;padding:8px;background:#EFF6FF;border-radius:6px;font-size:13px;"></div>'
+      + '</div>';
+    showModal('缴费记录', content);
+    setTimeout(function () {
+      var ov = document.querySelector('.modal-overlay:last-of-type');
+      if (ov) { var box = ov.querySelector('div[style*="max-width:500px"]'); if (box) box.style.maxWidth = '720px'; }
+    }, 50);
+    v172LoadPayments();
+  };
+
+  window.v172LoadPayments = async function () {
+    var el = document.getElementById('v172-payments-list');
+    var sumEl = document.getElementById('v172-payments-summary');
+    if (!el) return;
+    try {
+      var res = await fetch('/api/master/payments', { headers: { 'x-admin-pwd': adminPwd } });
+      var j = await res.json();
+      if (!j.success) { el.textContent = '加载失败: ' + (j.message || ''); return; }
+      if (!j.payments.length) {
+        el.innerHTML = '<div style="text-align:center;color:#9CA3AF;padding:32px;">暂无缴费记录</div>';
+        if (sumEl) sumEl.textContent = '';
+        return;
+      }
+      var total = j.payments.reduce(function (s, p) { return s + (parseInt(p.amount) || 0); }, 0);
+      el.innerHTML = ''
+        + '<div style="display:grid;grid-template-columns:2fr 1fr 80px 60px 80px 1fr;gap:0;font-size:12px;font-weight:600;color:#6B7280;border-bottom:2px solid #E5E7EB;padding:4px 8px;margin-bottom:4px;">'
+        + '  <div>学校</div><div>日期</div><div>金额</div><div>时长</div><div>收款人</div><div>备注</div>'
+        + '</div>';
+      j.payments.slice().reverse().forEach(function (p) {
+        el.innerHTML += ''
+          + '<div style="display:grid;grid-template-columns:2fr 1fr 80px 60px 80px 1fr;gap:0;font-size:13px;padding:6px 8px;border-bottom:1px solid #F3F4F6;align-items:center;">'
+          + '  <div style="font-weight:600;color:#111827;">' + esc(p.schoolName || '—') + '</div>'
+          + '  <div style="color:#6B7280;font-size:12px;">' + window.v172FmtDate(p.paidAt) + '</div>'
+          + '  <div style="color:#059669;font-weight:600;">' + (parseInt(p.amount) || 0) + '元</div>'
+          + '  <div style="color:#374151;text-align:center;">' + (p.duration || 1) + '月</div>'
+          + '  <div style="color:#6B7280;font-size:12px;">' + esc(p.remark || '—') + '</div>'
+          + '</div>';
+      });
+      if (sumEl) sumEl.innerHTML = '累计收入：<b style="color:#059669;font-size:16px;">' + total + '</b> 元（共 ' + j.payments.length + ' 条记录）';
+    } catch (e) { el.textContent = '网络错误'; }
+  };
+
+  window.v172ShowAddPayment = function () {
+    // 先加载学校列表填下拉
+    var schools = [];
+    var schoolsEl = document.querySelectorAll('#v171-schools-list b');
+    // 用 API 拿
+    fetch('/api/master/schools', { headers: { 'x-admin-pwd': adminPwd } }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j.success || !j.schools) return;
+      var sel = document.getElementById('v172-pay-school');
+      if (sel) sel.innerHTML = j.schools.map(function (s) {
+        return '<option value="' + esc(s.schoolId) + '">' + esc(s.schoolName) + ' (' + (s.classCount || '?') + '班)</option>';
+      }).join('');
+    }).catch(function () {});
+    var content = ''
+      + '<div style="padding:8px;">'
+      + '  <div style="font-weight:600;margin-bottom:12px;">新增缴费记录</div>'
+      + '  <div class="form-group">'
+      + '    <label>学校 *</label>'
+      + '    <select id="v172-pay-school" style="width:100%;padding:8px;border:1.5px solid #D1D5DB;border-radius:8px;font-size:14px;"><option value="">请选择学校</option></select>'
+      + '  </div>'
+      + '  <div class="form-group">'
+      + '    <label>缴费金额（元）*</label>'
+      + '    <input id="v172-pay-amount" type="number" min="1" placeholder="如：300" style="width:100%;padding:8px;border:1.5px solid #D1D5DB;border-radius:8px;font-size:14px;">'
+      + '  </div>'
+      + '  <div class="form-group">'
+      + '    <label>续费时长（月）*</label>'
+      + '    <input id="v172-pay-duration" type="number" min="1" value="12" style="width:100%;padding:8px;border:1.5px solid #D1D5DB;border-radius:8px;font-size:14px;">'
+      + '  </div>'
+      + '  <div class="form-group">'
+      + '    <label>备注</label>'
+      + '    <input id="v172-pay-remark" type="text" placeholder="如：微信转账、2024年续费" style="width:100%;padding:8px;border:1.5px solid #D1D5DB;border-radius:8px;font-size:14px;">'
+      + '  </div>'
+      + '  <div id="v172-pay-msg" style="margin-bottom:8px;font-size:14px;min-height:20px;"></div>'
+      + '  <button onclick="v172DoAddPayment()" style="width:100%;padding:10px;background:#1E40AF;color:#FFF;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">确认添加</button>'
+      + '</div>';
+    showModal('新增缴费', content);
+  };
+
+  window.v172DoAddPayment = async function () {
+    var schoolId = document.getElementById('v172-pay-school') ? document.getElementById('v172-pay-school').value : '';
+    var amount = document.getElementById('v172-pay-amount') ? document.getElementById('v172-pay-amount').value : '';
+    var duration = document.getElementById('v172-pay-duration') ? document.getElementById('v172-pay-duration').value : '12';
+    var remark = document.getElementById('v172-pay-remark') ? document.getElementById('v172-pay-remark').value : '';
+    var msgEl = document.getElementById('v172-pay-msg');
+    if (!schoolId || !amount) { if (msgEl) { msgEl.textContent = '请填写学校和金额'; msgEl.style.color = '#DC2626'; } return; }
+    if (msgEl) { msgEl.textContent = '提交中...'; msgEl.style.color = '#6B7280'; }
+    try {
+      var res = await fetch('/api/master/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd },
+        body: JSON.stringify({ schoolId: schoolId, amount: amount, duration: duration, remark: remark })
+      });
+      var j = await res.json();
+      if (j.success) {
+        if (msgEl) { msgEl.textContent = '✅ 添加成功，有效期已延长至 ' + window.v172FmtDate(j.newExpiresAt); msgEl.style.color = '#059669'; }
+        setTimeout(function () { v172CloseCurrentModal(); v172LoadPayments(); v171LoadSchools(); }, 1200);
+      } else {
+        if (msgEl) { msgEl.textContent = '失败: ' + (j.message || '未知错误'); msgEl.style.color = '#DC2626'; }
+      }
+    } catch (e) { if (msgEl) { msgEl.textContent = '网络错误'; msgEl.style.color = '#DC2626'; } }
+  };
+
+  // ============ 续费弹窗 ============
+  window.v172OpenRenew = function (schoolId, schoolName, price, daysLeft) {
+    var content = ''
+      + '<div style="padding:8px;">'
+      + '  <div style="text-align:center;margin-bottom:16px;">'
+      + '    <div style="font-size:40px;margin-bottom:8px;">🏫</div>'
+      + '    <div style="font-size:16px;font-weight:700;color:#111827;">' + esc(schoolName) + '</div>'
+      + '    <div style="font-size:13px;color:#6B7280;margin-top:4px;">年费：<b style="color:#059669;">' + price + '</b> 元/年</div>'
+      + '    <div style="font-size:13px;color:' + (daysLeft < 0 ? '#EF4444' : '#6B7280') + ';margin-top:2px;">当前状态：' + (daysLeft < 0 ? '已到期' : '剩余 ' + daysLeft + ' 天') + '</div>'
+      + '  </div>'
+      + '  <div style="border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:12px;">'
+      + '    <div style="font-weight:600;margin-bottom:8px;">选择续费时长</div>'
+      + '    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">'
+      + '      <button onclick="v172SetDur(this,6)" style="padding:6px 14px;border:1.5px solid #D1D5DB;border-radius:6px;background:#FFF;cursor:pointer;font-size:13px;">6个月</button>'
+      + '      <button onclick="v172SetDur(this,12)" style="padding:6px 14px;border:1.5px solid #1E40AF;border-radius:6px;background:#1E40AF;color:#FFF;font-weight:600;cursor:pointer;font-size:13px;">1年</button>'
+      + '      <button onclick="v172SetDur(this,24)" style="padding:6px 14px;border:1.5px solid #D1D5DB;border-radius:6px;background:#FFF;cursor:pointer;font-size:13px;">2年</button>'
+      + '    </div>'
+      + '    <div style="font-size:13px;color:#6B7280;">续费金额：<b id="v172-renew-amount" style="color:#059669;font-size:16px;">' + price + '</b> 元</div>'
+      + '  </div>'
+      + '  <input type="hidden" id="v172-renew-school" value="' + esc(schoolId) + '">'
+      + '  <input type="hidden" id="v172-renew-duration" value="12">'
+      + '  <div id="v172-renew-msg" style="margin-bottom:8px;font-size:14px;min-height:20px;"></div>'
+      + '  <button onclick="v172DoRenew()" style="width:100%;padding:10px;background:#1E40AF;color:#FFF;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">确认续费</button>'
+      + '</div>';
+    showModal('续费 ' + schoolName, content);
+  };
+
+  window.v172SetDur = function (btn, months) {
+    document.querySelectorAll('[onclick^="v172SetDur"]').forEach(function (b) {
+      b.style.borderColor = '#D1D5DB'; b.style.background = '#FFF'; b.style.color = '#374151';
+    });
+    btn.style.borderColor = '#1E40AF'; btn.style.background = '#1E40AF'; btn.style.color = '#FFF';
+    var schoolId = document.getElementById('v172-renew-school') ? document.getElementById('v172-renew-school').value : '';
+    var price = 300;
+    // 从按钮上的价格取
+    var amtEl = document.getElementById('v172-renew-amount');
+    var durEl = document.getElementById('v172-renew-duration');
+    if (durEl) durEl.value = months;
+    // 价格 = 年费 * (月数/12)
+    if (amtEl) amtEl.textContent = Math.round(300 * (months / 12));
+  };
+
+  window.v172DoRenew = async function () {
+    var schoolId = document.getElementById('v172-renew-school') ? document.getElementById('v172-renew-school').value : '';
+    var duration = document.getElementById('v172-renew-duration') ? parseInt(document.getElementById('v172-renew-duration').value) || 12 : 12;
+    var msgEl = document.getElementById('v172-renew-msg');
+    if (!schoolId) return;
+    if (msgEl) { msgEl.textContent = '提交中...'; msgEl.style.color = '#6B7280'; }
+    try {
+      var res = await fetch('/api/master/schools/' + schoolId + '/renew', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pwd': adminPwd },
+        body: JSON.stringify({ duration: duration })
+      });
+      var j = await res.json();
+      if (j.success) {
+        if (msgEl) { msgEl.textContent = '✅ 续费成功，有效期已延长至 ' + window.v172FmtDate(j.newExpiresAt); msgEl.style.color = '#059669'; }
+        setTimeout(function () { v172CloseCurrentModal(); v171LoadSchools(); }, 1200);
+      } else {
+        if (msgEl) { msgEl.textContent = '失败: ' + (j.message || '未知错误'); msgEl.style.color = '#DC2626'; }
+      }
+    } catch (e) { if (msgEl) { msgEl.textContent = '网络错误'; msgEl.style.color = '#DC2626'; } }
+  };
+
+  // 关闭当前最新弹窗
+  window.v172CloseCurrentModal = function () {
+    var ov = document.querySelector('.modal-overlay:last-of-type');
+    if (ov) { var close = ov.querySelector('.modal-close'); if (close) close.click(); }
+  };
+
+})();
+/ ══════════════════════════════════════════════════════
 // v166: 一键查询按校历本周单双周过滤 (2026-09-16)
 //   - 包装 v162ShowSlotDetail, 弹窗DOM落地后过滤非本周老师
 //   - 校历来源: scheduleData.calendar.weeks[*].parity (single/double)
