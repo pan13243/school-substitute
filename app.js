@@ -7772,123 +7772,13 @@ async function v159Save(id) {
 window.__v176Installed = true;
 // ===== end v176 =====
 
-// ===== v177: 教育主题淡色图案背景 (书本/公式/铅笔水印) — 纯追加 IIFE =====
+// ===== v177: 教育主题淡色图案背景 (纯CSS多层渐变,无SVG) =====
 window.__v177Installed = true;
 (function v177Init() {
-  // 1) 注入 CSS：body 背景换成淡色教育图案 + 半透明遮罩保证文字可读性
-  var style = document.createElement('style');
-  style.id = 'v177-bg-style';
-  style.textContent = [
-    '/* v177 教育主题背景 */',
-    'body {',
-    '  background-color: #EEF2F7 !important;',
-    '  background-image: url("data:image/svg+xml;utf8,' + encodeURIComponent(
-      // 800x600 SVG 平铺图案：书本、铅笔、灯泡、公式、勾号、星球 — 淡色线条画
-      '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">' +
-        '<defs>' +
-          '<pattern id="edu" x="0" y="0" width="800" height="600" patternUnits="userSpaceOnUse">' +
-            // 书本 1
-            '<g transform="translate(80,80) scale(0.9)" opacity="0.06">' +
-              '<rect x="0" y="0" width="60" height="44" rx="3" fill="none" stroke="#3B82F6" stroke-width="1.5"/>' +
-              '<line x1="30" y1="0" x2="30" y2="44" stroke="#3B82F6" stroke-width="1"/>' +
-              '<line x1="8" y1="12" x2="22" y2="12" stroke="#3B82F6" stroke-width="1"/>' +
-              '<line x1="8" y1="20" x2="22" y2="20" stroke="#3B82F6" stroke-width="1"/>' +
-              '<line x1="8" y1="28" x2="22" y2="28" stroke="#3B82F6" stroke-width="1"/>' +
-              '<line x1="38" y1="12" x2="52" y2="12" stroke="#3B82F6" stroke-width="1"/>' +
-              '<line x1="38" y1="20" x2="52" y2="20" stroke="#3B82F6" stroke-width="1"/>' +
-              '<line x1="38" y1="28" x2="52" y2="28" stroke="#3B82F6" stroke-width="1"/>' +
-            '</g>' +
-            // 铅笔
-            '<g transform="translate(420,100) rotate(30)" opacity="0.05">' +
-              '<rect x="0" y="0" width="80" height="12" fill="none" stroke="#F59E0B" stroke-width="1.5"/>' +
-              '<polygon points="80,0 92,6 80,12" fill="none" stroke="#F59E0B" stroke-width="1.5"/>' +
-              '<polygon points="86,3 92,6 86,9" fill="none" stroke="#F59E0B" stroke-width="1"/>' +
-              '<line x1="0" y1="12" x2="80" y2="12" stroke="#F59E0B" stroke-width="0.5"/>' +
-            '</g>' +
-            // 灯泡
-            '<g transform="translate(650,60)" opacity="0.05">' +
-              '<circle cx="30" cy="26" r="20" fill="none" stroke="#F59E0B" stroke-width="1.5"/>' +
-              '<rect x="24" y="46" width="12" height="8" fill="none" stroke="#F59E0B" stroke-width="1.5"/>' +
-              '<line x1="24" y1="54" x2="36" y2="54" stroke="#F59E0B" stroke-width="1"/>' +
-              '<line x1="30" y1="6" x2="30" y2="0" stroke="#F59E0B" stroke-width="1"/>' +
-              '<line x1="10" y1="16" x2="6" y2="12" stroke="#F59E0B" stroke-width="1"/>' +
-              '<line x1="50" y1="16" x2="54" y2="12" stroke="#F59E0B" stroke-width="1"/>' +
-              '<line x1="12" y1="30" x2="6" y2="32" stroke="#F59E0B" stroke-width="1"/>' +
-              '<line x1="48" y1="30" x2="54" y2="32" stroke="#F59E0B" stroke-width="1"/>' +
-            '</g>' +
-            // 公式 E=mc²
-            '<g transform="translate(200,250)" opacity="0.05">' +
-              '<text x="0" y="20" font-family="Georgia, serif" font-size="22" fill="#8B5CF6" font-style="italic">E=mc</text>' +
-              '<text x="48" y="12" font-family="Georgia, serif" font-size="14" fill="#8B5CF6">2</text>' +
-            '</g>' +
-            // 分数 a/b
-            '<g transform="translate(500,280)" opacity="0.05">' +
-              '<text x="0" y="8" font-family="Georgia, serif" font-size="14" fill="#10B981" font-style="italic">a</text>' +
-              '<line x1="0" y1="12" x2="16" y2="12" stroke="#10B981" stroke-width="1.5"/>' +
-              '<text x="2" y="26" font-family="Georgia, serif" font-size="14" fill="#10B981" font-style="italic">b</text>' +
-            '</g>' +
-            // 勾号
-            '<g transform="translate(120,420)" opacity="0.05">' +
-              '<circle cx="20" cy="20" r="18" fill="none" stroke="#10B981" stroke-width="1.5"/>' +
-              '<polyline points="12,20 18,26 30,14" fill="none" stroke="#10B981" stroke-width="2"/>' +
-            '</g>' +
-            // 星球/地球
-            '<g transform="translate(600,420)" opacity="0.05">' +
-              '<circle cx="24" cy="24" r="18" fill="none" stroke="#3B82F6" stroke-width="1.5"/>' +
-              '<ellipse cx="24" cy="24" rx="22" ry="8" fill="none" stroke="#3B82F6" stroke-width="1" transform="rotate(-15 24 24)"/>' +
-              '<ellipse cx="24" cy="24" rx="22" ry="5" fill="none" stroke="#3B82F6" stroke-width="0.8" transform="rotate(25 24 24)"/>' +
-            '</g>' +
-            // 书本 2 (翻开)
-            '<g transform="translate(340,460)" opacity="0.05">' +
-              '<path d="M0,4 Q20,0 40,4 L40,36 Q20,32 0,36 Z" fill="none" stroke="#8B5CF6" stroke-width="1.5"/>' +
-              '<line x1="20" y1="2" x2="20" y2="34" stroke="#8B5CF6" stroke-width="1"/>' +
-              '<line x1="5" y1="14" x2="16" y2="12" stroke="#8B5CF6" stroke-width="0.8"/>' +
-              '<line x1="5" y1="22" x2="16" y2="20" stroke="#8B5CF6" stroke-width="0.8"/>' +
-              '<line x1="24" y1="12" x2="35" y2="14" stroke="#8B5CF6" stroke-width="0.8"/>' +
-              '<line x1="24" y1="20" x2="35" y2="22" stroke="#8B5CF6" stroke-width="0.8"/>' +
-            '</g>' +
-            // π 符号
-            '<g transform="translate(60,540)" opacity="0.05">' +
-              '<text x="0" y="20" font-family="Georgia, serif" font-size="24" fill="#EF4444" font-style="italic">\u03c0</text>' +
-              '<text x="16" y="20" font-family="Georgia, serif" font-size="16" fill="#EF4444">r</text>' +
-              '<text x="28" y="14" font-family="Georgia, serif" font-size="11" fill="#EF4444">2</text>' +
-            '</g>' +
-            // 毕业帽
-            '<g transform="translate(720,280)" opacity="0.05">' +
-              '<polygon points="0,8 20,0 40,8 20,16" fill="none" stroke="#1D4ED8" stroke-width="1.5"/>' +
-              '<rect x="14" y="14" width="12" height="10" fill="none" stroke="#1D4ED8" stroke-width="1.5"/>' +
-              '<line x1="40" y1="8" x2="44" y2="18" stroke="#1D4ED8" stroke-width="1"/>' +
-              '<circle cx="44" cy="20" r="2" fill="none" stroke="#1D4ED8" stroke-width="1"/>' +
-            '</g>' +
-            '</pattern>' +
-          '</defs>' +
-          '<rect width="800" height="600" fill="url(#edu)"/>' +
-        '</svg>'
-    ) + '") !important;',
-    '  background-attachment: fixed !important;',
-    '  background-repeat: repeat !important;',
-    '  background-size: 800px 600px !important;',
-    '}',
-    '/* 登录页保持原有渐变 */',
-    '.login-bg { background: linear-gradient(135deg, #1E3A5F 0%, #2563EB 50%, #0EA5E9 100%) !important; }',
-    '/* 内容区保持可读性 — 不加背景图，用半透明白底 */',
-    '.content { background: rgba(249, 250, 251, 0.85) !important; }',
-    '/* 侧边栏保持白底 */',
-    '.sidebar { background: rgba(255, 255, 255, 0.92) !important; }',
-    '/* v177 角标 */',
-    'body::after {',
-    '  content: "v177 ✓";',
-    '  position: fixed;',
-    '  bottom: 4px;',
-    '  right: 6px;',
-    '  font-size: 10px;',
-    '  color: rgba(59, 130, 246, 0.35);',
-    '  z-index: 99999;',
-    '  pointer-events: none;',
-    '}',
-    ''
-  ].join('\n');
-  document.head.appendChild(style);
-  console.log('[v177] 教育主题背景已安装');
+  var s = document.createElement("style");
+  s.id = "v177-bg-style";
+  s.textContent = "/* v177 教育主题背景 */\nbody {\n  background-color: #EEF2F7 !important;\n  background-image:\n    /* 第1层：淡蓝渐变底色 */\n    linear-gradient(160deg, rgba(219,234,254,0.7) 0%, rgba(238,242,247,0.9) 50%, rgba(226,232,240,0.85) 100%),\n    /* 第2层：圆点网格 — 教育/笔记本感 */\n    radial-gradient(circle, rgba(59,130,246,0.18) 1.5px, transparent 1.5px),\n    /* 第3层：细斜线条纹 — 书页/格子纸感 */\n    repeating-linear-gradient(\n      45deg,\n      transparent,\n      transparent 18px,\n      rgba(59,130,246,0.04) 18px,\n      rgba(59,130,246,0.04) 19px\n    ),\n    /* 第4层：大圆环装饰 — 书本翻页感 */\n    radial-gradient(circle at 20% 30%, rgba(59,130,246,0.07) 0%, transparent 8%),\n    radial-gradient(circle at 75% 70%, rgba(245,158,11,0.06) 0%, transparent 6%),\n    radial-gradient(circle at 50% 50%, rgba(139,92,246,0.05) 0%, transparent 10%),\n    radial-gradient(circle at 85% 20%, rgba(16,185,129,0.05) 0%, transparent 5%),\n    radial-gradient(circle at 10% 80%, rgba(239,68,68,0.04) 0%, transparent 7%) !important;\n  background-attachment: fixed !important;\n  background-size: auto, 24px 24px, auto, auto, auto, auto, auto, auto !important;\n  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0 !important;\n  background-repeat: no-repeat, repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat !important;\n}\n/* 登录页保持原渐变 */\n.login-bg {\n  background: linear-gradient(135deg, #1E3A5F 0%, #2563EB 50%, #0EA5E9 100%) !important;\n  background-image: none !important;\n}\n/* 内容区白底半透明，保证文字可读 */\n.content {\n  background: rgba(249, 250, 251, 0.88) !important;\n  background-image: none !important;\n}\n/* 侧边栏白底半透明 */\n.sidebar {\n  background: rgba(255, 255, 255, 0.93) !important;\n}\n/* v177 角标 */\nbody::after {\n  content: \"v177\";\n  position: fixed;\n  bottom: 4px;\n  right: 6px;\n  font-size: 10px;\n  color: rgba(59, 130, 246, 0.3);\n  z-index: 99999;\n  pointer-events: none;\n  font-family: monospace;\n}";
+  document.head.appendChild(s);
+  console.log("[v177] 教育主题背景已安装 (纯CSS v2)");
 })();
 // ===== end v177 =====
