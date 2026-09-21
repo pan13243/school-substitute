@@ -4368,10 +4368,14 @@ function parseOriginalTimetableV2(ws) {
   const classRow = rows[2] || [];
   const classes = [];
   for (let c = 2; c < 22 && c < classRow.length; c++) {
-    const cls = normCls(classRow[c]);
-    if (cls && cls !== 'null' && cls !== 'undefined') classes.push(cls);
+    const raw = String(classRow[c] || '').trim();
+    if (!raw || raw === 'null' || raw === 'undefined') continue;
+    const cls = normCls(raw);
+    // 只接受形如 "一（1）"/"六(3)" 的班级名，过滤数字/文字/科目名等误匹配
+    if (/^[一二三四五六七]（\d+）$/.test(cls)) classes.push(cls);
   }
-  if (classes.length === 0) return null;
+  // 至少 3 个有效班级名才认定为横版格式
+  if (classes.length < 3) return null;
 
   // 每天起始列(0-based index) —— 当前总课表各日块之间无空列,每块20班连续排列
   const dayConfig = [
