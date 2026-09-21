@@ -440,7 +440,7 @@ async function handleAdminVerify(request, env) {
     if (pwd === correct) {
       return json({ success: true });
     }
-    return json({ success: false, error: '密码错误' }, 401);
+    return json({ success: false, error: '密码错误', _debug: { pwd: pwd, correct: correct, hasAdminPwd: !!schoolMeta.adminPwd, schoolMetaKeys: Object.keys(schoolMeta) } }, 401);
   } catch (e) {
     return json({ success: false, error: '验证失败: ' + (e.message || 'unknown') }, 500);
   }
