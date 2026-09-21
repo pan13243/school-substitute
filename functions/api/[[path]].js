@@ -1602,9 +1602,9 @@ async function handleDeleteSchool(request, env, path) {
   };
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
 
-  var pwd = request.headers.get('x-admin-pwd') || '';
-  var masterPwdRaw = await env.SCHOOL_SUB.get('__master__admin_pwd');
-  if (pwd !== masterPwdRaw) return json({ success: false, message: '未授权' }, 401, corsHeaders);
+  var pwd = request.headers.get('x-admin-pwd') || request.headers.get('x-admin-password') || '';
+  // 与 handleMasterAuth (L1159) 一致：写死 admin888
+  if (pwd !== 'admin888') return json({ success: false, message: '未授权' }, 401, corsHeaders);
 
   var parts = path.split('/');
   var schoolId = parts[3];

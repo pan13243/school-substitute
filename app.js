@@ -7365,7 +7365,7 @@ async function v159Save(id) {
         return;
       }
       el.innerHTML = ''
-        + '<div style="display:grid;grid-template-columns:2fr 1fr 80px 80px 80px 100px 100px 80px;gap:0;font-size:13px;font-weight:600;color:#6B7280;border-bottom:2px solid #E5E7EB;padding:4px 8px;margin-bottom:4px;">'
+        + '<div style="display:grid;grid-template-columns:2fr 1fr 80px 80px 80px 100px 100px 150px;gap:0;font-size:13px;font-weight:600;color:#6B7280;border-bottom:2px solid #E5E7EB;padding:4px 8px;margin-bottom:4px;">'
         + '  <div>学校名称</div>'
         + '  <div>管理员</div>'
         + '  <div>班级数</div>'
@@ -7380,7 +7380,7 @@ async function v159Save(id) {
         var tag = window.v172ExpiryTag(s.expiresAt);
         var price = window.v172CalcPrice(s.classCount || 0);
         el.innerHTML += ''
-          + '<div style="display:grid;grid-template-columns:2fr 1fr 80px 80px 80px 100px 100px 80px;gap:0;font-size:13px;padding:6px 8px;border-bottom:1px solid #F3F4F6;align-items:center;">'
+          + '<div style="display:grid;grid-template-columns:2fr 1fr 80px 80px 80px 100px 100px 150px;gap:0;font-size:13px;padding:6px 8px;border-bottom:1px solid #F3F4F6;align-items:center;">'
           + '  <div style="font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(s.schoolName || '') + '">' + esc(s.schoolName || '—') + '</div>'
           + '  <div style="color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.adminName || '—') + '</div>'
           + '  <div style="color:#374151;text-align:center;">' + (s.classCount || '?') + '</div>'
@@ -8189,7 +8189,7 @@ window.__v184Installed = true;
           sep.style.margin = '0 4px';
           var delBtn = document.createElement('button');
           delBtn.textContent = '删除';
-          delBtn.style.cssText = 'background:#EF4444;color:#FFF;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:12px;';
+          delBtn.style.cssText = 'background:#EF4444;color:#FFF;border:none;border-radius:4px;padding:3px 6px;cursor:pointer;font-size:12px;margin-left:2px;';
           delBtn.onclick = function (e) {
             e.stopPropagation();
             window.v187DeleteSchool(schoolId, schoolName);
