@@ -933,7 +933,43 @@ async function handleSubstitutesSave(request, env) {
     }
   }
   
-  return json({ success: true, message: '保存成功', count: merged.length, notified: notified.size });
+
+  // v181: 短信通知代课老师
+  let smsCount = 0;
+  try {
+    const smsCfg = await env.SCHOOL_SUB.get('sms_config', { type: 'json' }) || {};
+    if (smsCfg.enabled && smsCfg.secretId && smsCfg.secretKey && smsCfg.appId && smsCfg.templateId && smsCfg.signName) {
+      const phoneMap = await env.SCHOOL_SUB.get('teacherPhones', { type: 'json' }) || {};
+      const smsNotified = new Set();
+      for (const sub of data) {
+        const phone = phoneMap[sub.substituteTeacher];
+        if (phone && /^1\d{10}$/.test(phone) && !smsNotified.has(phone)) {
+          smsNotified.add(phone);
+          // 腾讯云 SMS API
+          const smsResult = await sendTencentSms({
+            secretId: smsCfg.secretId,
+            secretKey: smsCfg.secretKey,
+            appId: smsCfg.appId,
+            templateId: smsCfg.templateId,
+            signName: smsCfg.signName,
+            phoneNumber: phone,
+            templateParams: [
+              sub.substituteTeacher || '',
+              sub.className || '',
+              (sub.leaveDate || '') + ' ' + (sub.dayOfWeek || ''),
+              '第' + (sub.period || '') + '节',
+              sub.subject || ''
+            ]
+          });
+          if (smsResult.success) smsCount++;
+          else console.warn('[v181 SMS] 发送失败:', sub.substituteTeacher, phone, smsResult.error);
+        }
+      }
+    }
+  } catch(e) { console.warn('[v181 SMS] 异常:', e.message); }
+  
+  // __v181SmsSent marker
+    return json({ success: true, message: '保存成功', count: merged.length, notified: notified.size, smsNotified: smsCount });
 }
 
 // 删除单条代课记录
@@ -1499,6 +1535,17 @@ if (path === '/api/schedule' || path === '/api/schedule/') {
     if (method === 'POST') return handleSubstitutesGenerate(request, env);
   }
   
+    if (path === '/api/teacher-phones') {
+    if (method === 'GET') return handleTeacherPhonesGet(env);
+    if (method === 'POST') return handleTeacherPhonesSave(request, env);
+  }
+  if (path === '/api/sms-config') {
+    if (method === 'GET') return handleSmsConfigGet(env);
+    if (method === 'POST') return handleSmsConfigSave(request, env);
+  }
+  if (path === '/api/sms-test') {
+    if (method === 'POST') return handleSmsTest(request, env);
+  }
   if (path === '/api/substitutes/save') {
     if (method === 'POST') return handleSubstitutesSave(request, env);
   }
@@ -1842,3 +1889,172 @@ async function handleSchoolRenew(request, env, path) {
   return json({ success: true, message: '续费成功', payment, newExpiresAt: newExpiresAt.toISOString() }, 200, corsHeaders);
 }
 
+
+
+// ============ v181: 腾讯云短信 + 手机号管理 ============
+// __v181SmsSent marker
+
+// 腾讯云 SMS 签名 (TC3-HMAC-SHA256)
+async function sendTencentSms({ secretId, secretKey, appId, templateId, signName, phoneNumber, templateParams }) {
+  const service = 'sms';
+  const host = 'sms.tencentcloudapi.com';
+  const action = 'SendSms';
+  const version = '2021-01-11';
+  const timestamp = Math.floor(Date.now() / 1000);
+  const date = new Date(timestamp * 1000).toISOString().slice(0, 10);
+  
+  const params = {
+    SmsSdkAppId: appId,
+    SignName: signName,
+    TemplateId: templateId,
+    PhoneNumberSet: ['+86' + phoneNumber],
+    TemplateParamSet: templateParams
+  };
+  
+  const payload = JSON.stringify(params);
+  
+  // 拼接规范请求串
+  const canonicalRequest = 'POST\n/\n\ncontent-type:application/json; charset=utf-8\nhost:' + host + '\nx-tc-action:' + action + '\n\ncontent-type;host;x-tc-action\n' + await sha256Hex(payload);
+  
+  // 拼接签名原文字符串
+  const credentialScope = date + '/' + service + '/tc3_request';
+  const stringToSign = 'TC3-HMAC-SHA256\n' + timestamp + '\n' + credentialScope + '\n' + await sha256Hex(canonicalRequest);
+  
+  // 计算签名
+  const secretDateKey = await hmacSha256('TC3-HMAC-SHA256-' + secretKey, date);
+  const secretServiceKey = await hmacSha256Buf(secretDateKey, service);
+  const secretSigningKey = await hmacSha256Buf(secretServiceKey, 'tc3_request');
+  const signature = await hmacSha256Hex(secretSigningKey, stringToSign);
+  
+  const authorization = 'TC3-HMAC-SHA256 Credential=' + secretId + '/' + credentialScope + ', SignedHeaders=content-type;host;x-tc-action, Signature=' + signature;
+  
+  const resp = await fetch('https://' + host, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Authorization': authorization,
+      'Host': host,
+      'X-TC-Action': action,
+      'X-TC-Version': version,
+      'X-TC-Timestamp': String(timestamp),
+      'X-TC-Region': 'ap-guangzhou'
+    },
+    body: payload
+  });
+  
+  const result = await resp.json();
+  if (result.Response && result.Response.SendStatusSet && result.Response.SendStatusSet[0]) {
+    const status = result.Response.SendStatusSet[0];
+    if (status.Code === 'Ok') {
+      return { success: true };
+    }
+    return { success: false, error: status.Message || status.Code };
+  }
+  return { success: false, error: JSON.stringify(result).slice(0, 200) };
+}
+
+async function sha256Hex(text) {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hmacSha256(key, text) {
+  const keyData = new TextEncoder().encode(key);
+  const data = new TextEncoder().encode(text);
+  const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, data);
+  return new Uint8Array(sig);
+}
+
+async function hmacSha256Buf(keyBuf, text) {
+  const data = new TextEncoder().encode(text);
+  const cryptoKey = await crypto.subtle.importKey('raw', keyBuf, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, data);
+  return new Uint8Array(sig);
+}
+
+async function hmacSha256Hex(keyBuf, text) {
+  const data = new TextEncoder().encode(text);
+  const cryptoKey = await crypto.subtle.importKey('raw', keyBuf, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, data);
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// 教师手机号管理
+async function handleTeacherPhonesGet(env) {
+  const data = await env.SCHOOL_SUB.get('teacherPhones', { type: 'json' }) || {};
+  return json({ success: true, data });
+}
+
+async function handleTeacherPhonesSave(request, env) {
+  if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
+  const body = await request.json().catch(() => ({}));
+  const { phoneMap } = body;
+  if (!phoneMap || typeof phoneMap !== 'object') {
+    return json({ success: false, error: '数据格式错误' }, 400);
+  }
+  // 校验手机号格式
+  for (const [name, phone] of Object.entries(phoneMap)) {
+    if (phone && !/^1\d{10}$/.test(phone)) {
+      return json({ success: false, error: name + '的手机号格式不正确：' + phone }, 400);
+    }
+  }
+  await env.SCHOOL_SUB.put('teacherPhones', JSON.stringify(phoneMap));
+  return json({ success: true, message: '教师手机号已保存', count: Object.keys(phoneMap).length });
+}
+
+// 短信配置管理
+async function handleSmsConfigGet(env) {
+  const data = await env.SCHOOL_SUB.get('sms_config', { type: 'json' }) || {};
+  // 脱敏返回
+  return json({ success: true, data: { ...data, secretKey: data.secretKey ? '***已设置***' : '' } });
+}
+
+async function handleSmsConfigSave(request, env) {
+  if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
+  const body = await request.json().catch(() => ({}));
+  const { config } = body;
+  if (!config) return json({ success: false, error: '缺少配置' }, 400);
+  
+  const existing = await env.SCHOOL_SUB.get('sms_config', { type: 'json' }) || {};
+  // 如果 secretKey 是 '***已设置***'，保留原值
+  const finalConfig = {
+    enabled: config.enabled || false,
+    secretId: config.secretId || existing.secretId || '',
+    secretKey: (config.secretKey && config.secretKey !== '***已设置***') ? config.secretKey : existing.secretKey || '',
+    appId: config.appId || existing.appId || '',
+    templateId: config.templateId || existing.templateId || '',
+    signName: config.signName || existing.signName || ''
+  };
+  
+  await env.SCHOOL_SUB.put('sms_config', JSON.stringify(finalConfig));
+  return json({ success: true, message: '短信配置已保存' });
+}
+
+// 短信测试
+async function handleSmsTest(request, env) {
+  if (!authAdmin(request.headers)) return json({ success: false, error: '管理员密码错误' }, 401);
+  const body = await request.json().catch(() => ({}));
+  const { phone } = body;
+  if (!phone || !/^1\d{10}$/.test(phone)) {
+    return json({ success: false, error: '手机号格式不正确' }, 400);
+  }
+  
+  const smsCfg = await env.SCHOOL_SUB.get('sms_config', { type: 'json' }) || {};
+  if (!smsCfg.secretId || !smsCfg.secretKey) {
+    return json({ success: false, error: '短信未配置，请先保存短信配置' }, 400);
+  }
+  
+  const result = await sendTencentSms({
+    secretId: smsCfg.secretId,
+    secretKey: smsCfg.secretKey,
+    appId: smsCfg.appId,
+    templateId: smsCfg.templateId,
+    signName: smsCfg.signName,
+    phoneNumber: phone,
+    templateParams: ['测试老师', '一（1）班', '2026-09-21 星期一', '第3节', '语文']
+  });
+  
+  return json({ success: result.success, message: result.success ? '测试短信已发送' : '发送失败', error: result.error });
+}

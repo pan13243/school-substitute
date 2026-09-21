@@ -7958,3 +7958,189 @@ window.__v180Installed = true;
   console.log('[v180] 桌面角标 + 后台轮询已安装');
 })();
 // ===== end v180 =====
+
+// ===== v181: 短信通知设置 + 教师手机号管理 =====
+window.__v181Installed = true;
+(function v181Init() {
+  // wrap switchPage：加 "sms" 页面
+  var origSwitchPage = window.switchPage;
+  window.switchPage = function(page) {
+    if (page === 'sms') {
+      v181RenderSmsPage();
+      return;
+    }
+    return origSwitchPage.apply(this, arguments);
+  };
+  
+  // wrap renderAppShell：在侧边栏加"短信通知"按钮
+  var origRender = window.renderAppShell;
+  window.renderAppShell = function() {
+    var html = origRender.apply(this, arguments);
+    // 在 </nav> 前插入
+    var navEnd = html.indexOf('</nav>');
+    if (navEnd > 0 && !html.includes('data-page="sms"')) {
+      var btn = '<button class="nav-btn" data-page="sms" onclick="switchPage(\'sms\')" style="color:#6B7280;">📱 短信通知</button>';
+      html = html.substring(0, navEnd) + btn + html.substring(navEnd);
+    }
+    return html;
+  };
+  
+  // 短信设置页面
+  window.v181RenderSmsPage = function() {
+    var area = document.getElementById('main-content') || document.querySelector('.content');
+    if (!area) return;
+    
+    area.innerHTML = '<div style="max-width:800px;margin:0 auto;padding:20px;">' +
+      '<h2 style="margin-bottom:20px;">📱 短信通知设置</h2>' +
+      
+      // 短信开关 + 腾讯云配置
+      '<div style="background:white;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">' +
+        '<h3 style="margin-bottom:16px;color:#1F2937;">腾讯云短信配置</h3>' +
+        '<div id="v181-sms-form">' +
+          '<div style="margin-bottom:12px;"><label style="display:block;font-size:13px;color:#6B7280;margin-bottom:4px;">启用短信通知</label>' +
+          '<select id="v181-sms-enabled" class="form-input"><option value="false">关闭</option><option value="true">开启</option></select></div>' +
+          '<div style="margin-bottom:12px;"><label style="display:block;font-size:13px;color:#6B7280;margin-bottom:4px;">SecretId</label>' +
+          '<input id="v181-sms-secretid" class="form-input" placeholder="AKID..." style="width:100%;"></div>' +
+          '<div style="margin-bottom:12px;"><label style="display:block;font-size:13px;color:#6B7280;margin-bottom:4px;">SecretKey</label>' +
+          '<input id="v181-sms-secretkey" class="form-input" placeholder="如已设置显示 ***，输入新值覆盖" style="width:100%;"></div>' +
+          '<div style="margin-bottom:12px;"><label style="display:block;font-size:13px;color:#6B7280;margin-bottom:4px;">SmsSdkAppId</label>' +
+          '<input id="v181-sms-appid" class="form-input" placeholder="如 1400000000" style="width:100%;"></div>' +
+          '<div style="margin-bottom:12px;"><label style="display:block;font-size:13px;color:#6B7280;margin-bottom:4px;">模板 ID (TemplateId)</label>' +
+          '<input id="v181-sms-tplid" class="form-input" placeholder="如 1000000" style="width:100%;"></div>' +
+          '<div style="margin-bottom:12px;"><label style="display:block;font-size:13px;color:#6B7280;margin-bottom:4px;">签名内容 (SignName)</label>' +
+          '<input id="v181-sms-signname" class="form-input" placeholder="如 双井小学" style="width:100%;"></div>' +
+          '<div style="display:flex;gap:8px;margin-top:16px;">' +
+          '<button class="btn btn-primary" onclick="v181SaveSmsConfig()">保存配置</button>' +
+          '<button class="btn btn-secondary" onclick="v181TestSms()">发送测试短信</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      
+      // 教师手机号管理
+      '<div style="background:white;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
+          '<h3 style="color:#1F2937;margin:0;">教师手机号管理</h3>' +
+          '<button class="btn btn-primary" onclick="v181SavePhones()">保存手机号</button>' +
+        '</div>' +
+        '<div id="v181-phone-list" style="max-height:500px;overflow-y:auto;"><p style="color:#9CA3AF;">加载中...</p></div>' +
+      '</div>' +
+      
+      // 模板说明
+      '<div style="background:#FEF3C7;border-radius:12px;padding:16px;margin-bottom:20px;font-size:13px;color:#92400E;">' +
+        '<p style="font-weight:bold;margin-bottom:8px;">📋 短信模板说明</p>' +
+        '<p>短信内容示例：<br>【双井小学】代课老师 张三，您被安排代课：班级 一（1）班，日期 2026-09-21 星期一，第3节，科目 语文。请按时到岗。</p>' +
+        '<p style="margin-top:8px;">腾讯云模板参数顺序（5个参数）：<br>' +
+        '1: 代课老师姓名<br>2: 班级<br>3: 日期+星期<br>4: 节次<br>5: 科目</p>' +
+        '<p style="margin-top:8px;">请在腾讯云控制台创建短信模板，模板内容如：<br>' +
+        '代课老师{1}，您被安排代课：班级{2}，日期{3}，{4}，科目{5}。请按时到岗。</p>' +
+      '</div>' +
+      
+    '</div>';
+    
+    // 加载现有配置
+    v181LoadSmsConfig();
+    v181LoadPhones();
+  };
+  
+  window.v181LoadSmsConfig = async function() {
+    try {
+      const r = await fetch('/api/sms-config');
+      const d = await r.json();
+      if (d.success && d.data) {
+        var c = d.data;
+        document.getElementById('v181-sms-enabled').value = c.enabled ? 'true' : 'false';
+        document.getElementById('v181-sms-secretid').value = c.secretId || '';
+        document.getElementById('v181-sms-secretkey').value = c.secretKey === '***已设置***' ? '***已设置***' : '';
+        document.getElementById('v181-sms-appid').value = c.appId || '';
+        document.getElementById('v181-sms-tplid').value = c.templateId || '';
+        document.getElementById('v181-sms-signname').value = c.signName || '';
+      }
+    } catch(e) { console.warn('加载短信配置失败', e); }
+  };
+  
+  window.v181SaveSmsConfig = async function() {
+    var config = {
+      enabled: document.getElementById('v181-sms-enabled').value === 'true',
+      secretId: document.getElementById('v181-sms-secretid').value.trim(),
+      secretKey: document.getElementById('v181-sms-secretkey').value.trim(),
+      appId: document.getElementById('v181-sms-appid').value.trim(),
+      templateId: document.getElementById('v181-sms-tplid').value.trim(),
+      signName: document.getElementById('v181-sms-signname').value.trim()
+    };
+    try {
+      const r = await fetch('/api/sms-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pwd': sessionStorage.getItem('adminPwd') || '' },
+        body: JSON.stringify({ config })
+      });
+      const d = await r.json();
+      if (d.success) { toast('短信配置已保存', 'success'); v181LoadSmsConfig(); }
+      else { toast(d.error || '保存失败', 'error'); }
+    } catch(e) { toast('网络错误', 'error'); }
+  };
+  
+  window.v181TestSms = async function() {
+    var phone = prompt('请输入测试手机号：');
+    if (!phone) return;
+    try {
+      const r = await fetch('/api/sms-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pwd': sessionStorage.getItem('adminPwd') || '' },
+        body: JSON.stringify({ phone })
+      });
+      const d = await r.json();
+      if (d.success) { toast('测试短信已发送到 ' + phone, 'success'); }
+      else { toast(d.error || '发送失败', 'error'); }
+    } catch(e) { toast('网络错误', 'error'); }
+  };
+  
+  window.v181LoadPhones = async function() {
+    try {
+      const [phoneR, schR] = await Promise.all([
+        fetch('/api/teacher-phones').then(r => r.json()),
+        fetch('/api/schedule').then(r => r.json())
+      ]);
+      var phones = (phoneR.success ? phoneR.data : {}) || {};
+      var teachers = (schR.success && schR.allTeachers ? schR.allTeachers : []) || [];
+      if (schR.success && schR.data && schR.data.allTeachers) teachers = schR.data.allTeachers;
+      
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
+        '<thead><tr style="border-bottom:2px solid #E5E7EB;"><th style="text-align:left;padding:8px;">教师姓名</th><th style="text-align:left;padding:8px;">手机号</th></tr></thead><tbody>';
+      for (var i = 0; i < teachers.length; i++) {
+        var name = teachers[i];
+        var phone = phones[name] || '';
+        html += '<tr style="border-bottom:1px solid #F3F4F6;">' +
+          '<td style="padding:8px;">' + name + '</td>' +
+          '<td style="padding:8px;"><input class="form-input" data-teacher="' + name + '" value="' + phone + '" placeholder="未填写" style="width:180px;padding:4px 8px;"></td>' +
+        '</tr>';
+      }
+      html += '</tbody></table>';
+      document.getElementById('v181-phone-list').innerHTML = html;
+    } catch(e) {
+      document.getElementById('v181-phone-list').innerHTML = '<p style="color:#EF4444;">加载失败</p>';
+    }
+  };
+  
+  window.v181SavePhones = async function() {
+    var inputs = document.querySelectorAll('#v181-phone-list input[data-teacher]');
+    var phoneMap = {};
+    for (var i = 0; i < inputs.length; i++) {
+      var name = inputs[i].getAttribute('data-teacher');
+      var phone = inputs[i].value.trim();
+      if (phone) phoneMap[name] = phone;
+    }
+    try {
+      const r = await fetch('/api/teacher-phones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pwd': sessionStorage.getItem('adminPwd') || '' },
+        body: JSON.stringify({ phoneMap })
+      });
+      const d = await r.json();
+      if (d.success) { toast('手机号已保存（' + Object.keys(phoneMap).length + '人）', 'success'); }
+      else { toast(d.error || '保存失败', 'error'); }
+    } catch(e) { toast('网络错误', 'error'); }
+  };
+  
+  console.log('[v181] 短信通知设置页面已安装');
+})();
+// ===== end v181 =====
