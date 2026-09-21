@@ -3680,11 +3680,11 @@ async function exportSubKaoqin() {
   // I=迟到、早退、旷工 J=天数 K=前去代课教师 L=班级 M=节次 N=科目 O=节数
   const arr = (n, v) => Array.from({length:n}, () => v);
   const rows = [];
-  rows[0] = arr(15, ''); rows[0][0] = '施秉县双井镇小学、幼儿园教师考勤统计表';
+  rows[0] = arr(15, ''); rows[0][0] = (window.schoolName || '学校') + '教师考勤统计表';
   rows[1] = arr(15, ''); rows[1][0] = '(2025-2026学年度第二学期)';
   rows[2] = arr(15, ''); rows[2][0] = '  (2026年        月)';
   rows[3] = arr(15, ''); rows[3][7] = '登记人:                       ';
-  rows[4] = arr(15, ''); rows[4][0] = '学校(盖章):施秉县双井镇中心小学';
+  rows[4] = arr(15, ''); rows[4][0] = '学校(盖章):' + (window.schoolName || '');
   rows[4][7] = '审核人:                            ';
   // 第 6 行(索引 5):表头(15 列,单行)
   rows[5] = arr(15, '');
@@ -4749,7 +4749,7 @@ async function loadScheduleData() {
     if (r && r.success) {
       scheduleData = {
         timetable: r.data || null,
-        schoolName: r.schoolName || "施秉县双井镇中心小学",
+        schoolName: r.schoolName || "",
         teacherAssignment: r.teacherAssignment || null,
         afterSchoolService: r.afterSchoolService || null,
         calendar: r.calendar || null,
@@ -8133,7 +8133,15 @@ window.__v184Installed = true;
     window.loadScheduleData = function () {
       var args = arguments;
       return orig.apply(this, args).then(function (r) {
-        if (window.schoolName) applySchoolName(window.schoolName);
+        // 关键修复：从 scheduleData 同步到 window.schoolName
+        try {
+          if (window.scheduleData && window.scheduleData.schoolName) {
+            window.schoolName = window.scheduleData.schoolName;
+          } else if (r && r.schoolName) {
+            window.schoolName = r.schoolName;
+          }
+        } catch (e) {}
+        applySchoolName(window.schoolName || '');
         return r;
       });
     };
