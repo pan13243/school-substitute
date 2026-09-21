@@ -443,6 +443,7 @@ async function handleScheduleGet(env) {
     afterSchoolService: cfg.afterSchoolService || null,
     calendar: cfg.calendar || null,
     classes: cfg.classes || [],
+    schoolName: (await getKV(env, 'schoolMeta') || {}).schoolName || '施秉县双井镇中心小学',
     allTeachers,
     extraTeachers: extra,
     clubActivities: cfg.clubActivities || null

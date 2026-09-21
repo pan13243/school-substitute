@@ -1270,7 +1270,7 @@ function renderLogin() {
     <div class="login-card">
       <div class="login-icon">🏫</div>
       <h1>代课调课系统</h1>
-      <p class="login-subtitle">施秉县双井镇中心小学</p>
+      <p class="login-subtitle" id="v186-sn-login">施秉县双井镇中心小学</p>
       <div class="login-tabs">
         <button class="tab-btn active" onclick="setLoginMode('teacher')">教师入口</button>
         <button class="tab-btn" onclick="setLoginMode('admin')">管理员入口</button>
@@ -1438,7 +1438,7 @@ function renderAppShell() {
     <header class="topbar">
       <div class="topbar-left">
         <span class="topbar-icon">🏫</span>
-        <span class="topbar-title">施秉县双井镇中心小学</span>
+        <span class="topbar-title" id="v186-sn-topbar">施秉县双井镇中心小学</span>
         <span class="topbar-sub">代课调课系统</span>
       </div>
       <div class="topbar-right">
@@ -4749,6 +4749,7 @@ async function loadScheduleData() {
     if (r && r.success) {
       scheduleData = {
         timetable: r.data || null,
+        schoolName: r.schoolName || "施秉县双井镇中心小学",
         teacherAssignment: r.teacherAssignment || null,
         afterSchoolService: r.afterSchoolService || null,
         calendar: r.calendar || null,
@@ -4857,7 +4858,7 @@ function renderSettingsPage(area) {
 
     <div class="card">
       <h3>i️ 关于本系统</h3>
-      <p>施秉县双井镇中心小学 · 代课调课系统 v1.0</p>
+      <p id="v186-sn-about">施秉县双井镇中心小学 · 代课调课系统 v1.0</p>
       <p class="text-muted">基于云端数据库,支持多端同步。不依赖主机电脑,随时随地访问。</p>
       <p class="text-muted">默认管理员密码:<code>admin888</code></p>
     </div>
@@ -5210,7 +5211,7 @@ function showSlipPrintModal(slipId) {
         ${stampEl}
         <div style="text-align:center; margin-bottom:20px;">
           <div style="font-size:24px; font-weight:700; letter-spacing:6px;">请假条</div>
-          <div style="font-size:13px; color:#6B7280; margin-top:6px;">施秉县双井镇中心小学</div>
+          <div style="font-size:13px; color:#6B7280; margin-top:6px;" id="v186-sn-footer">施秉县双井镇中心小学</div>
         </div>
         <table style="width:100%; border-collapse:collapse; font-size:15px; line-height:2;">
           <tr>
@@ -8103,3 +8104,38 @@ window.__v184Installed = true;
   console.log('[v184] 标准模板下载入口已安装');
 })();
 // ===== end v184 =====
+
+
+// ===== v186: 动态学校名 =====
+(function () {
+  if (window.__v186Installed) return;
+  window.__v186Installed = true;
+
+  function applySchoolName(name) {
+    if (!name) return;
+    var map = {
+      'v186-sn-login': name,
+      'v186-sn-topbar': name,
+      'v186-sn-about': name + ' · 代课调课系统 v1.0',
+      'v186-sn-footer': name
+    };
+    for (var id in map) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = map[id];
+    }
+    document.title = '代课调课系统 - ' + name;
+  }
+
+  if (window.schoolName) applySchoolName(window.schoolName);
+
+  var orig = window.loadScheduleData;
+  if (orig) {
+    window.loadScheduleData = function () {
+      var args = arguments;
+      return orig.apply(this, args).then(function (r) {
+        if (window.schoolName) applySchoolName(window.schoolName);
+        return r;
+      });
+    };
+  }
+})();
