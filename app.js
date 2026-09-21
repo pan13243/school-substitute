@@ -8139,3 +8139,66 @@ window.__v184Installed = true;
     };
   }
 })();
+
+
+// ===== v187: 删除学校按钮（DOM注入） =====
+(function () {
+  if (window.__v187Installed) return;
+  window.__v187Installed = true;
+
+  window.v187DeleteSchool = async function (schoolId, schoolName) {
+    if (!confirm('确定要删除「' + schoolName + '」吗？\n\n这将同时删除：\n- 学校的独立网页\n- 学校的所有数据 (KV)\n\n此操作不可恢复！')) return;
+    if (!confirm('再次确认：删除后「' + schoolName + '」将无法恢复！')) return;
+    try {
+      var res = await fetch('/api/master/schools/' + schoolId, {
+        method: 'DELETE',
+        headers: { 'x-admin-pwd': adminPwd }
+      });
+      var j = await res.json();
+      if (j.success) {
+        alert('「' + schoolName + '」已删除。');
+        if (window.v171LoadSchools) v171LoadSchools();
+      } else {
+        alert('删除失败: ' + (j.message || '未知错误'));
+      }
+    } catch (e) {
+      alert('网络错误: ' + e.message);
+    }
+  };
+
+  // DOM注入：在v171LoadSchools完成后给每行追加删除按钮
+  var orig = window.v171LoadSchools;
+  if (orig) {
+    window.v171LoadSchools = async function () {
+      var r = orig.apply(this, arguments);
+      if (r && r.then) {
+        await r;
+      }
+      // 等列表渲染完
+      setTimeout(function () {
+        var renewBtns = document.querySelectorAll('[onclick*="v172OpenRenew"]');
+        renewBtns.forEach(function (btn) {
+          // 检查是否已有删除按钮
+          if (btn.nextSibling && btn.nextSibling.className && btn.nextSibling.className.includes('v187-del')) return;
+          var schoolId = btn.getAttribute('data-school-id');
+          var schoolName = btn.getAttribute('data-school-name');
+          if (!schoolId) return;
+          var sep = document.createElement('span');
+          sep.textContent = ' | ';
+          sep.style.color = '#E5E7EB';
+          sep.style.margin = '0 4px';
+          var delBtn = document.createElement('button');
+          delBtn.textContent = '删除';
+          delBtn.style.cssText = 'background:#EF4444;color:#FFF;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:12px;';
+          delBtn.onclick = function (e) {
+            e.stopPropagation();
+            window.v187DeleteSchool(schoolId, schoolName);
+          };
+          btn.parentNode.insertBefore(sep, btn.nextSibling);
+          btn.parentNode.insertBefore(delBtn, sep.nextSibling);
+        });
+      }, 100);
+      return r;
+    };
+  }
+})();

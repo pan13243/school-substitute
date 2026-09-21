@@ -1582,12 +1582,76 @@ if (path === '/api/schedule' || path === '/api/schedule/') {
   }
 
   // ============ 阶段2: 学校删除 API ============
+  // ============ 删除学校 API (DELETE /api/master/schools/:schoolId) ============
+  if (path.startsWith('/api/master/schools/') && request.method === 'DELETE') {
+    return handleDeleteSchool(request, env, path);
+  }
   if (path.startsWith('/api/master/schools/') && path.endsWith('/deprovision')) {
     if (request.method === 'POST') return handleDeprovision(request, env, path);
   }
 
   return json({ success: false, error: 'API 路由未找到: ' + path }, 404);
 }
+// ============ 删除学校 API ============
+async function handleDeleteSchool(request, env, path) {
+  var origin = request.headers.get('Origin') || '';
+  var corsHeaders = {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, x-admin-pwd',
+  };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
+
+  var pwd = request.headers.get('x-admin-pwd') || '';
+  var masterPwdRaw = await env.SCHOOL_SUB.get('__master__admin_pwd');
+  if (pwd !== masterPwdRaw) return json({ success: false, message: '未授权' }, 401, corsHeaders);
+
+  var parts = path.split('/');
+  var schoolId = parts[3];
+  if (!schoolId) return json({ success: false, message: '缺少学校ID' }, 400, corsHeaders);
+
+  var schoolsRaw = await env.SCHOOL_SUB.get('__master__schools');
+  var schools = [];
+  try { schools = JSON.parse(schoolsRaw || '[]'); } catch (e) {}
+  var schoolIdx = schools.findIndex(function(s) { return s.schoolId === schoolId; });
+  if (schoolIdx < 0) return json({ success: false, message: '学校不存在' }, 404, corsHeaders);
+  var school = schools[schoolIdx];
+
+  var rawConfig = await env.SCHOOL_SUB.get('__master__config');
+  var config = {};
+  try { config = JSON.parse(rawConfig || '{}'); } catch (e) {}
+  var CF_TOKEN = config.CF_TOKEN;
+  var CF_ACCOUNT_ID = config.CF_ACCOUNT_ID;
+  if (!CF_TOKEN) return json({ success: false, message: '主系统未配置 CF_TOKEN' }, 500, corsHeaders);
+
+  var results = { pages: false, kv: false, record: false };
+
+  try {
+    var projRes = await cfFetch('/accounts/' + CF_ACCOUNT_ID + '/pages/projects/' + schoolId, {
+      method: 'DELETE', token: CF_TOKEN,
+    });
+    results.pages = projRes.ok || projRes.status === 404;
+  } catch (e) { results.pages = false; }
+
+  if (school.kvNamespaceId) {
+    try {
+      var kvRes = await cfFetch('/accounts/' + CF_ACCOUNT_ID + '/storage/kv/namespaces/' + school.kvNamespaceId, {
+        method: 'DELETE', token: CF_TOKEN,
+      });
+      results.kv = kvRes.ok || kvRes.status === 404;
+    } catch (e) { results.kv = false; }
+  } else {
+    results.kv = true;
+  }
+
+  schools.splice(schoolIdx, 1);
+  await env.SCHOOL_SUB.put('__master__schools', JSON.stringify(schools));
+  results.record = true;
+
+  console.log('[handleDeleteSchool]', school.schoolName, schoolId, JSON.stringify(results));
+  return json({ success: true, message: '学校已删除', results }, 200, corsHeaders);
+}
+
 // ============ 阶段2: handleActivate ============
 async function handleActivate(request, env) {
   if (request.method !== 'POST') return json({ success: false, message: '仅支持 POST' }, 405);
