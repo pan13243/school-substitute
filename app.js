@@ -7821,142 +7821,198 @@ window.__v179Installed = true;
 })();
 // ===== end v179 =====
 
-// ===== v180: 桌面图标角标 + 后台轮询通知 =====
-window.__v180Installed = true;
-(function v180Init() {
-  // 页面心跳：每 5 分钟通知 SW 检查新代课
-  function v180Heartbeat() {
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'v180_heartbeat',
-        teacherName: sessionStorage.getItem('teacherName') || '',
-        isAdmin: (sessionStorage.getItem('role') === 'admin')
-      });
+
+// ===== v182: 手机端角标+系统通知（iOS/Android 兼容）=====
+window.__v182Installed = true;
+(function v182Init() {
+  // ─── 工具函数 ───────────────────────────────────
+  function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // 统一更新角标（兼容所有平台）
+  async function v182UpdateBadge(count) {
+    // 1. 优先用 setAppBadge（桌面 Chrome/Edge/iOS 16.4+）
+    if (navigator.setBadge) {
+      try {
+        if (count > 0) await navigator.setBadge(count);
+        else await navigator.clearBadge();
+      } catch(e) { /* ignore */ }
     }
-    // 也直接在页面端检查（双保险，SW 可能被杀）
-    v180PageCheck();
+    // 2. iOS 专用（老版本 iOS）
+    if (navigator.setAppBadge) {
+      try {
+        if (count > 0) navigator.setAppBadge(count);
+        else navigator.clearAppBadge();
+      } catch(e) { /* ignore */ }
+    }
+    // 3. 更新页面红点
+    v182UpdateDot(count);
+    // 4. 更新标签标题
+    var baseTitle = document.title.replace(/^\[\d+\]\s*/, '');
+    document.title = count > 0 ? '[' + count + '] ' + baseTitle : baseTitle;
   }
 
-  // 页面端检查新代课
-  async function v180PageCheck() {
-    try {
-      const r = await fetch('/api/substitutes');
-      const data = await r.json();
-      if (!data.success || !data.data) return;
-
-      const role = sessionStorage.getItem('role');
-      const myName = sessionStorage.getItem('teacherName') || '';
-
-      let unreadCount = 0;
-
-      if (role === 'teacher' && myName) {
-        // 教师端：检查我的新代课
-        const mySubs = data.data.filter(s => s.substituteTeacher === myName);
-        const notifiedKey = 'notified_substitutes';
-        const notified = JSON.parse(localStorage.getItem(notifiedKey) || '[]');
-        const newSubs = mySubs.filter(s => !notified.includes(s.id));
-        unreadCount = newSubs.length;
-
-        // 更新 app badge
-        if (navigator.setBadge) {
-          if (unreadCount > 0) await navigator.setBadge(unreadCount);
-          else await navigator.clearBadge();
-        }
-
-        // 更新页面红点
-        v180UpdateDot(unreadCount);
-
-        // 如果有新的，标记为已通知（不重复弹）
-        if (newSubs.length > 0) {
-          // 只在页面可见时标记，不可见时保持 badge
-          if (document.visibilityState === 'visible') {
-            // 不在这里标记，让 checkAndNotifyNewSubstitutes 处理
-          }
-        }
-      } else if (role === 'admin') {
-        // 管理员端：待处理代课数
-        const pending = data.data.filter(s => s.status === 'pending').length;
-        unreadCount = pending;
-        if (navigator.setBadge) {
-          if (pending > 0) await navigator.setBadge(pending);
-          else await navigator.clearBadge();
-        }
-        v180UpdateDot(pending);
+  // 页面红点（侧边栏按钮上）
+  function v182UpdateDot(count) {
+    var existing = document.querySelector('.v182-nav-dot');
+    var btns = document.querySelectorAll('.nav-btn');
+    var subBtn = null;
+    for (var i = 0; i < btns.length; i++) {
+      var t = btns[i].textContent || '';
+      if (t.includes('代课') || btns[i].getAttribute('data-page') === 'substitute') {
+        subBtn = btns[i]; subBtn.style.position = 'relative'; break;
       }
-    } catch(e) {
-      console.warn('[v180] 页面端检查失败:', e);
     }
-  }
-
-  // 更新页面上的未读红点
-  function v180UpdateDot(count) {
-    // 在侧边栏"我的代课"按钮上加红点
-    var existing = document.querySelector('.v180-nav-dot');
     if (count > 0) {
-      if (!existing) {
-        var navBtns = document.querySelectorAll('.nav-btn');
-        for (var i = 0; i < navBtns.length; i++) {
-          if (navBtns[i].textContent.includes('代课') || navBtns[i].getAttribute('data-page') === 'substitute') {
-            var dot = document.createElement('span');
-            dot.className = 'v180-nav-dot';
-            dot.style.cssText = 'position:absolute;top:-2px;right:-2px;background:#EF4444;color:white;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:2px solid white;';
-            dot.textContent = count > 99 ? '99+' : count;
-            navBtns[i].style.position = 'relative';
-            navBtns[i].appendChild(dot);
-            break;
-          }
-        }
-      } else {
+      if (!existing && subBtn) {
+        var dot = document.createElement('span');
+        dot.className = 'v182-nav-dot';
+        dot.style.cssText = 'position:absolute;top:-2px;right:-2px;background:#EF4444;color:white;font-size:10px;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:bold;border:2px solid white;padding:0 4px;';
+        dot.textContent = count > 99 ? '99+' : count;
+        subBtn.appendChild(dot);
+      } else if (existing) {
         existing.textContent = count > 99 ? '99+' : count;
         existing.style.display = 'flex';
       }
     } else if (existing) {
       existing.style.display = 'none';
     }
-
-    // 更新 document.title（标签页标题加数字）
-    var baseTitle = document.title.replace(/^\[\d+\]\s*/, '');
-    if (count > 0) {
-      document.title = '[' + count + '] ' + baseTitle;
-    } else {
-      document.title = baseTitle;
-    }
   }
 
-  // 监听 SW 消息
+  // 发系统通知（触发 Android 图标红点 / iOS 通知）
+  async function v182ShowNotification(count, subs) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    if (count <= 0) return;
+    if (!navigator.serviceWorker) return;
+    try {
+      var reg = await navigator.serviceWorker.ready;
+      var title = count === 1 ? '📌 您有 1 条代课安排' : '📌 您有 ' + count + ' 条代课安排';
+      var body = subs && subs[0]
+        ? subs[0].leaveDate + ' ' + subs[0].className + ' 第' + subs[0].period + '节 ' + (subs[0].subject||'')
+        : '请打开系统查看详情';
+      await reg.showNotification(title, {
+        body: body,
+        tag: 'v182-sub-notify',
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect fill="%234A90E2" width="192" height="192" rx="38"/><text x="96" y="128" font-size="90" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">代</text></svg>',
+        badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="24" fill="%23EF4444"/><text x="24" y="32" font-size="22" text-anchor="middle" fill="white" font-weight="bold">' + (count > 9 ? '9+' : count) + '</text></svg>',
+        requireInteraction: false,
+        silent: false,
+        vibrate: [200, 100, 200]
+      });
+    } catch(e) { console.warn('[v182] 通知失败', e); }
+  }
+
+  // ─── 页面端检查新代课 ─────────────────────────────
+  async function v182PageCheck() {
+    try {
+      var r = await fetch('/api/substitutes');
+      var data = await r.json();
+      if (!data.success || !data.data) return;
+
+      var role = sessionStorage.getItem('role');
+      var myName = sessionStorage.getItem('teacherName') || '';
+      var unreadCount = 0;
+      var newSubs = [];
+
+      if (role === 'teacher' && myName) {
+        var mySubs = data.data.filter(function(s) { return s.substituteTeacher === myName; });
+        var notifiedKey = 'v182_notified';
+        var notified = JSON.parse(localStorage.getItem(notifiedKey) || '[]');
+        newSubs = mySubs.filter(function(s) { return !notified.includes(s.id); });
+        unreadCount = newSubs.length;
+
+        if (newSubs.length > 0) {
+          // 后台时发通知
+          if (document.visibilityState === 'hidden') {
+            await v182ShowNotification(unreadCount, newSubs);
+          }
+          // 页面可见时更新 badge
+          await v182UpdateBadge(unreadCount);
+        } else {
+          await v182UpdateBadge(0);
+        }
+
+      } else if (role === 'admin') {
+        var pending = data.data.filter(function(s) { return s.status === 'pending'; }).length;
+        unreadCount = pending;
+        await v182UpdateBadge(pending);
+      } else {
+        await v182UpdateBadge(0);
+      }
+    } catch(e) { console.warn('[v182] 检查失败', e); }
+  }
+
+  // ─── SW 消息监听 ─────────────────────────────────
   if (navigator.serviceWorker) {
     navigator.serviceWorker.addEventListener('message', function(event) {
-      var d = event.data;
-      if (d && d.type === 'v180_new_subs') {
-        v180UpdateDot(d.count);
-        if (d.count > 0 && document.visibilityState !== 'visible') {
-          // 页面在后台时，振动提醒
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      var d = event.data || {};
+      if (d.type === 'v182_new_subs') {
+        v182UpdateBadge(d.count);
+        if (d.count > 0) {
+          if (document.visibilityState === 'hidden') {
+            v182ShowNotification(d.count, d.subs);
+          }
         }
       }
-      // SW 询问 teacherName
-      if (d && d.type === 'v180_get_teacher') {
-        event.ports[0].postMessage({
-          teacherName: sessionStorage.getItem('teacherName') || '',
-          role: sessionStorage.getItem('role') || ''
-        });
+      if (d.type === 'v182_get_teacher_reply') {
+        // SW 询问 teacherName 的回复，已在 SW 端处理
       }
     });
   }
 
-  // 页面可见性变化时立即检查
+  // ─── 通知权限请求 ─────────────────────────────────
+  async function v182RequestPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') return;
+    if (Notification.permission === 'denied') {
+      // 用户拒绝过，提示他开启
+      v182ShowPermHint();
+      return;
+    }
+    // 首次请求
+    var perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      v182UpdatePermStatus(true);
+      // 立即检查一次
+      v182PageCheck();
+    } else {
+      v182UpdatePermStatus(false);
+    }
+  }
+
+  function v182UpdatePermStatus(granted) {
+    var el = document.querySelector('.v182-perm-hint');
+    if (!el) return;
+    if (granted) {
+      el.innerHTML = '✅ 已开启通知提醒';
+      el.style.color = '#10B981';
+      el.style.display = 'block';
+    }
+  }
+
+  function v182ShowPermHint() {
+    var el = document.querySelector('.v182-perm-hint');
+    if (el) { el.style.display = 'block'; }
+  }
+
+  // ─── 事件绑定 ────────────────────────────────────
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible') {
-      v180PageCheck();
+      v182PageCheck();
     }
   });
 
-  // 启动：立即检查 + 每 5 分钟心跳
-  setTimeout(v180PageCheck, 3000); // 页面加载后 3 秒首次检查
-  setInterval(v180Heartbeat, 5 * 60 * 1000); // 5 分钟轮询
+  // ─── 启动 ────────────────────────────────────────
+  // 登录后立即请求权限（3 秒后）
+  setTimeout(v182RequestPermission, 3000);
+  // 每 5 分钟检查一次
+  setInterval(v182PageCheck, 5 * 60 * 1000);
+  // 首次检查（页面加载 5 秒后）
+  setTimeout(v182PageCheck, 5000);
 
-  console.log('[v180] 桌面角标 + 后台轮询已安装');
+  console.log('[v182] 手机端角标+系统通知已安装');
 })();
+// ===== end v182 =====
 // ===== end v180 =====
 
 // ===== v181: 短信通知设置 + 教师手机号管理 =====
