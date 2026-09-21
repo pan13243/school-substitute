@@ -7782,3 +7782,26 @@ window.__v177Installed = true;
   console.log("[v177] 教育主题背景已安装 (纯CSS v2)");
 })();
 // ===== end v177 =====
+
+// ===== v178: 修复 v177 (登录页渐变恢复 + 内容区透明) =====
+window.__v178Installed = true;
+(function v178Init() {
+  // 检查 v177 style 是否存在，存在则在其后追加修正规则；不存在则新建
+  var old = document.getElementById("v177-bg-style");
+  if (old) {
+    // 在 v177 CSS 后面追加 v178 修正规则
+    old.textContent = old.textContent +
+      "\n/* v178 修正覆盖 */\n" +
+      ".login-bg { background: linear-gradient(135deg, #1E3A5F 0%, #2563EB 50%, #0EA5E9 100%) !important; }\n" +
+      ".content { background: transparent !important; }\n" +
+      "body::after { content: \"v178\" !important; }\n";
+    console.log("[v178] 已在 v177 style 上追加修正规则");
+  } else {
+    var s = document.createElement("style");
+    s.id = "v177-bg-style";
+    s.textContent = "/* v178 修复：保留登录页渐变 + 内容区透明让背景透出 */\nbody { background-attachment: fixed !important; }\n.login-bg {\n  background: linear-gradient(135deg, #1E3A5F 0%, #2563EB 50%, #0EA5E9 100%) !important;\n}\n.content {\n  background: transparent !important;\n}\n.sidebar {\n  background: rgba(255, 255, 255, 0.93) !important;\n}\n.topbar {\n  background: rgba(255, 255, 255, 0.05) !important;\n}\nbody::after { content: \"v178\"; }";
+    document.head.appendChild(s);
+    console.log("[v178] v177 style 不存在，新建立");
+  }
+})();
+// ===== end v178 =====
