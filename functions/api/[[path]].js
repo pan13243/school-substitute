@@ -431,6 +431,21 @@ async function putKV(env, key, value) {
 }
 
 // ============ API 处理器 ============
+async function handleAdminVerify(request, env) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const pwd = (body.password || '').toString();
+    const schoolMeta = await getKV(env, 'schoolMeta') || {};
+    const correct = schoolMeta.adminPwd || 'admin888';
+    if (pwd === correct) {
+      return json({ success: true });
+    }
+    return json({ success: false, error: '密码错误' }, 401);
+  } catch (e) {
+    return json({ success: false, error: '验证失败: ' + (e.message || 'unknown') }, 500);
+  }
+}
+
 async function handleScheduleGet(env) {
   const cfg = await getKV(env, 'config') || {};
   // 合并后勤/无课教师名单（extraTeachers 独立存储，重导课表不清除）
@@ -1472,7 +1487,10 @@ export async function onRequest(context) {
     if (method === 'GET') return handlePrincipalPwdGet(request, env);
     if (method === 'PUT') return handlePrincipalPwdPut(request, env);
   }
-if (path === '/api/schedule' || path === '/api/schedule/') {
+if (path === '/api/admin/verify') {
+    if (method === 'POST') return handleAdminVerify(request, env);
+  }
+  if (path === '/api/schedule' || path === '/api/schedule/') {
     if (method === 'GET') return handleScheduleGet(env);
     if (method === 'POST') return handleScheduleImport(request, env);
     if (method === 'DELETE') return handleScheduleDelete(env);

@@ -1325,12 +1325,22 @@ function handleTeacherLogin(teacherName) {
   initApp();
 }
 
-function handleAdminLogin() {
+async function handleAdminLogin() {
   const pwd = $('login-pwd').value.trim();
   if (!pwd) return toast('请输入密码','warning');
-  // 验证管理员密码
-  if (pwd !== 'admin888') {
-    return toast('密码错误,请重新输入','error');
+  // 验证管理员密码 —— 调用 /api/admin/verify 端点（读 schoolMeta.adminPwd，子系统可自定义）
+  try {
+    const vRes = await fetch('/api/admin/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd })
+    });
+    const vJson = await vRes.json();
+    if (!vJson.success) {
+      return toast('密码错误,请重新输入','error');
+    }
+  } catch (e) {
+    return toast('验证异常: ' + (e.message || 'unknown'), 'error');
   }
   adminPwd = pwd;
   isAdmin = true;
