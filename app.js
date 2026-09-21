@@ -7389,7 +7389,7 @@ async function v159Save(id) {
           + '  <div>' + tag + '</div>'
           + '  <div style="color:#6B7280;font-size:12px;text-align:center;" title="' + esc(s.phone || '') + '">' + esc(s.phone || '—') + '</div>'
           + '  <div style="text-align:center;">'
-          + '    <button onclick="v172OpenRenew(\'' + esc(s.schoolId) + '\',\'' + esc(s.schoolName) + '\',' + price + ',' + days + ')" style="background:#1E40AF;color:#FFF;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:12px;">续费</button>'
+          + '    <button onclick="v172OpenRenew(\'' + esc(s.schoolId) + '\',\'' + esc(s.schoolName) + '\',' + price + ',' + days + ')" data-school-id="' + esc(s.schoolId) + '" data-school-name="' + esc(s.schoolName) + '" style="background:#1E40AF;color:#FFF;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:12px;">续费</button>'
           + '  </div>'
           + '</div>';
       });
