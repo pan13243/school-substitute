@@ -1631,7 +1631,14 @@ async function handleDeleteSchool(request, env, path) {
       method: 'DELETE', token: CF_TOKEN,
     });
     results.pages = projRes.ok || projRes.status === 404;
-  } catch (e) { results.pages = false; }
+    if (!results.pages) {
+      var projBody = '';
+      try { projBody = await projRes.text(); } catch(e2) {}
+      console.log('[handleDeleteSchool] Pages delete FAILED for', schoolId, 'status:', projRes.status, 'body:', projBody.slice(0,200));
+    } else {
+      console.log('[handleDeleteSchool] Pages deleted:', schoolId);
+    }
+  } catch (e) { console.log('[handleDeleteSchool] Pages delete EXCEPTION:', schoolId, e.message); results.pages = false; }
 
   if (school.kvNamespaceId) {
     try {
