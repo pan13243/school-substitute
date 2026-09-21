@@ -8112,33 +8112,46 @@ window.__v184Installed = true;
   window.__v186Installed = true;
 
   function applySchoolName(name) {
-    if (!name) return;
+    // 即使 name 为空也执行（避免双井 fallback 残留）
     var map = {
-      'v186-sn-login': name,
-      'v186-sn-topbar': name,
-      'v186-sn-about': name + ' · 代课调课系统 v1.0',
-      'v186-sn-footer': name
+      'v186-sn-login': name || '',
+      'v186-sn-topbar': name || '',
+      'v186-sn-about': (name || '') + ' · 代课调课系统 v1.0',
+      'v186-sn-footer': name || ''
     };
     for (var id in map) {
       var el = document.getElementById(id);
       if (el) el.textContent = map[id];
     }
-    document.title = '代课调课系统 - ' + name;
+    document.title = '代课调课系统 - ' + (name || '');
   }
 
   if (window.schoolName) applySchoolName(window.schoolName);
+
+  // 关键修复1：登录页等不调 loadScheduleData 的页面必须能拿到 schoolName
+  // → IIFE 安装时立即主动 fetch /api/schedule
+  (function fetchAndApply() {
+    var base = (typeof API !== 'undefined' && API.base) || '';
+    var url = (base || '') + '/api/schedule';
+    fetch(url).then(function (res) { return res.json(); }).then(function (j) {
+      if (j && j.schoolName) {
+        window.schoolName = j.schoolName;
+        applySchoolName(window.schoolName);
+      }
+    }).catch(function () {});
+  })();
 
   var orig = window.loadScheduleData;
   if (orig) {
     window.loadScheduleData = function () {
       var args = arguments;
       return orig.apply(this, args).then(function (r) {
-        // 关键修复：从 scheduleData 同步到 window.schoolName
+        // 关键修复2：wrap 后同步 scheduleData.schoolName 到 window.schoolName
         try {
-          if (window.scheduleData && window.scheduleData.schoolName) {
-            window.schoolName = window.scheduleData.schoolName;
-          } else if (r && r.schoolName) {
+          if (r && r.schoolName) {
             window.schoolName = r.schoolName;
+          } else if (window.scheduleData && window.scheduleData.schoolName) {
+            window.schoolName = window.scheduleData.schoolName;
           }
         } catch (e) {}
         applySchoolName(window.schoolName || '');
