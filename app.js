@@ -8144,6 +8144,7 @@ window.__v184Installed = true;
 // ===== v187: 删除学校按钮（DOM注入） =====
 (function () {
   if (window.__v187Installed) return;
+// __v188Installed: 后端 handleDeleteSchool schoolId off-by-one 修复 (parts[4])
   window.__v187Installed = true;
 
   window.v187DeleteSchool = async function (schoolId, schoolName) {
