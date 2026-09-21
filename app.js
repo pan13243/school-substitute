@@ -8204,3 +8204,87 @@ window.__v181Installed = true;
   console.log('[v181] 短信通知设置页面已安装');
 })();
 // ===== end v181 =====
+
+// ===== v184: 标准模板下载入口（在「导入课表」页顶部注入下载卡片）=====
+window.__v184Installed = true;
+(function v184Init() {
+  if (window.__v184Installed !== true) return;
+  window.__v184Installed = true;
+
+  // 通用下载（base64 -> Blob -> a.download）
+  function v184SaveBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 120);
+  }
+
+  window.v184Download = function (key) {
+    var t = window.SCHOOL_TEMPLATES && window.SCHOOL_TEMPLATES[key];
+    if (!t || !t.base64) { alert('模板数据缺失，请刷新页面重试'); return; }
+    try {
+      var byteChars = atob(t.base64);
+      var bytes = new Uint8Array(byteChars.length);
+      for (var i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      v184SaveBlob(new Blob([bytes], { type: t.mime }), t.filename);
+    } catch (e) { alert('下载失败：' + (e && e.message ? e.message : e)); }
+  };
+
+  window.v184DownloadGuide = function () {
+    var g = window.SCHOOL_TEMPLATES && window.SCHOOL_TEMPLATES.guide;
+    if (!g || !g.text) { alert('说明文档缺失，请刷新页面重试'); return; }
+    v184SaveBlob(new Blob([g.text], { type: g.mime }), g.filename);
+  };
+
+  // 注入下载卡片
+  function v184InjCard(area) {
+    var pageEl = area.querySelector ? area.querySelector('.page') : null;
+    if (!pageEl) return;
+    if (pageEl.querySelector('.v184-tpl-card')) return; // 防重
+    var card = document.createElement('div');
+    card.className = 'card v184-tpl-card';
+    card.style.border = '2px solid #4A90E2';
+    card.style.background = '#F5F9FF';
+    card.innerHTML =
+      '<h3>📥 标准模板下载</h3>' +
+      '<p class="text-muted">首次导入前请先下载对应模板，按格式填写后上传，系统可准确解析。' +
+      '三种模板分别用于：总课表、课后服务/晚自习/午休、校历。</p>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' +
+      '<button class="btn btn-primary" onclick="v184Download(\'timetable\')">📊 总课表模板</button>' +
+      '<button class="btn btn-primary" onclick="v184Download(\'afterschool\')">📚 课后服务表模板</button>' +
+      '<button class="btn btn-primary" onclick="v184Download(\'calendar\')">📅 校历表模板</button>' +
+      '<button class="btn" onclick="v184DownloadGuide()">📋 填写说明</button>' +
+      '</div>';
+    // 插入到第一个 .card 之前（标题之后）
+    var firstCard = pageEl.querySelector('.card');
+    if (firstCard) pageEl.insertBefore(card, firstCard);
+    else pageEl.appendChild(card);
+  }
+
+  // wrap renderImportPage
+  if (typeof window.renderImportPage === 'function') {
+    var _origRenderImportPage = window.renderImportPage;
+    window.renderImportPage = function (area) {
+      _origRenderImportPage(area);
+      try { v184InjCard(area); } catch (e) { /* ignore */ }
+    };
+  } else {
+    // 兜底：监听 switchPage 后注入
+    if (typeof window.switchPage === 'function') {
+      var _origSwitch = window.switchPage;
+      window.switchPage = function (page) {
+        _origSwitch.apply(this, arguments);
+        if (page === 'import') {
+          var mc = document.getElementById('main-content');
+          if (mc) setTimeout(function () { try { v184InjCard(mc); } catch (e) {} }, 50);
+        }
+      };
+    }
+  }
+
+  console.log('[v184] 标准模板下载入口已安装');
+})();
+// ===== end v184 =====
