@@ -481,7 +481,7 @@ async function showMySubstitutes() {
     // 我请假的由别人代课,或我帮别人代课
     const mySubstitutes = substituteRecords.filter(s =>
       s.leaveTeacher === currentTeacher || s.substituteTeacher === currentTeacher
-    );
+    ).sort((a,b)=>{const da=a.leaveDate||'',db=b.leaveDate||'';if(!da&&db)return 1;if(da&&!db)return -1;if(da!==db)return da<db?-1:1;return(parseInt(a.period)||0)-(parseInt(b.period)||0);});
 
     const content = mySubstitutes.length === 0 ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无代课记录</p>' :
       `<table class="data-table"><thead><tr><th>类型</th><th>日期</th><th>星期</th><th>班级</th><th>科目</th><th>节次</th><th>对方教师</th></tr></thead><tbody>` +
@@ -490,7 +490,7 @@ async function showMySubstitutes() {
         const type = isMyLeave ? '<span style="color:#F59E0B;">被代课</span>' : '<span style="color:#10B981;">代他人</span>';
         const otherTeacher = isMyLeave ? s.substituteTeacher : s.leaveTeacher;
         const dow = formatSubstituteWeekday(s);
-        return `<tr><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${dow}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'-')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'-')}</td></tr>`;
+        return `<tr data-sub-id="${s.id}"><td>${type}</td><td>${fmtDate(s.leaveDate)}</td><td>${dow}</td><td>${esc(s.className)}</td><td>${esc(s.subject||'-')}</td><td>第${s.period}节</td><td>${esc(otherTeacher||'-')}</td></tr>`;
       }).join('') +
       `</tbody></table>`;
 
@@ -505,12 +505,12 @@ function showAdminSubstituteHistory() {
     return;
   }
 
-  const records = substituteRecords || [];
+  const records = (substituteRecords || []).slice().sort((a,b)=>{const da=a.leaveDate||'',db=b.leaveDate||'';if(!da&&db)return 1;if(da&&!db)return -1;if(da!==db)return da<db?-1:1;return(parseInt(a.period)||0)-(parseInt(b.period)||0);});
   const content = records.length === 0
     ? '<p style="text-align:center; color:#6B7280; padding:20px;">暂无代课记录</p>'
     : `<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>请假教师</th><th>代课教师</th><th>班级</th><th>科目</th><th>节次</th><th>操作</th></tr></thead><tbody>` +
       records.map(s => `
-        <tr>
+        <tr data-sub-id="${s.id}">
           <td>${fmtDate(s.leaveDate)}</td>
           <td>${formatSubstituteWeekday(s)}</td>
           <td>${esc(s.leaveTeacher)}</td>
@@ -6068,7 +6068,9 @@ function v159EnhanceAdminSubModal() {
   if (table.querySelector('.v159-edit-btn')) return; // 防重复
 
   bodyRows.forEach(function (tr, i) {
-    var s = records[i];
+    var subId = tr.getAttribute('data-sub-id');
+    if (!subId) return;
+    var s = v159FindSub(subId);
     if (!s) return;
     var cell = tr.children[3]; // 第4列：代课教师
     if (!cell) return;
@@ -7765,3 +7767,7 @@ async function v159Save(id) {
 
   console.log('[v174] 使用说明页已安装');
 })();
+
+// ===== v176: 代课记录弹窗按日期排序 + v159 用 data-sub-id 按 ID 查 (不依赖位置) =====
+window.__v176Installed = true;
+// ===== end v176 =====
