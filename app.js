@@ -7729,9 +7729,19 @@ async function v159Save(id) {
       <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
         <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">🔔 通知设置 <span style="font-size:12px;font-weight:600;color:#1E40AF;background:#DBEAFE;border-radius:4px;padding:1px 6px;margin-left:4px;">管理员</span></div>
         <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
-          <li>配置企业微信机器人 Webhook，代课安排自动推送通知</li>
+          <li>配置企业微信机器人 Webhook（可选），代课安排自动推送通知</li>
           <li>维护「教师企业微信账号」映射（格式：姓名=账号，每行一条）</li>
           <li>可重置教师隐私密码</li>
+        </ul>
+      </div>
+
+      <div style="border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#111827;font-size:15px;margin-bottom:8px;">🔔 消息提醒与安装</div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:14px;line-height:1.9;">
+          <li>代课安排后系统自动提醒：手机通知 · 桌面图标数字角标 · 侧边栏红点（无需配置）</li>
+          <li>手机建议用 Chrome / Safari / 系统自带浏览器打开本站 →「添加到主屏幕」安装成 App → 首次进入允许「通知」权限</li>
+          <li>微信内置浏览器不支持安装与通知，请改用上述浏览器</li>
+          <li>如需企业微信机器人推送，可在「通知设置」中配置（可选）</li>
         </ul>
       </div>
 
@@ -7741,6 +7751,7 @@ async function v159Save(id) {
           <li>生成「授权码」，用于开通新的学校子系统</li>
           <li>查看学校列表：班级数、年费、到期状态一目了然</li>
           <li>「💰 缴费记录」登记收费，一键「续费」延长到期时间</li>
+          <li>新学校开通：联系管理员获取「授权码」，打开激活页 school-substitute.pages.dev/activate，填写学校名称 / 管理员 / 手机号 / 密码，约 30 秒生成专属系统</li>
         </ul>
       </div>
     </div>
@@ -7755,7 +7766,7 @@ async function v159Save(id) {
       </div>
     </div>
 
-    <div style="text-align:center;color:#9CA3AF;font-size:12px;padding:8px 0 24px;">如有疑问请联系系统管理员</div>
+    <div style="text-align:center;color:#9CA3AF;font-size:12px;padding:8px 0 24px;">如有疑问请联系系统管理员 · 说明更新于 2026-09-22</div>
   </div>
   `;
     area.innerHTML = html;
