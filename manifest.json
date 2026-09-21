@@ -27,6 +27,11 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["education", "productivity"],
-  "lang": "zh-CN"
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "lang": "zh-CN",
+  "badge_color": "#EF4444",
+  "scope": "/"
 }

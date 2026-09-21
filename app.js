@@ -7820,3 +7820,141 @@ window.__v179Installed = true;
   console.log("[v179] 教育主题图案背景已安装 (base64 SVG)");
 })();
 // ===== end v179 =====
+
+// ===== v180: 桌面图标角标 + 后台轮询通知 =====
+window.__v180Installed = true;
+(function v180Init() {
+  // 页面心跳：每 5 分钟通知 SW 检查新代课
+  function v180Heartbeat() {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'v180_heartbeat',
+        teacherName: sessionStorage.getItem('teacherName') || '',
+        isAdmin: (sessionStorage.getItem('role') === 'admin')
+      });
+    }
+    // 也直接在页面端检查（双保险，SW 可能被杀）
+    v180PageCheck();
+  }
+
+  // 页面端检查新代课
+  async function v180PageCheck() {
+    try {
+      const r = await fetch('/api/substitutes');
+      const data = await r.json();
+      if (!data.success || !data.data) return;
+
+      const role = sessionStorage.getItem('role');
+      const myName = sessionStorage.getItem('teacherName') || '';
+
+      let unreadCount = 0;
+
+      if (role === 'teacher' && myName) {
+        // 教师端：检查我的新代课
+        const mySubs = data.data.filter(s => s.substituteTeacher === myName);
+        const notifiedKey = 'notified_substitutes';
+        const notified = JSON.parse(localStorage.getItem(notifiedKey) || '[]');
+        const newSubs = mySubs.filter(s => !notified.includes(s.id));
+        unreadCount = newSubs.length;
+
+        // 更新 app badge
+        if (navigator.setBadge) {
+          if (unreadCount > 0) await navigator.setBadge(unreadCount);
+          else await navigator.clearBadge();
+        }
+
+        // 更新页面红点
+        v180UpdateDot(unreadCount);
+
+        // 如果有新的，标记为已通知（不重复弹）
+        if (newSubs.length > 0) {
+          // 只在页面可见时标记，不可见时保持 badge
+          if (document.visibilityState === 'visible') {
+            // 不在这里标记，让 checkAndNotifyNewSubstitutes 处理
+          }
+        }
+      } else if (role === 'admin') {
+        // 管理员端：待处理代课数
+        const pending = data.data.filter(s => s.status === 'pending').length;
+        unreadCount = pending;
+        if (navigator.setBadge) {
+          if (pending > 0) await navigator.setBadge(pending);
+          else await navigator.clearBadge();
+        }
+        v180UpdateDot(pending);
+      }
+    } catch(e) {
+      console.warn('[v180] 页面端检查失败:', e);
+    }
+  }
+
+  // 更新页面上的未读红点
+  function v180UpdateDot(count) {
+    // 在侧边栏"我的代课"按钮上加红点
+    var existing = document.querySelector('.v180-nav-dot');
+    if (count > 0) {
+      if (!existing) {
+        var navBtns = document.querySelectorAll('.nav-btn');
+        for (var i = 0; i < navBtns.length; i++) {
+          if (navBtns[i].textContent.includes('代课') || navBtns[i].getAttribute('data-page') === 'substitute') {
+            var dot = document.createElement('span');
+            dot.className = 'v180-nav-dot';
+            dot.style.cssText = 'position:absolute;top:-2px;right:-2px;background:#EF4444;color:white;font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:2px solid white;';
+            dot.textContent = count > 99 ? '99+' : count;
+            navBtns[i].style.position = 'relative';
+            navBtns[i].appendChild(dot);
+            break;
+          }
+        }
+      } else {
+        existing.textContent = count > 99 ? '99+' : count;
+        existing.style.display = 'flex';
+      }
+    } else if (existing) {
+      existing.style.display = 'none';
+    }
+
+    // 更新 document.title（标签页标题加数字）
+    var baseTitle = document.title.replace(/^\[\d+\]\s*/, '');
+    if (count > 0) {
+      document.title = '[' + count + '] ' + baseTitle;
+    } else {
+      document.title = baseTitle;
+    }
+  }
+
+  // 监听 SW 消息
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', function(event) {
+      var d = event.data;
+      if (d && d.type === 'v180_new_subs') {
+        v180UpdateDot(d.count);
+        if (d.count > 0 && document.visibilityState !== 'visible') {
+          // 页面在后台时，振动提醒
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+      }
+      // SW 询问 teacherName
+      if (d && d.type === 'v180_get_teacher') {
+        event.ports[0].postMessage({
+          teacherName: sessionStorage.getItem('teacherName') || '',
+          role: sessionStorage.getItem('role') || ''
+        });
+      }
+    });
+  }
+
+  // 页面可见性变化时立即检查
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      v180PageCheck();
+    }
+  });
+
+  // 启动：立即检查 + 每 5 分钟心跳
+  setTimeout(v180PageCheck, 3000); // 页面加载后 3 秒首次检查
+  setInterval(v180Heartbeat, 5 * 60 * 1000); // 5 分钟轮询
+
+  console.log('[v180] 桌面角标 + 后台轮询已安装');
+})();
+// ===== end v180 =====
