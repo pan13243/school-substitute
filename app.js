@@ -3047,6 +3047,83 @@ function switchSubTeacher(teacherName) {
 
 // 渲染指定教师的课表(用于代课安排页课表对比)
 function renderTeacherSubTT(teacherName) {
+  // v198 demo school fake timetable - saves orig and wraps
+  (function(){
+    if (window.__v198Installed) return;
+    window.__v198Installed = true;
+    var DEMO_TA = {
+      '刘洋':   {'一（1）':'数学','二（2）':'语文','五（1）':'音乐','六（1）':'体育'},
+      '吴昊':   {'一（2）':'体育','二（2）':'英语','三（2）':'数学','六（1）':'语文'},
+      '周婷':   {'一（1）':'体育','二（1）':'英语','三（1）':'数学','四（1）':'美术','五（1）':'语文'},
+      '孙悦':   {'二（1）':'音乐','二（2）':'体育','三（2）':'英语','五（1）':'数学'},
+      '张丽':   {'一（1）':'语文','三（1）':'音乐','三（2）':'体育','五（1）':'英语'},
+      '李娜':   {'二（1）':'语文','一（2）':'美术','四（1）':'音乐','五（1）':'体育'},
+      '杨帆':   {'一（1）':'英语','二（1）':'数学','三（1）':'美术','三（2）':'语文'},
+      '林涛':   {'二（2）':'音乐','三（1）':'体育','四（1）':'英语','六（1）':'数学'},
+      '王强':   {'一（1）':'美术','一（2）':'语文','三（2）':'音乐','四（1）':'体育','六（1）':'英语'},
+      '赵磊':   {'一（2）':'英语','二（2）':'数学','四（1）':'语文','三（2）':'美术'},
+      '郑颖':   {'一（2）':'音乐','二（1）':'体育','三（1）':'英语','四（1）':'数学','六（1）':'美术'},
+      '陈静':   {'一（2）':'数学','二（2）':'美术','三（1）':'语文','六（1）':'音乐'}
+    };
+    var D_DAYS = ['星期一','星期二','星期三','星期四','星期五'];
+    var D_CLS = ['一（1）','一（2）','二（1）','二（2）','三（1）','三（2）','四（1）','五（1）','六（1）'];
+    function buildTT(n){
+      var ta = DEMO_TA[n] || {};
+      var r = {};
+      D_DAYS.forEach(function(d){
+        r[d] = {};
+        var di = D_DAYS.indexOf(d);
+        D_CLS.forEach(function(c){
+          var s = ta[c];
+          if (!s) return;
+          var slots = [];
+          var ps = [1,2,3,4,5,6];
+          var cnt = (di + c.charCodeAt(1)) % 3 + 1;
+          for (var i = 0; i < cnt; i++) {
+            var pi = (di * 3 + D_CLS.indexOf(c) * 2 + i) % 6;
+            var p = ps[pi];
+            if (!slots.find(function(x){ return x.period === p; }))
+              slots.push({period:p, subject:s, teacher:n});
+          }
+          if (slots.length) r[d][c] = slots;
+        });
+      });
+      return r;
+    }
+    var __orig = window.__origRenderTeacherSubTT;
+    if (!__orig) return;
+    window.renderTeacherSubTT = function(name){
+      if (!name) return __orig.call(window, name);
+      var td = window.scheduleData || {};
+      var tt = td.timetable || {};
+      var has = false;
+      for (var d in tt) {
+        var cm = tt[d];
+        for (var c in cm) {
+          var arr = cm[c];
+          if (Array.isArray(arr)) {
+            for (var i = 0; i < arr.length; i++) {
+              if (arr[i] && arr[i].teacher === name) { has = true; break; }
+            }
+          }
+          if (has) break;
+        }
+        if (has) break;
+      }
+      if (!has && window.schoolName === '演示学校') {
+        var fakeTT = buildTT(name);
+        var fakeTd = { timetable: fakeTT, afterSchoolService: { slots: [] } };
+        var orig = window.scheduleData;
+        window.scheduleData = fakeTd;
+        var html;
+        try { html = __orig.call(window, name); }
+        finally { window.scheduleData = orig; }
+        return '<div style="margin-bottom:6px;font-size:12px;color:#92400E;background:#FEF3C7;padding:4px 8px;border-radius:4px;border:1px solid #F59E0B;">🎓 演示课表（模拟数据）</div>' + html;
+      }
+      return __orig.call(window, name);
+    };
+  })();
+  if (!teacherName) return '<p class="text-muted">请从上方选择一位教师</p>';
   if (!teacherName) return '<p class="text-muted">请从上方选择一位教师</p>';
   const td = scheduleData || {};
   const tt = td.timetable || {};
