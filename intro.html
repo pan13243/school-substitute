@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>校园代课调课系统 · 请假·审批·代课一键搞定</title>
+<meta name="description" content="校园代课调课系统：老师在线请假、校长审批、系统自动生成代课并通知，考勤一键导出。手机即用，一校一系统，免费试用 90 天。">
+<style>
+  :root{--b1:#1E3A5F;--b2:#2563EB;--b3:#0EA5E9;--ink:#0f2540;--mut:#5b6b82;--card:#ffffff;--line:#e6edf6;--ok:#16a34a;--warn:#d97706;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);line-height:1.6;background:#f5f8fd}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:960px;margin:0 auto;padding:0 16px}
+  /* header */
+  header{position:sticky;top:0;z-index:20;background:rgba(30,58,95,.92);backdrop-filter:blur(8px);color:#fff}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+  .logo{font-weight:700;font-size:16px;letter-spacing:.3px}
+  .logo span{opacity:.85;font-weight:400}
+  .hnav{display:none;gap:22px;font-size:14px;opacity:.9}
+  .hnav a:hover{opacity:1;text-decoration:underline}
+  .hbtn{background:linear-gradient(135deg,var(--b3),var(--b2));padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600}
+  @media(min-width:720px){.hnav{display:flex}}
+  /* hero */
+  .hero{background:linear-gradient(160deg,#1E3A5F 0%,#2563EB 55%,#0EA5E9 100%);color:#fff;padding:54px 0 60px;text-align:center;position:relative;overflow:hidden}
+  .hero::after{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.16) 1px,transparent 1px);background-size:22px 22px;opacity:.5}
+  .hero .wrap{position:relative;z-index:1}
+  .badge{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);padding:5px 14px;border-radius:999px;font-size:13px;margin-bottom:16px}
+  .hero h1{font-size:30px;line-height:1.25;letter-spacing:.5px;margin-bottom:12px}
+  .hero h1 b{color:#a5e4ff}
+  .hero p.sub{font-size:16px;opacity:.95;max-width:620px;margin:0 auto 8px}
+  .hero p.mini{font-size:13px;opacity:.8;margin-bottom:26px}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:13px 24px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;border:0}
+  .btn-primary{background:#fff;color:var(--b2);box-shadow:0 8px 22px rgba(0,0,0,.18)}
+  .btn-ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.5)}
+  .btn:active{transform:translateY(1px)}
+  @media(min-width:720px){.hero h1{font-size:40px}}
+  /* section */
+  section{padding:46px 0}
+  .stitle{text-align:center;margin-bottom:8px;font-size:23px;letter-spacing:.5px}
+  .ssub{text-align:center;color:var(--mut);font-size:14px;margin-bottom:30px}
+  .grid{display:grid;grid-template-columns:1fr;gap:14px}
+  @media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
+  @media(min-width:880px){.grid{grid-template-columns:1fr 1fr 1fr 1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 2px 10px rgba(37,99,235,.05)}
+  .card .ic{font-size:24px;margin-bottom:8px}
+  .card h3{font-size:15px;margin-bottom:5px}
+  .card p{font-size:13px;color:var(--mut)}
+  /* demo */
+  .demo{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .demobox{max-width:640px;margin:0 auto;text-align:center;background:linear-gradient(135deg,#eef5ff,#f3fbff);border:1px dashed #b9d3f2;border-radius:18px;padding:28px 20px}
+  .demobox .btn-primary{background:linear-gradient(135deg,var(--b3),var(--b2));color:#fff;box-shadow:0 8px 22px rgba(37,99,235,.25)}
+  .tag{display:inline-block;font-size:12px;background:#e8f1ff;color:var(--b2);border-radius:999px;padding:3px 10px;margin:0 4px 6px}
+  .note{font-size:12.5px;color:var(--mut);margin-top:14px}
+  /* steps */
+  .steps{display:grid;gap:14px}
+  @media(min-width:720px){.steps{grid-template-columns:1fr 1fr 1fr}}
+  .step{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;position:relative}
+  .step .n{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--b3),var(--b2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;margin-bottom:10px}
+  .step h3{font-size:15px;margin-bottom:5px}
+  .step p{font-size:13px;color:var(--mut)}
+  .open-box{text-align:center;margin-top:26px}
+  .open-box .btn-primary{background:linear-gradient(135deg,var(--b3),var(--b2));color:#fff;box-shadow:0 8px 22px rgba(37,99,235,.25)}
+  .wx{margin-top:14px;font-size:14px;color:var(--mut)}
+  .wx b{color:var(--ink)}
+  /* faq */
+  details{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+  details summary{cursor:pointer;font-weight:600;font-size:14.5px;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  details summary::after{content:"＋";float:right;color:var(--b2);font-weight:700}
+  details[open] summary::after{content:"－"}
+  details p{font-size:13.5px;color:var(--mut);margin-top:10px}
+  /* footer + qr */
+  footer{background:#0f2540;color:#c9d8ea;padding:40px 0 30px;text-align:center}
+  footer .qr{background:#fff;padding:10px;border-radius:14px;display:inline-block;margin-bottom:12px}
+  footer .qr img{display:block;width:190px;height:190px;border-radius:6px}
+  footer .url{font-size:14px;color:#fff;font-weight:600;word-break:break-all;margin-bottom:6px}
+  footer .muted{font-size:12.5px;opacity:.7;line-height:1.9}
+  footer a{color:#8fd0ff}
+  .kbd{font-size:12.5px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">🏫 代课调课系统 <span>· 校园版</span></div>
+    <nav class="hnav">
+      <a href="#feature">功能</a>
+      <a href="#demo">体验</a>
+      <a href="#open">开通</a>
+      <a href="#faq">问答</a>
+    </nav>
+    <a class="hbtn" href="#demo">立即体验</a>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="badge">免费试用 90 天 · 一校一系统 · 数据独立</div>
+    <h1>老师请假、校长审批、<b>代课自动安排</b></h1>
+    <p class="sub">导入课表 → 在线请假 → 校长审批 → 系统自动排好代课 → 通知到人 → 考勤一键导出。<br>手机上就能用，不用装软件、不用培训。</p>
+    <p class="mini">已有多所小学在日常使用</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="https://school-kp6nyd7g.pages.dev" target="_blank" rel="noopener">▶ 立即体验演示系统</a>
+      <a class="btn btn-ghost" href="#open">申请开通我的学校</a>
+    </div>
+  </div>
+</div>
+
+<section id="feature" class="wrap">
+  <h2 class="stitle">它能帮你做什么</h2>
+  <p class="ssub">把最费时、最容易出错的代课调课，交给系统</p>
+  <div class="grid">
+    <div class="card"><div class="ic">📚</div><h3>一键导入课表</h3><p>上传一次总课表 / 课后服务 / 校历，全校排课自动进系统。</p></div>
+    <div class="card"><div class="ic">📝</div><h3>在线请假登记</h3><p>老师手机选日期、节次提交，自动区分事假/病假/公假。</p></div>
+    <div class="card"><div class="ic">✅</div><h3>校长在线审批</h3><p>事假病假一键通过、电子签字，全程留痕可查。</p></div>
+    <div class="card"><div class="ic">🤖</div><h3>自动生成代课</h3><p>按规则智能挑选代课老师，自动避开时间冲突。</p></div>
+    <div class="card"><div class="ic">🔔</div><h3>通知到人</h3><p>手机通知 + 桌面图标数字角标 + 红点，代课老师第一时间知道。</p></div>
+    <div class="card"><div class="ic">📄</div><h3>考勤一键导出</h3><p>谁代了几节课清清楚楚，直接导出 Excel 报表。</p></div>
+    <div class="card"><div class="ic">📱</div><h3>手机即 App</h3><p>添加到主屏幕，像原生 App 一样用，安卓 / 苹果都支持。</p></div>
+    <div class="card"><div class="ic">🏫</div><h3>一校一系统</h3><p>每所学校独立域名与独立数据，互不可见。</p></div>
+  </div>
+</section>
+
+<section id="demo" class="demo">
+  <div class="wrap">
+    <h2 class="stitle">先体验，再决定</h2>
+    <p class="ssub">打开演示系统逛一逛，看看符不符合你们学校的习惯</p>
+    <div class="demobox">
+      <div>
+        <span class="tag">免注册</span><span class="tag">真实界面</span><span class="tag">含示例数据</span>
+      </div>
+      <p style="margin:14px 0 18px;font-size:15px">演示学校已导入课表、请假与代课数据，可直接查看教师端与管理员端。</p>
+      <a class="btn btn-primary" href="https://school-kp6nyd7g.pages.dev" target="_blank" rel="noopener">进入演示系统 →</a>
+      <p class="note">演示数据均为虚构示例，不代表任何真实学校。</p>
+    </div>
+  </div>
+</section>
+
+<section id="open" class="wrap">
+  <h2 class="stitle">三步开通，约 30 秒搞定</h2>
+  <p class="ssub">开通后即为你的学校生成一个专属系统</p>
+  <div class="steps">
+    <div class="step"><div class="n">1</div><h3>联系管理员获取授权码</h3><p>向系统管理员申请一枚授权码（见下方微信）。</p></div>
+    <div class="step"><div class="n">2</div><h3>填写学校信息</h3><p>打开激活页，填学校名称、管理员姓名、手机号与登录密码。</p></div>
+    <div class="step"><div class="n">3</div><h3>自动生成专属系统</h3><p>约 30 秒后获得本校专属网址，立即开始使用。</p></div>
+  </div>
+  <div class="open-box">
+    <a class="btn btn-primary" href="https://school-substitute.pages.dev/activate" target="_blank" rel="noopener">前往激活页 →</a>
+    <p class="wx">需要授权码？联系管理员微信：<b>Kai-2011YM</b></p>
+  </div>
+</section>
+
+<section id="faq" class="wrap">
+  <h2 class="stitle">常见问题</h2>
+  <p class="ssub">还有疑问？直接联系管理员</p>
+  <details><summary>需要安装软件吗？</summary><p>不需要。手机或电脑浏览器打开网页即可使用；手机上可「添加到主屏幕」，像 App 一样从桌面图标进入。</p></details>
+  <details><summary>数据安全吗？会被别的学校看到吗？</summary><p>每所学校拥有独立的系统与独立的数据空间，互相之间不可见。对外公开的只有演示学校（虚构示例数据）。</p></details>
+  <details><summary>收费吗？</summary><p>提供 90 天免费试用。试用到期如需继续使用，请联系管理员。</p></details>
+  <details><summary>在微信里能打开吗？</summary><p>可以浏览。但「添加到主屏幕」和「消息通知」建议用手机自带浏览器（安卓 Chrome、苹果 Safari）打开。</p></details>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="qr"><img id="qr" alt="扫码访问介绍页" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
+    <div class="url">school-substitute.pages.dev/intro</div>
+    <p class="muted">扫码把介绍页分享给其他学校</p>
+    <p class="muted" style="margin-top:14px">校园代课调课系统 · 联系管理员微信 <a href="#" onclick="return false">Kai-2011YM</a><br>本页仅展示演示数据 · 更新于 2026-09-22</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script>
+(function(){
+  var url = 'https://school-substitute.pages.dev/intro';
+  function fallback(msg){
+    var el = document.getElementById('qr');
+    if(!el) return;
+    el.style.display='none';
+    var p = document.createElement('div');
+    p.className='url'; p.style.marginTop='6px'; p.textContent=url;
+    el.parentNode.appendChild(p);
+  }
+  try{
+    if(window.QRCode && QRCode.toDataURL){
+      QRCode.toDataURL(url,{width:380,margin:1,errorCorrectionLevel:'M'}).then(function(u){
+        document.getElementById('qr').src = u;
+      }).catch(function(){ fallback(); });
+    } else { fallback(); }
+  }catch(e){ fallback(); }
+})();
+</script>
+</body>
+</html>
