@@ -3110,7 +3110,7 @@ function renderTeacherSubTT(teacherName) {
         }
         if (has) break;
       }
-      if (!has && window.schoolName === '演示学校') {
+      if (!has && (window.schoolName === '演示学校' || location.hostname === 'school-kp6nyd7g.pages.dev')) {
         var fakeTT = buildTT(name);
         var fakeTd = { timetable: fakeTT, afterSchoolService: { slots: [] } };
         var orig = window.scheduleData;
