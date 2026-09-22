@@ -163,33 +163,12 @@
 
 <footer>
   <div class="wrap">
-    <div class="qr"><img id="qr" alt="扫码访问介绍页" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></div>
+    <div class="qr"><img id="qr" alt="扫码访问介绍页" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQQAAAEEAQMAAAD0xthJAAAABlBMVEX///8AAABVwtN+AAAACXBIWXMAAA7EAAAOxAGVKw4bAAABmElEQVRoge2Zu67DMAxDFWTwmP//S48ZAuuKlJ1H07sXoJU2QJszERIlK2YzfjM2Z1Qru+G7Hrb6seS/LkjUvBff44On+L003iWJ0KwGVzyAcoRiodrSQrOmTECx0OxgCk2iopyQQhGoKGGiV1QIhixCQUGxLzWnQXTHBRFXVBSub56sQdwDTWilx/wXk+iaVt6j5hAQtS28JIk0IZScsUetmV7tqjklYmQJO9TeTSietY/sUiHgyaGa5QyTMx086JZBUgRKqoKjJaOePD3mEk2KoFqWgrFH9e70qDkhgopl444ZZmcDGjPuTdNJ+MOGtvTkwlMjPjn0NVUCnsxTATt2YO1l3CpEzjC28Yg0tiysuaXdTgU6ROUYAyPiSMdjNOU6W5QYwadQrG9ZcvG0nIgawTSq106hpxA81/WIEezZZPJUmOfoSbyJc++Ap2nK7o+eLUb0vZRxLTX2dPeGrUb0Pe7ejwX+rkpVgnId49WHixOW74E41aW/nF1Mish7jvylJ9BjC6dFnI6bWxaute27J09ixq/GH+oLYkOwmts6AAAAAElFTkSuQmCC"></div>
     <div class="url">school-substitute.pages.dev/intro</div>
     <p class="muted">扫码把介绍页分享给其他学校</p>
     <p class="muted" style="margin-top:14px">校园代课调课系统 · 联系管理员微信 <a href="#" onclick="return false">Kai-2011YM</a><br>本页仅展示演示数据 · 更新于 2026-09-22</p>
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-<script>
-(function(){
-  var url = 'https://school-substitute.pages.dev/intro';
-  function fallback(msg){
-    var el = document.getElementById('qr');
-    if(!el) return;
-    el.style.display='none';
-    var p = document.createElement('div');
-    p.className='url'; p.style.marginTop='6px'; p.textContent=url;
-    el.parentNode.appendChild(p);
-  }
-  try{
-    if(window.QRCode && QRCode.toDataURL){
-      QRCode.toDataURL(url,{width:380,margin:1,errorCorrectionLevel:'M'}).then(function(u){
-        document.getElementById('qr').src = u;
-      }).catch(function(){ fallback(); });
-    } else { fallback(); }
-  }catch(e){ fallback(); }
-})();
-</script>
 </body>
 </html>
