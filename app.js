@@ -8245,3 +8245,82 @@ window.__v184Installed = true;
     };
   }
 })();
+
+
+// v197 — 演示学校（schoolName==="演示学校"）允许任意姓名 + 任意密码登录体验
+(function(){
+  if (window.__v197Installed) return;
+  window.__v197Installed = true;
+
+  function isDemo(){ return window.schoolName === '演示学校' || window.__demoForce; }
+
+  function ensureUI(){
+    var tl = document.getElementById('teacher-login');
+    if (tl && !document.getElementById('v197-demo-teacher')){
+      var box = document.createElement('div');
+      box.id = 'v197-demo-teacher';
+      box.style.cssText = 'margin-top:14px;padding:12px;background:#FFF8E1;border:1px dashed #F59E0B;border-radius:10px;display:none';
+      box.innerHTML =
+        '<div style="font-size:12.5px;color:#92400E;margin-bottom:8px">🎮 演示模式：可输入任意姓名直接进入教师端</div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<input id="v197-demo-name" class="form-input" placeholder="输入任意姓名进入体验" data-lpignore="true" data-1p-ignore="true" style="flex:1" onkeydown="if(event.key===\'Enter\')v197DemoEnter()">'+
+          '<button class="btn btn-primary" type="button" onclick="v197DemoEnter()" style="white-space:nowrap">进入</button>'+
+        '</div>';
+      tl.appendChild(box);
+    }
+    var card = document.querySelector('.login-card');
+    if (card && !document.getElementById('v197-demo-banner')){
+      var bn = document.createElement('div');
+      bn.id = 'v197-demo-banner';
+      bn.style.cssText = 'background:#FFF8E1;color:#92400E;font-size:12.5px;padding:6px 12px;border-radius:8px;margin-bottom:10px;text-align:center;border:1px dashed #F59E0B;display:none';
+      bn.innerHTML = '🎮 演示模式：教师端可输入任意姓名；管理员密码随便填（如 123）';
+      card.insertBefore(bn, card.firstChild);
+    }
+  }
+
+  window.v197DemoEnter = function(){
+    var el = document.getElementById('v197-demo-name');
+    var n = (el && el.value || '').trim();
+    if (!n) { if (window.toast) window.toast('请输入姓名','warning'); return; }
+    try { handleTeacherLogin(n); } catch(e){ if (window.toast) window.toast('进入失败:'+e.message,'error'); }
+  };
+
+  function applyDemo(){
+    ensureUI();
+    var demo = isDemo();
+    window.__demoMode = demo;
+    var b = document.getElementById('v197-demo-teacher');
+    if (b) b.style.display = demo ? 'block' : 'none';
+    var bn = document.getElementById('v197-demo-banner');
+    if (bn) bn.style.display = demo ? 'block' : 'none';
+  }
+
+  // wrap handleAdminLogin
+  if (!window.__origHandleAdminLogin) window.__origHandleAdminLogin = handleAdminLogin;
+  window.handleAdminLogin = async function(){
+    if (window.__demoMode){
+      var pwdEl = document.getElementById('login-pwd');
+      var pwd = (pwdEl && pwdEl.value || '').toString().trim() || 'demo';
+      adminPwd = pwd;
+      isAdmin = true;
+      principalAuthed = false;
+      sessionStorage.setItem('role','admin');
+      sessionStorage.setItem('adminPwd', pwd);
+      sessionStorage.removeItem('principalAuthed');
+      currentPage = 'home';
+      if (window.toast) window.toast('(演示)管理员登录成功','success');
+      try { initApp(); } catch(e){}
+      return;
+    }
+    return window.__origHandleAdminLogin.apply(this, arguments);
+  };
+
+  // 首次 + 轮询等待 v192 拿到 schoolName
+  applyDemo();
+  var tries = 0;
+  var iv = setInterval(function(){
+    applyDemo();
+    if (++tries > 60) { clearInterval(iv); }
+  }, 250);
+  document.addEventListener('DOMContentLoaded', applyDemo);
+})();
