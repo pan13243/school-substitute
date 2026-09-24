@@ -51,12 +51,37 @@ function teacherIdentityTier(teacher, targetClass, teacherAssignment) {
   if (['音乐','美术','体育','信息技术','劳动','健康','阅读','书法','综合实践'].includes(top)) return 4;
   return 5;
 }
+// ── 优先级辅助 ───────────────────────────────────────────────────────
+/**
+ * 获取代课老师的主科身份 tier（基于 teacherAssignment 中该老师教的所有班级/学科）
+ * tier: 1=语数 2=英语 3=科学/道法 4=副科(音乐美术体育等) 5=其他
+ */
+function teacherIdentityTier(teacher, teacherAssignment) {
+  if (!teacher || !teacherAssignment) return 5;
+  const subjectCount = {};
+  for (const clsSubs of Object.values(teacherAssignment)) {
+    for (const [subj, t] of Object.entries(clsSubs)) {
+      if (t === teacher) subjectCount[subj] = (subjectCount[subj] || 0) + 1;
+    }
+  }
+  const entries = Object.entries(subjectCount);
+  if (entries.length === 0) return 5;
+  entries.sort((a, b) => b[1] - a[1]);
+  const top = entries[0][0];
+  if (['语文','数学'].includes(top)) return 1;
+  if (top === '英语') return 2;
+  if (['科学','道德与法治','道德'].includes(top)) return 3;
+  if (['音乐','美术','体育','信息技术','劳动','健康','阅读','书法','综合实践'].includes(top)) return 4;
+  return 5;
+}
+
 export function priorityWeight(teacher, slot, teacherAssignment, leaveTeacher) {
+  // 排除请假教师本人
   if (teacher === leaveTeacher) return 999;
-  const { className } = slot;
-  const tier = teacherIdentityTier(teacher, className, teacherAssignment);
+  // 基于老师自身主科身份计算 tier（不看代哪门课）
+  const tier = teacherIdentityTier(teacher, teacherAssignment);
   if (tier <= 4) return tier;
-  return 6;
+  return 6; // 兜底: 未查到主科身份
 }
 
 /**
