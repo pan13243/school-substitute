@@ -3277,8 +3277,8 @@ function getTeacherConflict(t, dow, period, leaveDate) {
 
 // 老师在targetClass的周几属于哪个优先级档位
 // 1=同班语文/数学 2=同班英语 3=同班科学/道法 4=同班副科 5=跨班副科 99=跨班主科(不安排)function getTeacherTier(teacherName, targetClass, dow) {
-  // 基于老师自身主科身份，不看代哪门课
-  var tier = window.__teacherIdentityTier ? window.__teacherIdentityTier(teacherName) : 5;
+  // 基于代课老师在 targetClass 所教科目的身份，同班多科则比课时
+  var tier = window.__teacherIdentityTier ? window.__teacherIdentityTier(teacherName, targetClass) : 5;
   if (tier <= 4) return tier;
   return 5;
 }
@@ -10505,8 +10505,8 @@ async function v159Save(id) {
   var __origGetTeacherTier = window.getTeacherTier;
 
   window.getTeacherTier = function getTeacherTier_patched(teacherName, targetClass, dow) {
-    // 基于老师自身主科身份，不看代哪门课
-    var tier = window.__teacherIdentityTier ? window.__teacherIdentityTier(teacherName) : 5;
+    // 基于代课老师在 targetClass 所教科目的身份，同班多科则比课时
+    var tier = window.__teacherIdentityTier ? window.__teacherIdentityTier(teacherName, targetClass) : 5;
     if (tier <= 4) return tier;
     return 5;
   }
@@ -11623,17 +11623,16 @@ window.__v184Installed = true;
 })();
 
 
-window.__teacherIdentityTier = function(teacher) {
-  if (!teacher) return 5;
+window.__teacherIdentityTier = function(teacher, targetClass) {
+  if (!teacher || !targetClass) return 5;
   var ta = (typeof scheduleData !== 'undefined' ? scheduleData : window.scheduleData);
   ta = ta && ta.teacherAssignment;
   if (!ta) return 5;
+  var clsSubs = ta[targetClass] || {};
   var subjectCount = {};
-  for (var clsSubs of Object.values(ta)) {
-    for (var entry of Object.entries(clsSubs)) {
-      var subj = entry[0], t = entry[1];
-      if (t === teacher) subjectCount[subj] = (subjectCount[subj] || 0) + 1;
-    }
+  for (var entry of Object.entries(clsSubs)) {
+    var subj = entry[0], t = entry[1];
+    if (t === teacher) subjectCount[subj] = (subjectCount[subj] || 0) + 1;
   }
   var entries = Object.entries(subjectCount);
   if (entries.length === 0) return 5;
