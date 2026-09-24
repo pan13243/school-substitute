@@ -6089,17 +6089,34 @@ function v159OpenEdit(id) {
   if (!s) { toast('记录不存在', 'error'); return; }
   var current = s.substituteTeacher || '';
 
-  // 智能过滤：复用 getSubstituteOptions（排除请假教师、当天请假者、有课冲突者）
+  // 智能过滤：复用 getSubstituteOptions（排除请假教师、当天请假者、有课冲突者，按优先级 tier 排序）
+  // scheduleData 未加载时等待（loadScheduleData 完成后自动重新渲染）
+  if (!scheduleData || !scheduleData.allTeachers || scheduleData.allTeachers.length === 0) {
+    toast('课表加载中，请稍后再试', 'warning');
+    // 等待 scheduleData 加载完成后再打开弹窗
+    var _waitCount = 0;
+    var _waitTimer = setInterval(function() {
+      _waitCount++;
+      if (scheduleData && scheduleData.allTeachers && scheduleData.allTeachers.length > 0) {
+        clearInterval(_waitTimer);
+        v159OpenEdit(id); // 重新打开
+      } else if (_waitCount > 50) {
+        clearInterval(_waitTimer);
+        toast('课表加载超时', 'error');
+      }
+    }, 200);
+    return;
+  }
   var opts = '';
   try {
     if (typeof getSubstituteOptions === 'function') {
       opts = getSubstituteOptions(current, s) || '';
     }
-  } catch (e) { opts = ''; console.log('[v159] getSubstituteOptions 异常:', e); }
+  } catch (e) { console.error('[v159] getSubstituteOptions 异常:', e); opts = ''; }
 
-  // 兜底：如果没拿到选项，用全部教师
+  // 兜底：getSubstituteOptions 返回空（无合适教师/异常），用全量列表供管理员选择
   if (!opts) {
-    var teachers = (typeof scheduleData !== 'undefined' && scheduleData && scheduleData.allTeachers) ? scheduleData.allTeachers : [];
+    var teachers = scheduleData.allTeachers || [];
     opts = teachers.map(function (t) {
       return '<option value="' + esc(t) + '"' + (t === current ? ' selected' : '') + '>' + esc(t) + '</option>';
     }).join('');
