@@ -3223,8 +3223,8 @@ function getTeacherConflict(t, dow, period, leaveDate) {
 
 // 老师在targetClass的周几属于哪个优先级档位
 // 1=同班语文/数学 2=同班英语 3=同班科学/道法 4=同班副科 5=跨班副科 99=跨班主科(不安排)function getTeacherTier(teacherName, targetClass, dow) {
-  // 基于老师自身主科身份，不看代哪门课
-  var tier = window.__teacherIdentityTier ? window.__teacherIdentityTier(teacherName) : 5;
+  // 基于"老师在被代班级教什么"算 tier（看 targetClass）
+  var tier = window.__teacherIdentityTier ? window.__teacherIdentityTier(teacherName, targetClass) : 5;
   if (tier <= 4) return tier;
   return 5;
 }
@@ -3286,7 +3286,7 @@ function getSubstituteOptions(currentTeacher, s) {
     const tier = getTeacherTier(t, targetClass, dow);
     if (tier === 99) continue; // 跨班主科不安排
     const curTier = t === currentTeacher ? tier : getCurrentTier(currentTeacher, targetClass, dow);
-    result.push({ name: t, tier: (t === currentTeacher ? tier : getCurrentTier(currentTeacher, targetClass, dow)) });
+    result.push({ name: t, tier });
   }
   // 按档位排序:1→2→3→4→5,同档位按姓名
   result.sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name, 'zh'));
@@ -8177,17 +8177,26 @@ window.__v184Installed = true;
 })();
 
 
-window.__teacherIdentityTier = function(teacher) {
+window.__teacherIdentityTier = function(teacher, targetClass) {
   if (!teacher) return 5;
   var ta = (typeof scheduleData !== 'undefined' ? scheduleData : window.scheduleData);
   ta = ta && ta.teacherAssignment;
   if (!ta) return 5;
+
+  // 核心：按 teacherAssignment[targetClass] 里该老师教什么算 tier（和 algorithm.js v208 一致）
+  // 不同班级 → 不同 tier → 不同下拉顺序
+  var clsSubs;
+  if (targetClass && ta[targetClass]) {
+    clsSubs = ta[targetClass];
+  } else {
+    // 没指定班级时退回到跨班平均（保留旧行为兼容）
+    clsSubs = {};
+    for (var k of Object.keys(ta)) { Object.assign(clsSubs, ta[k]); }
+  }
   var subjectCount = {};
-  for (var clsSubs of Object.values(ta)) {
-    for (var entry of Object.entries(clsSubs)) {
-      var subj = entry[0], t = entry[1];
-      if (t === teacher) subjectCount[subj] = (subjectCount[subj] || 0) + 1;
-    }
+  for (var entry of Object.entries(clsSubs)) {
+    var subj = entry[0], t = entry[1];
+    if (t === teacher) subjectCount[subj] = (subjectCount[subj] || 0) + 1;
   }
   var entries = Object.entries(subjectCount);
   if (entries.length === 0) return 5;
