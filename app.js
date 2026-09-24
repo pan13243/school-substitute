@@ -3286,7 +3286,7 @@ function getSubstituteOptions(currentTeacher, s) {
     const tier = getTeacherTier(t, targetClass, dow);
     if (tier === 99) continue; // 跨班主科不安排
     const curTier = t === currentTeacher ? tier : getCurrentTier(currentTeacher, targetClass, dow);
-    result.push({ name: t, tier });
+    result.push({ name: t, tier: (t === currentTeacher ? tier : getCurrentTier(currentTeacher, targetClass, dow)) });
   }
   // 按档位排序:1→2→3→4→5,同档位按姓名
   result.sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name, 'zh'));
