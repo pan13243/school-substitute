@@ -32,7 +32,7 @@ const LOOSE_MODE_TEACHERS = [];
  * tier: 1=语数 2=英语 3=科学/道法 4=副科 5=其他
  * 同班多科时取课时最多的科目
  */
-function teacherIdentityTier(teacher, targetClass, teacherAssignment) {
+function teacherIdentityTierByClass(teacher, targetClass, teacherAssignment) {
   if (!teacher || !targetClass || !teacherAssignment) return 5;
   const clsSubs = teacherAssignment[targetClass] || {};
   // 找该老师在该班教的所有科目及课时数
@@ -78,8 +78,9 @@ function teacherIdentityTier(teacher, teacherAssignment) {
 export function priorityWeight(teacher, slot, teacherAssignment, leaveTeacher) {
   // 排除请假教师本人
   if (teacher === leaveTeacher) return 999;
-  // 基于老师自身主科身份计算 tier（不看代哪门课）
-  const tier = teacherIdentityTier(teacher, teacherAssignment);
+  // 按"老师在被代班级教什么"算 tier（与前端 __teacherIdentityTier 对齐）
+  const targetClass = slot && slot.className;
+  const tier = teacherIdentityTierByClass(teacher, targetClass, teacherAssignment);
   if (tier <= 4) return tier;
   return 6; // 兜底: 未查到主科身份
 }
