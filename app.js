@@ -3282,7 +3282,7 @@ function getSubstituteOptions(currentTeacher, s) {
         r => r.substituteTeacher === t && r.leaveDate === leaveDate && r.period == period
       );
       if (already) continue;
-    }(含课后服务单/双周过滤)
+    } // (含课后服务单/双周过滤)
     const tier = getTeacherTier(t, targetClass, dow);
     if (tier === 99) continue; // 跨班主科不安排
     const curTier = t === currentTeacher ? tier : getCurrentTier(currentTeacher, targetClass, dow);
