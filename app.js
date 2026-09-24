@@ -6654,7 +6654,15 @@ function getSubstituteOptions(currentTeacher, s) {
   for (const t of teachers) {
     if (t === s.leaveTeacher) continue; // 不安排自己
     if (absentTeachers.has(t)) continue; // 当天已请假的老师过滤掉
-    if (getTeacherConflict(t, dow, period, leaveDate)) continue; // 有课的老师过滤掉(含课后服务单/双周过滤)
+    if (getTeacherConflict(t, dow, period, leaveDate)) continue; // 有课的老师过滤掉
+    // 过滤：当天该节课已被安排代课的老师（不去节数限制）
+    if (period && leaveDate) {
+      const already = (window.substituteRecords || []).some(
+        r => r.substituteTeacher === t && r.leaveDate === leaveDate && r.period == period
+      );
+      if (already) continue;
+    // (含课后服务单/双周过滤)
+    }
     const tier = getTeacherTier(t, targetClass, dow);
     if (tier === 99) continue; // 跨班主科不安排
     const curTier = t === currentTeacher ? tier : getCurrentTier(currentTeacher, targetClass, dow);

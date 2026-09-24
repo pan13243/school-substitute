@@ -104,7 +104,10 @@ export function findSubstitute(leaveTeacher, leaveDate, slot, teacherSchedule,
       if (t in teacherSchedule && slotKey in teacherSchedule[t]) return false;
       const daySub = (existingSubs[t] || 0) + tempSchedule.filter(
         s => s.teacher === t && s.date === leaveDate).length;
-      if (daySub >= 2) return false;
+      // 不再限制节数，只检查 tempSchedule 中该老师是否已代过这节
+      const alreadyAssignedThisSlot = tempSchedule.some(s =>
+        s.teacher === t && s.date === leaveDate && s.period === period);
+      if (alreadyAssignedThisSlot) return false;
       return true;
     })
     .map(t => ({
