@@ -1,31 +1,46 @@
 /**
- * 代课优先级算法
- * 优先级：同班主科(语数英) > 同班道法/科学 > 同班其他副科 > 跨班支援
+ * 代课优先级算法（v188 与 functions/api/[[path]].js 口径统一）
+ * 身份只看"被代班级"课表：课时最多的科目决定档位；同班多科按课时数排（平手取档位更高的科目）。
+ * 1=语文/数学 2=英语 3=科学/道德与法治 4=其他科目(综合实践/音乐/体育/健康/美术/劳动/地方/…)
+ * 5=其他班老师（不看身份，跨班主科不排除）；每天代课节数不限制
  */
 
-export const MAIN_SUBJECTS  = ['语文', '数学'];
-export const SECONDARY_EARLY = ['英语'];
-export const SECONDARY_LATE  = ['道德与法治', '道德', '科学'];
-export const SIDE_SUBJECTS   = ['音乐', '美术', '体育', '信息技术', '劳动', '健康', '阅读', '书法'];
-export const ADMIN_TEACHERS  = ['龙燕', '龙光辉', '潘懂平'];
+export const TIER1_SUBJECTS = ['语文', '数学'];
+export const TIER3_SUBJECTS = ['科学', '道德与法治', '道德'];
 
-/**
- * 计算代课优先级权重（越小越优先）
- */
-export function priorityWeight(teacher, slot, teacherAssignment, leaveTeacher) {
-  if (teacher === leaveTeacher) return 999;
-  const { className, subject } = slot;
-  const clsSubjects = teacherAssignment[className] || {};
-  if (clsSubjects[subject] === teacher) {
-    if (subject === '语文') return 1;
-    if (subject === '数学') return 2;
-    if (SECONDARY_EARLY.includes(subject)) return 3;
-    if (subject === '道德与法治' || subject === '道德') return 4;
-    if (subject === '科学') return 5;
-    return 6;
+export function subjectTier(subject) {
+  if (TIER1_SUBJECTS.includes(subject)) return 1;
+  if (subject === '英语') return 2;
+  if (TIER3_SUBJECTS.includes(subject)) return 3;
+  return 4;
+}
+
+// 从课表统计 {班级: {教师: {科目: 课时数}}}
+export function buildClassTeachingCounts(timetable) {
+  const counts = {};
+  for (const classMap of Object.values(timetable || {})) {
+    for (const [cls, periods] of Object.entries(classMap || {})) {
+      if (!counts[cls]) counts[cls] = {};
+      for (const s of (periods || [])) {
+        if (!s || !s.subject) continue;
+        const ts = (Array.isArray(s.teachers) && s.teachers.length) ? s.teachers : (s.teacher ? [s.teacher] : []);
+        for (const t of ts) {
+          if (!t) continue;
+          if (!counts[cls][t]) counts[cls][t] = {};
+          counts[cls][t][s.subject] = (counts[cls][t][s.subject] || 0) + 1;
+        }
+      }
+    }
   }
-  if (Object.values(clsSubjects).includes(teacher)) return 7;
-  return 9;
+  return counts;
+}
+
+export function priorityWeight(teacher, className, classCounts) {
+  const subjCounts = classCounts?.[className]?.[teacher];
+  if (!subjCounts) return 5; // 不在被代班级任教 → 其他班老师，第5档
+  const entries = Object.entries(subjCounts);
+  entries.sort((a, b) => (b[1] - a[1]) || (subjectTier(a[0]) - subjectTier(b[0])));
+  return subjectTier(entries[0][0]);
 }
 
 /**
@@ -52,27 +67,43 @@ export function buildTeacherSchedule(timetable) {
  * 找单个代课教师
  */
 export function findSubstitute(leaveTeacher, leaveDate, slot, teacherSchedule,
-                               teacherAssignment, existingSubs = {}, tempSchedule = []) {
+                               teacherAssignment, existingSubs = {}, tempSchedule = [], classCounts = null) {
   const { className, subject, period } = slot;
-  const slotKey = `${leaveDate}_${period}`;
+  const day = normalizeDay(leaveDate);
+  const slotKey = `${day}_${period}`;
   const allTeachers = Object.keys(teacherSchedule);
+  const counts = classCounts || buildClassTeachingCountsFromTA(teacherAssignment);
   const candidates = allTeachers
     .filter(t => {
       if (t === leaveTeacher) return false;
-      if (ADMIN_TEACHERS.includes(t)) return false;
       if (t in teacherSchedule && slotKey in teacherSchedule[t]) return false;
-      const daySub = (existingSubs[t] || 0) + tempSchedule.filter(
-        s => s.teacher === t && s.date === leaveDate).length;
-      if (daySub >= 2) return false;
+      // 已被安排代课/同批临时安排的占用检查（同日同时段）
+      const daySubsSameSlot = tempSchedule.filter(
+        s => s.teacher === t && s.date === day && String(s.period) === String(period));
+      if (daySubsSameSlot.length > 0) return false;
       return true;
     })
     .map(t => ({
       teacher: t,
-      weight: priorityWeight(t, { className, subject }, teacherAssignment, leaveTeacher),
-      dayLoad: Object.keys(teacherSchedule[t] || {}).filter(k => k.startsWith(leaveDate)).length
+      weight: priorityWeight(t, className, counts),
+      dayLoad: Object.keys(teacherSchedule[t] || {}).filter(k => k.startsWith(day + '_')).length
     }))
     .sort((a, b) => a.weight !== b.weight ? a.weight - b.weight : a.dayLoad - b.dayLoad);
   return candidates[0]?.teacher || null;
+}
+
+// teacherAssignment({班:{科目:教师}}) 无课时数时的近似兜底（每科计1）
+function buildClassTeachingCountsFromTA(teacherAssignment) {
+  const counts = {};
+  for (const [cls, subs] of Object.entries(teacherAssignment || {})) {
+    counts[cls] = {};
+    for (const [subj, t] of Object.entries(subs || {})) {
+      if (!t) continue;
+      if (!counts[cls][t]) counts[cls][t] = {};
+      counts[cls][t][subj] = (counts[cls][t][subj] || 0) + 1;
+    }
+  }
+  return counts;
 }
 
 /**
@@ -80,6 +111,7 @@ export function findSubstitute(leaveTeacher, leaveDate, slot, teacherSchedule,
  */
 export function generateSubstitutes(timetable, teacherAssignment, leaves, targetDate) {
   const { teacherSchedule } = buildTeacherSchedule(timetable);
+  const classCounts = buildClassTeachingCounts(timetable);
   const results = [];
   const existingSubs  = {};
   const tempSchedule  = [];
@@ -113,7 +145,7 @@ export function generateSubstitutes(timetable, teacherAssignment, leaves, target
       const subTeacher = findSubstitute(
         leave.teacherName, leaveDay,
         { className, subject, period },
-        teacherSchedule, teacherAssignment, existingSubs, tempSchedule
+        teacherSchedule, teacherAssignment, existingSubs, tempSchedule, classCounts
       );
       if (subTeacher) {
         const rec = {

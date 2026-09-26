@@ -135,49 +135,49 @@ function getTeacherTopSubject(teacher, teacherAssignment) {
   return allSubjects[0] || null;
 }
 
-function priorityWeight(teacher, subject, className, teacherAssignment) {
-  // 去代课老师在同班的所有任教科目
-  const inClassSubjects = (() => {
-    const subs = teacherAssignment?.[className] || {};
-    const result = [];
-    for (const [subj, t] of Object.entries(subs)) {
-      if (t === teacher) result.push(subj);
-    }
-    return result;
-  })();
+// ══ v188 统一档位规则（与前端 __teacherIdentityTier 完全一致）══
+// 身份只看"被代班级"的课表：该老师在被代班级各科目的课时数，课时最多的科目决定身份；
+// 课时数相同则取档位更高（数字更小）的科目。不看所代科目的身份。
+// 1=语文/数学  2=英语  3=科学/道德与法治
+// 4=其他科目（综合实践/音乐/体育/健康/美术/劳动/地方/信息技术等一切非主科）
+// 5=其他班的老师（不在被代班级任教，不看其身份）；跨班主科不再排除
+const TIER1_SUBJECTS = ['语文', '数学'];
+const TIER3_SUBJECTS = ['科学', '道德与法治', '道德'];
 
-  // 去代课老师在所有班的所有任教科目
-  const allSubjects = (() => {
-    const result = [];
-    for (const cls in teacherAssignment) {
-      const subs = teacherAssignment[cls] || {};
-      for (const [subj, t] of Object.entries(subs)) {
-        if (t === teacher) result.push(subj);
+function subjectTier(subject) {
+  if (TIER1_SUBJECTS.includes(subject)) return 1;
+  if (subject === '英语') return 2;
+  if (TIER3_SUBJECTS.includes(subject)) return 3;
+  return 4;
+}
+
+// 从课表统计 {班级: {教师: {科目: 课时数}}}（支持 teachers 数组形式）
+function buildClassTeachingCounts(timetable) {
+  const counts = {};
+  for (const classMap of Object.values(timetable || {})) {
+    for (const [cls, periods] of Object.entries(classMap || {})) {
+      if (!counts[cls]) counts[cls] = {};
+      for (const s of (periods || [])) {
+        if (!s || !s.subject) continue;
+        const ts = (Array.isArray(s.teachers) && s.teachers.length) ? s.teachers : (s.teacher ? [s.teacher] : []);
+        for (const t of ts) {
+          if (!t) continue;
+          if (!counts[cls][t]) counts[cls][t] = {};
+          counts[cls][t][s.subject] = (counts[cls][t][s.subject] || 0) + 1;
+        }
       }
     }
-    return result;
-  })();
-
-  // 在同班吗？
-  const inSameClass = inClassSubjects.length > 0;
-
-  if (inSameClass) {
-    // 1档：同班 + 该班教语文或数学
-    if (inClassSubjects.some(s => ['语文','数学'].includes(s))) return 1;
-    // 2档：同班 + 该班教英语
-    if (inClassSubjects.includes('英语')) return 2;
-    // 3档：同班 + 该班教科学或道德与法治
-    if (inClassSubjects.some(s => ['科学','道德与法治','道德'].includes(s))) return 3;
-    // 4档：同班 + 只教副科
-    return 4;
   }
+  return counts;
+}
 
-  // 跨班：判断去代课老师跨班身份
-  const isMain = allSubjects.some(s => ['语文','数学','英语','科学','道德与法治','道德'].includes(s));
-  // 5档：跨班 + 副科身份
-  if (!isMain) return 5;
-  // 99：跨班 + 主科身份（不安排）
-  return 99;
+function priorityWeight(teacher, className, classCounts) {
+  const subjCounts = classCounts?.[className]?.[teacher];
+  if (!subjCounts) return 5; // 不在被代班级任教 → 其他班老师，第5档（不看身份）
+  const entries = Object.entries(subjCounts);
+  // 课时多者优先；课时相同取档位更高的科目
+  entries.sort((a, b) => (b[1] - a[1]) || (subjectTier(a[0]) - subjectTier(b[0])));
+  return subjectTier(entries[0][0]);
 }
 function buildTeacherSchedule(timetable) {
   const ts = {};
@@ -196,7 +196,7 @@ function buildTeacherSchedule(timetable) {
   return { teacherSchedule: ts, allClasses: [...allClasses] };
 }
 
-function findSubstitute({ leaveTeacher, className, subject, day, period, teacherSchedule, teacherAssignment, existingSubs = [], absentTeachers = null, occupiedSlots = null }) {
+function findSubstitute({ leaveTeacher, className, subject, day, period, teacherSchedule, classCounts, existingSubs = [], absentTeachers = null, occupiedSlots = null }) {
   const slotKey = `${day}_${period}`;
   const candidates = [];
   for (const [t, schedule] of Object.entries(teacherSchedule)) {
@@ -204,20 +204,32 @@ function findSubstitute({ leaveTeacher, className, subject, day, period, teacher
     // ADMIN_TEACHERS 限制已移除，任何老师均可参与代课排序（2026-08-14）
     // 【请假排除】当天已有请假记录的教师不能安排代课
     if (absentTeachers && absentTeachers.has(t)) continue;
-    // 【时段占用】该时段有正课或课后服务值班的教师不能安排
+    // 【时段占用】该时段有正课、课后服务值班或已被安排代课的教师不能安排
     if (schedule[slotKey]) continue;
     if (occupiedSlots && occupiedSlots[slotKey] && occupiedSlots[slotKey].has(t)) continue;
     const daySlots = Object.keys(schedule).filter(k => k.startsWith(day + '_'));
-    const weight = priorityWeight(t, subject, className, teacherAssignment);
-    if (weight >= 99) continue; // weight=99 为主科老师跨班，不安排
+    const weight = priorityWeight(t, className, classCounts);
     candidates.push({ teacher: t, weight, workload: daySlots.length });
   }
+  // 同档位时按当天总课时少者优先（副科老师优先支援）
   candidates.sort((a, b) => a.weight - b.weight || a.workload - b.workload);
   return candidates[0]?.teacher || null;
 }
 
-function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchoolService, calendar, targetDate }) {
+function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchoolService, calendar, targetDate, existingSubs: persistedSubs = [] }) {
   const { teacherSchedule, allClasses } = buildTeacherSchedule(timetable);
+  // v188: 按课表统计各班各教师科目课时，统一档位口径（与前端下拉一致）
+  const classCounts = buildClassTeachingCounts(timetable);
+  // v188: 已保存的代课记录计入占用，防止新方案与已有代课在同一时段撞车
+  for (const r of (persistedSubs || [])) {
+    if (!r || r.status !== 'arranged' || !r.substituteTeacher) continue;
+    const d = normalizeDay(r.dayOfWeek || '');
+    const p = r.period;
+    if (!d || !p) continue;
+    const key = `${d}_${p}`;
+    if (!teacherSchedule[r.substituteTeacher]) teacherSchedule[r.substituteTeacher] = {};
+    teacherSchedule[r.substituteTeacher][key] = { className: r.className, subject: r.subject, period: p, day: d };
+  }
   const results = [];
   const existingSubs = [];
 
@@ -313,7 +325,7 @@ function generateSubstitutes({ leaves, timetable, teacherAssignment, afterSchool
         day: leaveWeekday,
         period: slot.period,
         teacherSchedule,
-        teacherAssignment,
+        classCounts,
         existingSubs,
         absentTeachers: absentByDate.get(leave.leaveDate || targetDate) || null,
         occupiedSlots: buildOccupiedSlots(leave.leaveDate || targetDate)
@@ -902,7 +914,8 @@ async function handleSubstitutesGenerate(request, env) {
     teacherAssignment: cfg.teacherAssignment,
     afterSchoolService: cfg.afterSchoolService,
     calendar: cfg.calendar,
-    targetDate
+    targetDate,
+    existingSubs  // v188: 已保存代课记录计入时段占用，避免撞车
   });
   
   // 【预览模式】只返回方案，不保存

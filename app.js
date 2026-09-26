@@ -4,6 +4,8 @@
  * 数据:课表、请假、代课安排
  */
 
+// v188: 代课档位三处统一(自动默认/预览下拉/修改弹窗):身份=被代班级课时最多科目,同班多科按课时排,
+//       第5档=其他班老师(跨班主科不排除);删除v170覆写补丁;修改弹窗可保留当前代课教师;每天代课节数不限
 // v148: 清理旧 Service Worker 缓存,避免"强刷归0/重开正常"陷阱
 // 旧 sw.js (daiketiao-v84) 把静态资源用"网络优先、缓存备用"策略拦截;
 // 强刷绕过 disk cache 但不绕过 SW → 仍命中旧缓存老响应 → 与真实 KV 不一致
@@ -3222,33 +3224,10 @@ function getTeacherConflict(t, dow, period, leaveDate) {
 }
 
 // 老师在targetClass的周几属于哪个优先级档位
-// 1=同班语文/数学 2=同班英语 3=同班科学/道法 4=同班副科 5=跨班副科 99=跨班主科(不安排)function getTeacherTier(teacherName, targetClass, dow) {
-  // 基于"老师在被代班级教什么"算 tier（看 targetClass）
+// 1=同班语文/数学 2=同班英语 3=同班科学/道法 4=同班副科 5=其他班老师(不排除跨班主科)// v188: 档位 = 老师在被代班级的"身份档位"，与后端 priorityWeight 完全一致，两端口径统一
+function getTeacherTier(teacherName, targetClass, dow) {
   var tier = window.__teacherIdentityTier ? window.__teacherIdentityTier(teacherName, targetClass) : 5;
-  if (tier <= 4) return tier;
-  return 5;
-}
-
-// 判断是否为跨班主科老师(教两个班以上的语文/数学/科学/道德)
-// 英语为独立学科,不算主科也不算副科,跨班可安排代课(优先级=2)
-function isMainSubjectTeacher(teacherName) {
-  const ta = scheduleData?.teacherAssignment || {};
-  let mainCount = 0;
-  for (const [cls, subs] of Object.entries(ta)) {
-    for (const [subj, t] of Object.entries(subs)) {
-      if (t && t === teacherName && ['语文','数学','科学','道德与法治','道德'].includes(subj)) mainCount++;
-    }
-  }
-  return mainCount >= 2; // 教两个班以上的语文/数学/科学/道法为主科老师
-}
-
-// 当前选中老师的档位(用于保持选中状态)
-function getCurrentTier(currentTeacher, targetClass, dow) {
-  if (!currentTeacher) return 99;
-  // 查该老师在 targetClass 是否有课
-  const conflict = getTeacherConflict(currentTeacher, dow, null);
-  if (!conflict) return isMainSubjectTeacher(currentTeacher) ? 99 : 5;
-  return getTeacherTier(currentTeacher, targetClass, dow);
+  return tier <= 4 ? tier : 5;
 }
 
 function getSubstituteOptions(currentTeacher, s) {
@@ -3276,16 +3255,14 @@ function getSubstituteOptions(currentTeacher, s) {
     if (t === s.leaveTeacher) continue; // 不安排自己
     if (absentTeachers.has(t)) continue; // 当天已请假的老师过滤掉
     if (getTeacherConflict(t, dow, period, leaveDate)) continue; // 有课的老师过滤掉
-    // 过滤：当天该节课已被安排代课的老师（不去节数限制）
+    // 过滤：当天该节课已被安排代课的老师（编辑当前记录时跳过自身，保证当前代课教师仍在名单中）
     if (period && leaveDate) {
       const already = (window.substituteRecords || []).some(
-        r => r.substituteTeacher === t && r.leaveDate === leaveDate && r.period == period
+        r => r.id !== s.id && r.substituteTeacher === t && r.leaveDate === leaveDate && r.period == period
       );
       if (already) continue;
     } // (含课后服务单/双周过滤)
     const tier = getTeacherTier(t, targetClass, dow);
-    if (tier === 99) continue; // 跨班主科不安排
-    const curTier = t === currentTeacher ? tier : getCurrentTier(currentTeacher, targetClass, dow);
     result.push({ name: t, tier });
   }
   // 按档位排序:1→2→3→4→5,同档位按姓名
@@ -7135,29 +7112,10 @@ async function v159Save(id) {
   console.log('[v167] 管理员端代课安排按教师筛选 + 自动生成累加已安装');
 })();
 
-// ===== v170 保守修: timetable 查不到时 tier=5 而非 tier=99 =====
-// 问题: 张洪斌在 teacherAssignment 里是五（1）道德与法治老师，
-// 但 timetable 五（1）周一第5节没有他的记录 → 被误判为"跨班主科" tier=99 → 下拉名单消失
-// 保守修: timetable 查不到该老师，默认 tier=5，不再调用 isMainSubjectTeacher
-
-(function v170Init() {
-  if (window.__v170Installed) return;
-  window.__v170Installed = true;
-
-  // 保存原始 getTeacherTier（闭包内不再调用，保留给其他路径用）
-  // 重写 getTeacherTier: 把 "不在targetClass教课 → isMainSubjectTeacher → tier=99"
-  // 改为 "不在targetClass教课 → tier=5"
-  var __origGetTeacherTier = window.getTeacherTier;
-
-  window.getTeacherTier = function getTeacherTier_patched(teacherName, targetClass, dow) {
-    // 基于老师自身主科身份，不看代哪门课
-    var tier = window.__teacherIdentityTier ? window.__teacherIdentityTier(teacherName) : 5;
-    if (tier <= 4) return tier;
-    return 5;
-  };
-
-  console.log('[v170] tier保守修: getTeacherTier查不到时tier=5已安装');
-})();
+// ===== v188: 原 v170"保守修"补丁已移除 =====
+// 旧补丁在这里覆写 window.getTeacherTier 并丢弃 targetClass 参数，导致
+// "身份只看被代班级"规则失效。新版 getTeacherTier 本身已实现统一档位规则
+// （timetable 查不到 → tier=5，跨班主科不再排除），无需再打补丁。
 
 /* ===== v171 主系统管理（多租户阶段1：授权码生成 + 查看） ===== */
 (function v171Init() {
@@ -8179,32 +8137,81 @@ window.__v184Installed = true;
 
 window.__teacherIdentityTier = function(teacher, targetClass) {
   if (!teacher) return 5;
-  var ta = (typeof scheduleData !== 'undefined' ? scheduleData : window.scheduleData);
-  ta = ta && ta.teacherAssignment;
-  if (!ta) return 5;
+  var sd = (typeof scheduleData !== 'undefined' ? scheduleData : window.scheduleData) || {};
+  var tt = sd.timetable || {};
 
-  // 核心：按 teacherAssignment[targetClass] 里该老师教什么算 tier（和 algorithm.js v208 一致）
-  // 不同班级 → 不同 tier → 不同下拉顺序
-  var clsSubs;
-  if (targetClass && ta[targetClass]) {
-    clsSubs = ta[targetClass];
+  // v188 统一规则（与后端 priorityWeight 完全一致）：
+  // 身份 = 该老师在被代班级课表中课时最多的科目；课时相同取档位更高的科目。
+  // 1=语文/数学 2=英语 3=科学/道德与法治 4=其他科目(综合实践/音乐/体育/健康/美术/劳动/地方/…)
+  // 5=不在被代班级任教 → 其他班老师（不看身份，跨班主科也不排除）
+  function tierOf(subj) {
+    if (['语文','数学'].indexOf(subj) >= 0) return 1;
+    if (subj === '英语') return 2;
+    if (['科学','道德与法治','道德'].indexOf(subj) >= 0) return 3;
+    return 4;
+  }
+
+  // 从指定班级的整周课表统计该教师各科课时
+  function countInClass(cls) {
+    var count = {};
+    for (var day in tt) {
+      var slots = tt[day] && tt[day][cls];
+      if (!Array.isArray(slots)) continue;
+      for (var i = 0; i < slots.length; i++) {
+        var s = slots[i];
+        if (!s || !s.subject) continue;
+        var ts = (Array.isArray(s.teachers) && s.teachers.length) ? s.teachers : (s.teacher ? [s.teacher] : []);
+        if (ts.indexOf(teacher) < 0) continue;
+        count[s.subject] = (count[s.subject] || 0) + 1;
+      }
+    }
+    return count;
+  }
+
+  var subjectCount;
+  if (targetClass && tt && Object.keys(tt).length) {
+    subjectCount = countInClass(targetClass);
+    // 课表里查不到该班/该老师时，退回 teacherAssignment（该班任教分配）
+    if (Object.keys(subjectCount).length === 0) {
+      var ta = sd.teacherAssignment || {};
+      if (targetClass && ta[targetClass]) {
+        subjectCount = {};
+        for (var entry of Object.entries(ta[targetClass])) {
+          if (entry[1] === teacher) subjectCount[entry[0]] = 1;
+        }
+      }
+    }
   } else {
-    // 没指定班级时退回到跨班平均（保留旧行为兼容）
-    clsSubs = {};
-    for (var k of Object.keys(ta)) { Object.assign(clsSubs, ta[k]); }
+    // 未指定班级（如"有课/没课总览"）：按全校课时统计身份
+    subjectCount = {};
+    for (var day in tt) {
+      var classMap = tt[day] || {};
+      for (var cls in classMap) {
+        var slots = classMap[cls];
+        if (!Array.isArray(slots)) continue;
+        for (var i2 = 0; i2 < slots.length; i2++) {
+          var s2 = slots[i2];
+          if (!s2 || !s2.subject) continue;
+          var ts2 = (Array.isArray(s2.teachers) && s2.teachers.length) ? s2.teachers : (s2.teacher ? [s2.teacher] : []);
+          if (ts2.indexOf(teacher) < 0) continue;
+          subjectCount[s2.subject] = (subjectCount[s2.subject] || 0) + 1;
+        }
+      }
+    }
+    // 课表缺失时退回 teacherAssignment 跨班汇总
+    if (Object.keys(subjectCount).length === 0) {
+      var taAll = sd.teacherAssignment || {};
+      for (var clsKey in taAll) {
+        for (var e2 of Object.entries(taAll[clsKey])) {
+          if (e2[1] === teacher) subjectCount[e2[0]] = (subjectCount[e2[0]] || 0) + 1;
+        }
+      }
+    }
   }
-  var subjectCount = {};
-  for (var entry of Object.entries(clsSubs)) {
-    var subj = entry[0], t = entry[1];
-    if (t === teacher) subjectCount[subj] = (subjectCount[subj] || 0) + 1;
-  }
+
   var entries = Object.entries(subjectCount);
-  if (entries.length === 0) return 5;
-  entries.sort(function(a, b) { return b[1] - a[1]; });
-  var top = entries[0][0];
-  if (['语文','数学'].indexOf(top) >= 0) return 1;
-  if (top === '英语') return 2;
-  if (['科学','道德与法治','道德'].indexOf(top) >= 0) return 3;
-  if (['音乐','美术','体育','信息技术','劳动','健康','阅读','书法','综合实践'].indexOf(top) >= 0) return 4;
-  return 5;
+  if (entries.length === 0) return 5; // 不在被代班级任教 → 其他班老师
+  // 课时多者优先；课时相同取档位更高的科目
+  entries.sort(function(a, b) { return (b[1] - a[1]) || (tierOf(a[0]) - tierOf(b[0])); });
+  return tierOf(entries[0][0]);
 };
